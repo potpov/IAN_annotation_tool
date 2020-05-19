@@ -21,12 +21,15 @@ def plot_2D(dicom_slice, cmap="gray"):
 
 
 def draw_annotation(slice, gt_mask):
-    # create a RGB version of the image
-    dicom = np.tile(slice, (3, 1, 1))
-    dicom = np.moveaxis(dicom, 0, -1)
-    coords = np.argwhere(gt_mask > 0)
-    for coord in coords:
-        dicom[coord[0], coord[1], :] = (1, 0, 0)
-    # final plot
-    plot_2D(dicom)
+    if len(slice.shape) == 2:
+        # create a RGB version of the image
+        dicom = np.tile(slice, (3, 1, 1))
+        dicom = np.moveaxis(dicom, 0, -1)
+        coords = np.argwhere(gt_mask > 0)
+        for coord in coords:
+            dicom[coord[0], coord[1], :] = (1, 0, 0)
+        # final plot
+        plot_2D(dicom)
+    else:
+        raise Exception("TODO: 3D annotation drawing not implemented yet.")
 

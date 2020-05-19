@@ -1,6 +1,7 @@
 import numpy as np
 import viewer
 import cv2
+import imageio
 
 
 def x_slice(volume, fixed_val):
@@ -23,72 +24,113 @@ def y_slice(volume, fixed_val):
     return np.squeeze(volume[:, fixed_val, :])
 
 
-def spline_projection(volume, func, start, end):
-    """
-    create a panorex from the spline function
-    :param volume: 3D VOXEL of the dental structure
-    :param func: polynomial function describing the spline
-    :param start: x coord where the spline starts
-    :param end: x coord where the spline ends
-    :return: 2D numpy image representing the panoramic image of the mouth
-    """
-    z_shape, y_shape, x_shape = volume.shape
-    d = 1
-    delta = 0.3
-    coords = []
-    x = start
-    # we start from the range of X values on the X axis,
-    # we create a new list X of x coords along the curve
-    # we exploit the first order derivative to place values in X
-    # so that f(X) is equally distant for each point in X
-    while x < end:
-        coords.append((x, func(x)))
-        alfa = (func(x+delta/2) - func(x-delta/2)) / delta
-        x = x + d * np.sqrt(1/(alfa**2 + 1))
+def quantiles(volume, min=0.02, max=0.98):
+    min = np.quantile(volume, min),
+    max = np.quantile(volume, max)
+    volume[volume > max] = max
+    volume[volume < min] = min
+    return volume
 
-    # creating lines parallel to the spline
-    offset = 7
-    high_offset = []
-    low_offset = []
-    for x, y in coords:
-        alfa = (func(x + delta / 2) - func(x - delta / 2)) / delta  # first derivative
-        alfa = -1 / alfa  # perpendicular coeff
+def canal_slice(volume, coords, derivative):
+    """
+    :param volume:
+    :param coords:
+    :param derivative:
+    :return:
+    """
+
+    # creating the set of perpendicular points from the curve
+    slices = []
+    for (x1, y1), (x2, y2), alfa in zip(coords[0], coords[1], derivative):
+        sign = 1 if alfa > 0 else -1
+        x_dist = 1 + int(np.ceil(abs(x1 - x2)))
+        y_dist = 1 + int(np.ceil(abs(y1 - y2)))
         cos = np.sqrt(1/(alfa**2 + 1))
         sin = np.sqrt(alfa ** 2 / (alfa ** 2 + 1))
-        if alfa > 0:
-            low_offset.append((x + offset * cos, y + offset * sin))
-            high_offset.append((x - offset * cos, y - offset * sin))
-        else:
-            low_offset.append((x - offset * cos, y + offset * sin))
-            high_offset.append((x + offset * cos, y - offset * sin))
+        points = [
+            [x1 + sign * i * cos, np.floor(y1 + (i * sin))] for i in
+                  range(max(x_dist, y_dist))
+        ]
+        slices.append(points)
 
-    # better re-projection using bi-linear interpolation
-    panorex = np.zeros((z_shape, len(coords)), np.int)
-    for idx, (x, y) in enumerate(coords):
-        panorex[:, idx] = simple_interpolation(x, y, volume)
+    # creating volume from the points
+    h = volume.shape[0]
+    w = max([len(points) for points in slices])
+    z = len(slices)
+    if len(volume.shape) == 3:
+        cut = np.zeros((z, h, w), np.float32)
+        for z_id, points in enumerate(slices):
+            for w_id, (x, y) in enumerate(points):
+                cut[z_id, :, w_id] = volume[:, int(y), int(x)]
+    elif len(volume.shape) == 4:
+        cut = np.zeros((z, h, w, 3), np.float32)
+        for z_id, points in enumerate(slices):
+            for w_id, (x, y) in enumerate(points):
+                cut[z_id, :, w_id, :] = volume[:, int(y), int(x), :]
+    else:
+        raise Exception("weird volume shape")
 
-    # re-projection of the offsets curves
-    panorex_up = np.zeros((z_shape, len(high_offset)), np.int)
-    for idx, (x, y) in enumerate(high_offset):
-        panorex_up[:, idx] = simple_interpolation(x, y, volume)
+    return cut, slices
 
-    panorex_down = np.zeros((z_shape, len(low_offset)), np.int)
-    for idx, (x, y) in enumerate(low_offset):
-        panorex_down[:, idx] = simple_interpolation(x, y, volume)
 
-    viewer.plot_2D(panorex_down, cmap='bone')
-    viewer.plot_2D(panorex, cmap='bone')
-    viewer.plot_2D(panorex_up, cmap='bone')
+def recap_on_gif(coords, high_offset, low_offset, side_volume, side_coords, slice, gt_side_volume):
+    """
 
-    avg = np.average(np.stack([panorex_down + panorex + panorex_up]), axis=0).astype(np.uint16)
-    viewer.plot_2D(avg, cmap='bone')
+    :param coords:
+    :param high_offset:
+    :param low_offset:
+    :param side_volume:
+    :param side_coords:
+    :param slice:
+    :param gt_side_volume:
+    :return:
+    """
 
-    # sharpening
-    kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-    avg = cv2.filter2D(avg, -1, kernel)
-    viewer.plot_2D(avg, cmap='bone')
+    slice = cv2.normalize(slice, slice, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    original = np.tile(slice, (3, 1, 1))  # overlay on the original image (colorful)
+    original = np.moveaxis(original, 0, -1)
 
-    return panorex
+    # drawing the line and the offsets of the upper view
+    for idx in range(len(coords)):
+        original[int(coords[idx][1]), int(coords[idx][0])] = (255, 0, 0)
+        original[int(high_offset[idx][1]), int(high_offset[idx][0])] = (0, 255, 0)
+        original[int(low_offset[idx][1]), int(low_offset[idx][0])] = (0, 255, 0)
+
+    # create an upper view for each section
+    sections = []
+    for points in side_coords:
+        tmp = original.copy()
+        for x, y in points:
+            tmp[int(y), int(x)] = (0, 0, 255)
+        sections.append(tmp)
+    sections = np.stack(sections)
+
+    # rescaling the projection volume properly
+    y_ratio = original.shape[0] / side_volume.shape[1]
+    width = int(side_volume.shape[2] * y_ratio)
+    height = int(side_volume.shape[1] * y_ratio)
+    scaled_side_volume = np.ndarray(shape=(side_volume.shape[0], height, width))
+    scaled_gt_volume = np.ndarray(shape=(gt_side_volume.shape[0], height, width, 3))
+    for i in range(side_volume.shape[0]):
+        scaled_side_volume[i] = cv2.resize(side_volume[i, :, :], (width, height), interpolation=cv2.INTER_AREA)
+        scaled_gt_volume[i] = cv2.resize(gt_side_volume[i, :, :], (width, height), interpolation=cv2.INTER_AREA)
+
+    # padding the side volume and rescaling
+    # pad_side_volume = np.zeros((side_volume.shape[0], original.shape[0], original.shape[1]))
+    # pad_side_volume[:, :side_volume.shape[1], :side_volume.shape[2]] = side_volume
+    scaled_side_volume = cv2.normalize(scaled_side_volume, scaled_side_volume, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    scaled_gt_volume = cv2.normalize(scaled_gt_volume, scaled_gt_volume, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+    # creating RGB volume
+    scaled_side_volume = np.tile(scaled_side_volume, (3, 1, 1, 1))  # overlay on the original image (colorful)
+    scaled_side_volume = np.moveaxis(scaled_side_volume, 0, -1)
+
+    # GIF creation
+    gif_source = np.concatenate((sections, scaled_side_volume, scaled_gt_volume), axis=2)
+    gif = []
+    for i in range(gif_source.shape[0]):
+        gif.append(gif_source[i, :, :])
+    imageio.mimsave('test.gif', gif)
 
 
 def get_annotations(metadata):
@@ -112,13 +154,25 @@ def get_annotations(metadata):
     return metadata.overlay_array(0x6004)
 
 
-def simple_normalization(slice):
+def get_annotated_volume(metadata):
     """
-    normalize data between 0 and 1
-    :param slice: numpy image
-    :return: numpy normilized image
+    return a volume of masks according to the overlays fields
+    :param metadata: volume of metadata
+    :return: a binary volume
     """
-    return slice / slice.max()
+    annotations = []
+    for meta in metadata:
+        annotations.append(get_annotations(meta))
+    return np.stack(annotations).astype(np.bool_)
+
+
+def simple_normalization(data):
+    """
+    normalize slice or volumes between 0 and 1
+    :param data: numpy image or volume
+    :return: numpy normalized image
+    """
+    return data.astype(np.float32)/data.max()
 
 
 def simple_interpolation(x_func, y_func, volume):
@@ -171,7 +225,7 @@ def arch_detection(slice, debug=False):
     # initial closing
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     arch = cv2.morphologyEx(slice, cv2.MORPH_CLOSE, kernel)
-    # simple threshold -> float to uint8
+    # simple threshold -> switch to uint8
     ret, arch = cv2.threshold(arch, 0.5, 1, cv2.THRESH_BINARY)
     arch = arch.astype(np.uint8)
     if debug:
@@ -230,3 +284,73 @@ def arch_detection(slice, debug=False):
 
     return p, min(x), max(x)
 
+
+def arch_lines(func, start, end, offset=50):
+    """
+
+    :param func:
+    :param start:
+    :param end:
+    :param offset:
+    :return:
+    """
+    d = 1
+    delta = 0.3
+    coords = []
+    x = start + 1
+    # we start from the range of X values on the X axis,
+    # we create a new list X of x coords along the curve
+    # we exploit the first order derivative to place values in X
+    # so that f(X) is equally distant for each point in X
+    while x < end:
+        coords.append((x, func(x)))
+        alfa = (func(x+delta/2) - func(x-delta/2)) / delta
+        x = x + d * np.sqrt(1/(alfa**2 + 1))
+
+    # creating lines parallel to the spline
+    high_offset = []
+    low_offset = []
+    derivative = []
+    for x, y in coords:
+        alfa = (func(x + delta / 2) - func(x - delta / 2)) / delta  # first derivative
+        alfa = -1 / alfa  # perpendicular coeff
+        cos = np.sqrt(1/(alfa**2 + 1))
+        sin = np.sqrt(alfa ** 2 / (alfa ** 2 + 1))
+        if alfa > 0:
+            low_offset.append((x + offset * cos, y + offset * sin))
+            high_offset.append((x - offset * cos, y - offset * sin))
+        else:
+            low_offset.append((x - offset * cos, y + offset * sin))
+            high_offset.append((x + offset * cos, y - offset * sin))
+        derivative.append(alfa)
+
+    return low_offset, coords, high_offset, derivative
+
+
+def create_panorex(volume, coords, high_offset, low_offset):
+    """
+
+    :param volume:
+    :param coords:
+    :param high_offset:
+    :param low_offset:
+    :return:
+    """
+    z_shape, y_shape, x_shape = volume.shape
+    # better re-projection using bi-linear interpolation
+    panorex = np.zeros((z_shape, len(coords)), np.float32)
+    for idx, (x, y) in enumerate(coords):
+        panorex[:, idx] = simple_interpolation(x, y, volume)
+
+    # re-projection of the offsets curves
+    panorex_up = np.zeros((z_shape, len(high_offset)), np.int)
+    panorex_down = np.zeros((z_shape, len(low_offset)), np.int)
+    for idx, (x, y) in enumerate(high_offset):
+        panorex_up[:, idx] = simple_interpolation(x, y, volume)
+    for idx, (x, y) in enumerate(low_offset):
+        panorex_down[:, idx] = simple_interpolation(x, y, volume)
+
+    viewer.plot_2D(panorex_down, cmap='bone')
+    viewer.plot_2D(panorex, cmap='bone')
+    viewer.plot_2D(panorex_up, cmap='bone')
+    return panorex
