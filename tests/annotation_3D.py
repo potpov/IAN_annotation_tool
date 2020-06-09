@@ -12,7 +12,7 @@ from mayavi import mlab
 
 def annotation_3D():
     """
-    load 2D annotation, stack them and create a 3D canal volume
+    load 2D annotations, stack them and create a 3D canal volume, smooth the surface. save the new volumes for further goals
     """
 
     # loading the data
@@ -28,8 +28,8 @@ def annotation_3D():
     volume = processing.simple_normalization(volume)
 
     # loading previous side cuts and coords
-    side_volume = np.load('side.npy')
-    side_coords = np.load('coords.npy', allow_pickle=True)
+    side_volume = np.load('dataset/sides/side.npy')
+    side_coords = np.load('dataset/sides/coords.npy', allow_pickle=True)
 
     # create a volume with the canal annotations stacked
     canal = np.zeros_like(side_volume)
@@ -50,8 +50,13 @@ def annotation_3D():
             gt_volume[:, int(y), int(x)] = canal[z_id, :, w_id]
 
     # smoothing surface
+    # it still has to be filled!
+    # better ways to smooth surface? vtk maybe?
     gt_volume = viewer.delaunay(gt_volume)
     viewer.plot_3D(gt_volume)
+
+    # np.save('dataset/volume.npy', volume)
+    # np.save('dataset/gt_volume.npy', gt_volume)
 
 
 if __name__ == "__main__":
