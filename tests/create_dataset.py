@@ -1,9 +1,13 @@
 import numpy as np
 import processing
-import viewer
 
 
 def create_dataset():
+    """
+    load 3D volumes (data and annotations), create many 2D sets of cuts (data and annotation)
+    augmentation to be added here
+    :return:
+    """
     volume = np.load('dataset/volume.npy')
     gt_volume = np.load('dataset/gt_volume.npy')
     idxs = [96, 120, 130]
@@ -29,5 +33,6 @@ def create_dataset():
 
     np.save('dataset/slices/data.npy', side_volume)
     np.save('dataset/slices/gt.npy', gt_side_volume)
-    
-    return
+
+    if __name__ == "__main__":
+        create_dataset()

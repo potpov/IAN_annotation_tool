@@ -144,18 +144,6 @@ def get_annotations(metadata):
     :param metadata: metadata for a given slice
     :return: mask extracted from the metadata
     """
-    '''
-    # alternative method that does not work that good
-    overlay_data = dcm[0x6004, 0x3000].value
-    rows = dcm[0x6004, 0x0010].value
-    cols = dcm[0x6004, 0x0011].value
-
-    btmp = np.frombuffer(overlay_data, dtype=np.uint8)
-    btmp = np.unpackbits(btmp)
-    btmp = btmp[:rows * cols]
-    btmp = np.reshape(btmp, (rows, cols))
-    return btmp
-    '''
     return metadata.overlay_array(0x6004)
 
 

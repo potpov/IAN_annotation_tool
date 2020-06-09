@@ -10,7 +10,10 @@ import cv2
 from mayavi import mlab
 
 
-def lateral_3d_annotation():
+def annotation_3D():
+    """
+    load 2D annotation, stack them and create a 3D canal volume
+    """
 
     # loading the data
     metadata, volume = load_dicom(conf.DICOM_DIR)
@@ -23,10 +26,6 @@ def lateral_3d_annotation():
 
     # normalize volume between 0 and 1
     volume = processing.simple_normalization(volume)
-
-    # creating RGB volume from volume
-    # volume = np.tile(volume, (3, 1, 1, 1))  # overlay on the original image (colorful)
-    # volume = np.moveaxis(volume, 0, -1)
 
     # loading previous side cuts and coords
     side_volume = np.load('side.npy')
@@ -50,33 +49,10 @@ def lateral_3d_annotation():
         for w_id, (x, y) in enumerate(points):
             gt_volume[:, int(y), int(x)] = canal[z_id, :, w_id]
 
-    # np.save('dataset/gt_volume.npy', gt_volume)
-    # np.save('dataset/volume.npy', volume)
-
+    # smoothing surface
     gt_volume = viewer.delaunay(gt_volume)
-    viewer.slice_volume(gt_volume)
+    viewer.plot_3D(gt_volume)
 
-    # DEBUG #
 
-    section = volume[96]
-    p, start, end = processing.arch_detection(section)
-
-    # get the coords of the spline + 2 offset curves
-    l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end)
-    # generating orthogonal lines to the offsets curves
-    side_coords = processing.generate_side_coords(h_offset, l_offset, derivative)
-    # volume of sections of the orthogonal lines
-    side_volume = processing.canal_slice(volume, side_coords)
-
-    # building an RGB 3D volume with annotations
-    gt_drawn = np.tile(volume, (3, 1, 1, 1))  # overlay on the original image (colorful)
-    gt_drawn = np.moveaxis(gt_drawn, 0, -1)
-    gt_coords = np.argwhere(gt_volume)
-    for i in range(gt_coords.shape[0]):
-        z, y, x = gt_coords[i]
-        gt_drawn[z, y, x] = (1, 0, 0)
-
-    # extracting the side reprojection from this ground truth volume
-    side_gt_volume = processing.canal_slice(gt_drawn, side_coords)
-
-    processing.recap_on_gif(coords, h_offset, l_offset, side_volume, side_coords, section, side_gt_volume)
+if __name__ == "__main__":
+    annotation_3D()

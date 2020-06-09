@@ -3,10 +3,11 @@ from conf import conf
 import processing
 from dataloader import load_dicom
 
-"""
-THIS SCRIPT CUT THE VOLUME AND CREATE A RECAP GIF OF THE CUT WITH THE POSITION OF THE GT
-"""
-def lateral_2d_annotation():
+
+def annotation_2D():
+    """
+    dental arch detection, volume lateral cut, recap of the cuts along with the ground truth on a gif
+    """
 
     # loading the data
     metadata, volume = load_dicom(conf.DICOM_DIR)
@@ -47,3 +48,7 @@ def lateral_2d_annotation():
     side_gt_volume = processing.canal_slice(gt_drawn, side_coords)
 
     processing.recap_on_gif(coords, h_offset, l_offset, side_volume, side_coords, section, side_gt_volume)
+
+
+if __name__ == "__main__":
+    annotation_2D()

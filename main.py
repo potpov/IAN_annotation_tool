@@ -1,4 +1,4 @@
-from tests import lateral_cut_3d_annotation
+from tests import annotation_3D
 from tests import create_dataset
 
 def main():

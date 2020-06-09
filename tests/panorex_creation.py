@@ -1,11 +1,14 @@
 import numpy as np
 from conf import conf
-import viewer
 import processing
 from dataloader import load_dicom
 
 
 def panorex_creation():
+    """
+    stack DICOM files together, detect dental arch, create panorex
+    """
+
     # loading the data
     metadata, volume = load_dicom(conf.DICOM_DIR)
 
@@ -28,3 +31,6 @@ def panorex_creation():
     # generating panorex
     panorex = processing.create_panorex(volume, coords, h_offset, l_offset)
 
+
+if __name__ == "__main__":
+    panorex_creation()

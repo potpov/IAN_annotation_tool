@@ -9,10 +9,12 @@ from dataloader import load_dicom
 import cv2
 from skimage.segmentation import active_contour
 
-"""
-THIS SCRIPT TRIES TO USE ACTIVE CONTOUR TO DETECT THE CANAL IN THE MANDIBULAR SLICES
-"""
-def expand_2d_annotation():
+
+def find_contour_3D():
+    """
+    base code for develop some find contour technique
+    """
+
     # loading the data
     metadata, volume = load_dicom(conf.DICOM_DIR)
 
@@ -35,8 +37,10 @@ def expand_2d_annotation():
 
     # get the coords of the spline + 2 offset curves
     l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end)
+
     # generating orthogonal lines to the offsets curves
     side_coords = processing.generate_side_coords(h_offset, l_offset, derivative)
+
     # volume of sections of the orthogonal lines
     side_volume = processing.canal_slice(volume, side_coords)
 
@@ -95,4 +99,6 @@ def expand_2d_annotation():
 
     viewer.plot_2D(result)
 
-    # END TEST!
+
+if __name__ == "__main__":
+    find_contour_3D()
