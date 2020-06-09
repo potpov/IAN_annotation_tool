@@ -4,10 +4,11 @@ import processing
 
 def create_dataset():
     """
+    creating a dataset for the neural network part
     load 3D volumes (data and annotations), create many 2D sets of cuts (data and annotation)
-    augmentation to be added here
-    :return:
+    augmentation to be added yet
     """
+
     volume = np.load('dataset/volume.npy')
     gt_volume = np.load('dataset/gt_volume.npy')
     idxs = [96, 120, 130]
