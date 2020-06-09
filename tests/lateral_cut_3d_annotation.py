@@ -7,6 +7,7 @@ import viewer
 import processing
 from dataloader import load_dicom
 import cv2
+from mayavi import mlab
 
 
 def lateral_3d_annotation():
@@ -31,12 +32,9 @@ def lateral_3d_annotation():
     side_volume = np.load('side.npy')
     side_coords = np.load('coords.npy', allow_pickle=True)
 
-    # creating RGB volume from the side volume
-    # side_volume = np.tile(side_volume, (3, 1, 1, 1))
-    # side_volume = np.moveaxis(side_volume, 0, -1)
-
-    # load annotation for each side slice if it exists
-    for i in range(side_volume.shape[0]):
+    # create a volume with the canal annotations stacked
+    canal = np.zeros_like(side_volume)
+    for i in range(canal.shape[0]):
         mask = cv2.imread(os.path.join(conf.SAVE_DIR, '{}_map.jpg'.format(i)))
         if mask is None:
             continue
@@ -44,33 +42,41 @@ def lateral_3d_annotation():
         mask[mask < 125] = 0
         mask[mask > 0] = 1
         mask = mask.astype(np.bool_)
-        side_volume[i, mask] = 1
+        canal[i, mask] = 1
 
-    # merging the slices on the original volume
+    # copy previous volume to a jawbone shaped empty volume to reshape the canal correctly
+    gt_volume = np.zeros_like(volume)
     for z_id, points in enumerate(side_coords):
         for w_id, (x, y) in enumerate(points):
-            volume[:, int(y), int(x)] = side_volume[z_id, :, w_id]
+            gt_volume[:, int(y), int(x)] = canal[z_id, :, w_id]
 
-    # volume[volume!=1] = 0
-    # viewer.plot_3D(volume, vmax=1)
+    # np.save('dataset/gt_volume.npy', gt_volume)
+    # np.save('dataset/volume.npy', volume)
 
-    # merging the slices on an empty volume
-    just_canal_side = np.zeros_like(side_volume)
-    for i in range(just_canal_side.shape[0]):
-        mask = cv2.imread(os.path.join(conf.SAVE_DIR, '{}_map.jpg'.format(i)))
-        if mask is None:
-            continue
-        mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
-        mask[mask < 125] = 0
-        mask[mask > 0] = 1
-        mask = mask.astype(np.bool_)
-        just_canal_side[i, mask] = 1
+    gt_volume = viewer.delaunay(gt_volume)
+    viewer.slice_volume(gt_volume)
 
-    just_canal = np.zeros_like(volume)
-    for z_id, points in enumerate(side_coords):
-        for w_id, (x, y) in enumerate(points):
-            just_canal[:, int(y), int(x)] = just_canal_side[z_id, :, w_id]
-    # viewer.plot_3D(just_canal)
-    viewer.delaunay(just_canal)
+    # DEBUG #
 
-    # processing.recap_on_gif(coords, h_offset, l_offset, side_volume, side_coords, section, side_gt_volume)
+    section = volume[96]
+    p, start, end = processing.arch_detection(section)
+
+    # get the coords of the spline + 2 offset curves
+    l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end)
+    # generating orthogonal lines to the offsets curves
+    side_coords = processing.generate_side_coords(h_offset, l_offset, derivative)
+    # volume of sections of the orthogonal lines
+    side_volume = processing.canal_slice(volume, side_coords)
+
+    # building an RGB 3D volume with annotations
+    gt_drawn = np.tile(volume, (3, 1, 1, 1))  # overlay on the original image (colorful)
+    gt_drawn = np.moveaxis(gt_drawn, 0, -1)
+    gt_coords = np.argwhere(gt_volume)
+    for i in range(gt_coords.shape[0]):
+        z, y, x = gt_coords[i]
+        gt_drawn[z, y, x] = (1, 0, 0)
+
+    # extracting the side reprojection from this ground truth volume
+    side_gt_volume = processing.canal_slice(gt_drawn, side_coords)
+
+    processing.recap_on_gif(coords, h_offset, l_offset, side_volume, side_coords, section, side_gt_volume)

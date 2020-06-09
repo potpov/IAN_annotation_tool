@@ -9,7 +9,9 @@ from dataloader import load_dicom
 import cv2
 from skimage.segmentation import active_contour
 
-
+"""
+THIS SCRIPT TRIES TO USE ACTIVE CONTOUR TO DETECT THE CANAL IN THE MANDIBULAR SLICES
+"""
 def expand_2d_annotation():
     # loading the data
     metadata, volume = load_dicom(conf.DICOM_DIR)

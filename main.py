@@ -1,10 +1,9 @@
-from tests import lateral_cut_2d_annotation as test_1
-from tests import panorex_creation as test_2
-from tests import lateral_cut_3d_annotation as test_3
-
+from tests import lateral_cut_3d_annotation
+from tests import create_dataset
 
 def main():
-    test_3.lateral_3d_annotation()
+    # lateral_cut_3d_annotation.lateral_3d_annotation()
+    create_dataset.create_dataset()
     return
 
 

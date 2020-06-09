@@ -3,7 +3,9 @@ from conf import conf
 import processing
 from dataloader import load_dicom
 
-
+"""
+THIS SCRIPT CUT THE VOLUME AND CREATE A RECAP GIF OF THE CUT WITH THE POSITION OF THE GT
+"""
 def lateral_2d_annotation():
 
     # loading the data

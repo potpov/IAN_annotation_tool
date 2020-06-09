@@ -2,6 +2,7 @@ import argparse
 import sys
 import math
 import numpy as np
+from tqdm import tqdm
 
 from .common.progressbar import print_progress_bar
 from .voxelintersect.triangle import Triangle, t_c_intersection, INSIDE, vertexes_to_c_triangle, triangle_lib
@@ -162,7 +163,8 @@ def get_intersecting_voxels_depth_first(vertex_1, vertex_2, vertex_3):
 def voxelize(list_of_triangles):
     voxels = set()
     bounding_box = BoundaryBox()
-    for (vertex_1, vertex_2, vertex_3) in list_of_triangles:
+
+    for (vertex_1, vertex_2, vertex_3) in tqdm(list_of_triangles):
         bounding_box.from_vertexes(vertex_1, vertex_2, vertex_3)
         voxels.update(get_intersecting_voxels_depth_first(vertex_1, vertex_2, vertex_3))
     center = bounding_box.get_center()
