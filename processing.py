@@ -46,19 +46,26 @@ def generate_side_coords(h_offset, l_offset, derivative, offset=100):
         x_step = abs(x1 - x2) / offset
         y_step = abs(y1 - y2) / offset
         points = [
-            [int(x1 + sign * i * x_step), int(y1 + (i * y_step))] for i in
+            [(x1 + sign * i * x_step), (y1 + (i * y_step))] for i in
             range(offset + 1)
         ]
         slices.append(points)
     return slices
 
 
-def canal_slice(volume, side_coords):
+def canal_slice(volume, side_coords, interpolation='bilinear'):
     """
     :param volume: 3D numpy matrix
     :param side_coords: list of lists of tuple, each element of the list is a list of y-x coordinates describing a slice
+    :param interpolation: type of interpolation: bilinear or nearest are implemented
     :return: a volume representing all the cuts generated from side_coords on volume
     """
+
+    if interpolation == 'bilinear':
+        interp_fn = simple_interpolation
+    else:
+        interp_fn = lambda x, y, vol: vol[:, int(y), int(x)]  # nearest
+
     h = volume.shape[0]
     w = max([len(points) for points in side_coords])
     z = len(side_coords)
@@ -66,7 +73,11 @@ def canal_slice(volume, side_coords):
         cut = np.zeros((z, h, w), np.float32)
         for z_id, points in enumerate(side_coords):
             for w_id, (x, y) in enumerate(points):
-                cut[z_id, :, w_id] = volume[:, int(y), int(x)]
+                # avoiding overflow
+                if (x - 1) < 0 or (y - 1) < 0 or (x + 1) >= volume.shape[2] or (y + 1) >= volume.shape[1]:
+                    cut[z_id, :, w_id] = np.zeros(shape=volume.shape[0])  # fill the array with zeros
+                else:
+                    cut[z_id, :, w_id] = interp_fn(x, y, volume)  # bilinear interpolation
     elif len(volume.shape) == 4:
         cut = np.zeros((z, h, w, 3), np.float32)
         for z_id, points in enumerate(side_coords):
@@ -98,15 +109,18 @@ def recap_on_gif(coords, high_offset, low_offset, side_volume, side_coords, slic
     # drawing the line and the offsets of the upper view
     for idx in range(len(coords)):
         original[int(coords[idx][1]), int(coords[idx][0])] = (255, 0, 0)
-        original[int(high_offset[idx][1]), int(high_offset[idx][0])] = (0, 255, 0)
-        original[int(low_offset[idx][1]), int(low_offset[idx][0])] = (0, 255, 0)
-
+        try:
+            original[int(high_offset[idx][1]), int(high_offset[idx][0])] = (0, 255, 0)
+            original[int(low_offset[idx][1]), int(low_offset[idx][0])] = (0, 255, 0)
+        except:
+            print("overflow when drawing: https://bit.ly/3dck2Rm")
     # create an upper view for each section
     sections = []
     for points in side_coords:
         tmp = original.copy()
         for x, y in points:
-            tmp[int(y), int(x)] = (0, 0, 255)
+            if slice.shape[1] > x > 0 and slice.shape[0] > y > 0:
+                tmp[int(y), int(x)] = (0, 0, 255)
         sections.append(tmp)
     sections = np.stack(sections)
 
@@ -218,23 +232,43 @@ def arch_detection(slice, debug=False):
     # initial closing
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     arch = cv2.morphologyEx(slice, cv2.MORPH_CLOSE, kernel)
-    # simple threshold -> switch to uint8
-    ret, arch = cv2.threshold(arch, 0.5, 1, cv2.THRESH_BINARY)
-    arch = arch.astype(np.uint8)
-    if debug:
-        viewer.plot_2D(arch)
+
+    # varying threashold until we white area is about 12%
+    th = 0.50
+    while True:
+        tmp = cv2.threshold(arch, th, 1, cv2.THRESH_BINARY)[1].astype(np.uint8)
+        score = tmp[tmp==1].size / tmp.size
+        if debug:
+            print("score for th {} is {}".format(th, score))
+            viewer.plot_2D(tmp)
+        if score > 0.11:
+            arch = tmp
+            break
+        th -= .04
 
     # hole filling
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (25, 25))
-    arch = cv2.morphologyEx(arch, cv2.MORPH_CLOSE, kernel)
-    if debug:
-        viewer.plot_2D(arch)
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+    # arch = cv2.morphologyEx(arch, cv2.MORPH_CLOSE, kernel)
+    # if debug:
+    #     viewer.plot_2D(arch)
 
-    # major filtering with labelling
+    # major filtering with labelling: first remove all the little white parts
     ret, labels = cv2.connectedComponents(arch)
-    for label in range(1, ret):
-        if labels[labels == label].size < 10000:
-            labels[labels == label] = 0
+    sizes = np.asarray([labels[labels == label].size for label in range(1, ret)])
+    labels[labels != (sizes.argmax() + 1)] = 0  # set all not maximum components to background
+    labels[labels == (sizes.argmax() + 1)] = 1  # set the biggest components as foreground
+
+    # let's now fill the rest of the holes if any
+    labels = 1 - labels
+    ret, labels = cv2.connectedComponents(labels.astype(np.uint8))
+    sizes = np.asarray([labels[labels == label].size for label in range(1, ret)])
+    labels[labels != (sizes.argmax() + 1)] = 0
+    labels[labels == (sizes.argmax() + 1)] = 1
+    labels = 1 - labels
+
+    # for label in range(1, ret):
+    #     if labels[labels == label].size < 10000:
+    #         labels[labels == label] = 0
     if debug:
         viewer.plot_2D(labels)
 
@@ -243,21 +277,21 @@ def arch_detection(slice, debug=False):
     if debug:
         viewer.plot_2D(skel)
 
-    # labelling on the resulting skeleton
-    cs, im = cv2.findContours(skel, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    filtered = []
-    for c in cs:
-        if len(c) > 40:
-            filtered.append(c)
-
-    # creating the mask of chosen pixels
-    contour = np.zeros(skel.shape, np.uint8)
-    cv2.drawContours(contour, filtered, -1, 255)
-    if debug:
-        viewer.plot_2D(contour)
+    # # labelling on the resulting skeleton
+    # cs, im = cv2.findContours(skel, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # filtered = []
+    # for c in cs:
+    #     if len(c) > 40:
+    #         filtered.append(c)
+    #
+    # # creating the mask of chosen pixels
+    # contour = np.zeros(skel.shape, np.uint8)
+    # cv2.drawContours(contour, filtered, -1, 255)
+    # if debug:
+    #     viewer.plot_2D(contour)
 
     # regression polynomial function
-    coords = np.argwhere(contour > 0)
+    coords = np.argwhere(skel > 0)
     y = [y for y, x in coords]
     x = [x for y, x in coords]
     pol = np.polyfit(x, y, 12)
