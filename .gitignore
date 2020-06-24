@@ -4,3 +4,4 @@ venv
 /*.gif
 dataset
 /side.npy
+/tests/*.gif

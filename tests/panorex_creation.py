@@ -2,6 +2,7 @@ import numpy as np
 from conf import conf
 import processing
 from dataloader import load_dicom
+import cv2
 
 
 def panorex_creation():
@@ -26,10 +27,12 @@ def panorex_creation():
     p, start, end = processing.arch_detection(section)
 
     # get the coords of the spline + 2 offset curves
-    l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end, offset=5)
+    l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end, offset=2)
 
     # generating panorex
     panorex = processing.create_panorex(volume, coords, h_offset, l_offset)
+    panorex = cv2.normalize(panorex, panorex, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    cv2.imwrite(r'Y:\work\datasets\canal_segmentation\patient1\panorex\panorex.jpg', panorex)
 
 
 if __name__ == "__main__":

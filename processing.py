@@ -200,6 +200,40 @@ def simple_interpolation(x_func, y_func, volume):
     return np.sum(np.stack((P1, P2, P3, P4)), axis=0)
 
 
+def cubic_interpolation(p0, p1, p2, p3, coord):
+    """
+    cubic interpolation according to https://www.paulinternet.nl/?page=bicubic
+    coord must be rescaled between 0 and 1. we use the floating part between the coords for p1 and p2
+    :param p0: column of values for coord x0
+    :param p1: column of values for coord x1
+    :param p2: column of values for coord x2
+    :param p3: column of values for coord x3
+    :param coord: coordinate to interpolate on
+    :return: cubic interpolated value
+    """
+    if coord == 0:
+        return p1  # if we already have an int coord we don't need to interpolate this stripe
+    return p1 + 0.5 * coord * (p2 - p0 + coord * (2 * p0 - 5 * p1 + 4 * p2 - p3 + coord * (3. * (p1 - p2) + p3 - p0)))
+
+
+def bicubic_interpolation(x_func, y_func, volume):
+    """
+    perform bicubic interpolation by firstly first interpolating
+    the four columns and then interpolating the results in the y direction
+    :param x_func: x coord to interpolate on
+    :param y_func: y coord to interpolate on
+    :param volume: tridimensional volume
+    :return: all the interpolated values on a z column
+    """
+    x0, x1, x2, x3 = int(np.floor(x_func)) - 1, int(np.floor(x_func)), int(np.ceil(x_func)), int(np.ceil(x_func)) + 1
+    y0, y1, y2, y3 = int(np.floor(y_func)) -1, int(np.floor(y_func)), int(np.ceil(y_func)), int(np.ceil(y_func)) + 1
+    i0 = cubic_interpolation(volume[:, y0, x0], volume[:, y0, x1],  volume[:, y0, x2],  volume[:, y0, x3], x_func - int(x_func))
+    i1 = cubic_interpolation(volume[:, y1, x0], volume[:, y1, x1],  volume[:, y1, x2],  volume[:, y1, x3], x_func - int(x_func))
+    i2 = cubic_interpolation(volume[:, y2, x0], volume[:, y2, x1],  volume[:, y2, x2],  volume[:, y2, x3], x_func - int(x_func))
+    i3 = cubic_interpolation(volume[:, y3, x0], volume[:, y3, x1],  volume[:, y3, x2],  volume[:, y3, x3], x_func - int(x_func))
+    return cubic_interpolation(i0, i1, i2, i3, y_func - int(y_func))
+
+
 def compute_skeleton(img):
     """
     create the skeleton using morphology
@@ -367,7 +401,8 @@ def create_panorex(volume, coords, high_offset, low_offset):
     # better re-projection using bi-linear interpolation
     panorex = np.zeros((z_shape, len(coords)), np.float32)
     for idx, (x, y) in enumerate(coords):
-        panorex[:, idx] = simple_interpolation(x, y, volume)
+        # panorex[:, idx] = simple_interpolation(x, y, volume)
+        panorex[:, idx] = bicubic_interpolation(x, y, volume)
 
     # re-projection of the offsets curves
     panorex_up = np.zeros((z_shape, len(high_offset)), np.float32)
