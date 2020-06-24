@@ -53,7 +53,7 @@ def generate_side_coords(h_offset, l_offset, derivative, offset=100):
     return slices
 
 
-def canal_slice(volume, side_coords, interpolation='bilinear'):
+def canal_slice(volume, side_coords, interpolation='bicubic'):
     """
     :param volume: 3D numpy matrix
     :param side_coords: list of lists of tuple, each element of the list is a list of y-x coordinates describing a slice
@@ -63,6 +63,8 @@ def canal_slice(volume, side_coords, interpolation='bilinear'):
 
     if interpolation == 'bilinear':
         interp_fn = simple_interpolation
+    elif interpolation == 'bicubic':
+        interp_fn = bicubic_interpolation
     else:
         interp_fn = lambda x, y, vol: vol[:, int(y), int(x)]  # nearest
 
@@ -74,7 +76,7 @@ def canal_slice(volume, side_coords, interpolation='bilinear'):
         for z_id, points in enumerate(side_coords):
             for w_id, (x, y) in enumerate(points):
                 # avoiding overflow
-                if (x - 1) < 0 or (y - 1) < 0 or (x + 1) >= volume.shape[2] or (y + 1) >= volume.shape[1]:
+                if (x - 2) < 0 or (y - 2) < 0 or (x + 2) >= volume.shape[2] or (y + 2) >= volume.shape[1]:
                     cut[z_id, :, w_id] = np.zeros(shape=volume.shape[0])  # fill the array with zeros
                 else:
                     cut[z_id, :, w_id] = interp_fn(x, y, volume)  # bilinear interpolation
@@ -82,7 +84,11 @@ def canal_slice(volume, side_coords, interpolation='bilinear'):
         cut = np.zeros((z, h, w, 3), np.float32)
         for z_id, points in enumerate(side_coords):
             for w_id, (x, y) in enumerate(points):
-                cut[z_id, :, w_id, :] = volume[:, int(y), int(x), :]
+                # avoiding overflow
+                if (x - 2) < 0 or (y - 2) < 0 or (x + 2) >= volume.shape[2] or (y + 2) >= volume.shape[1]:
+                    cut[z_id, :, w_id, :] = np.zeros(shape=(volume.shape[0], 3))  # fill the array with zeros
+                else:
+                    cut[z_id, :, w_id, :] = interp_fn(x, y, volume)  # bilinear interpolation
     else:
         raise Exception("weird volume shape")
 
@@ -113,7 +119,7 @@ def recap_on_gif(coords, high_offset, low_offset, side_volume, side_coords, slic
             original[int(high_offset[idx][1]), int(high_offset[idx][0])] = (0, 255, 0)
             original[int(low_offset[idx][1]), int(low_offset[idx][0])] = (0, 255, 0)
         except:
-            print("overflow when drawing: https://bit.ly/3dck2Rm")
+            continue
     # create an upper view for each section
     sections = []
     for points in side_coords:
@@ -168,9 +174,13 @@ def get_annotated_volume(metadata):
     :return: a binary volume
     """
     annotations = []
-    for meta in metadata:
-        annotations.append(get_annotations(meta))
-    return np.stack(annotations).astype(np.bool_)
+    try:
+        for meta in metadata:
+            annotations.append(get_annotations(meta))
+        return np.stack(annotations).astype(np.bool_)
+    except:
+        print("WARNING: NO ANNOTATION FOUND ON THE CURRENT VOLUME! BLACK MASK RETURNED")
+        return np.empty(shape=1)
 
 
 def simple_normalization(data):

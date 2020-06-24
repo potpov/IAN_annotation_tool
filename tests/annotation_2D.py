@@ -16,7 +16,7 @@ def annotation_2D():
     volume = np.flip(volume, 0)
 
     # remove peak values
-    volume = processing.quantiles(volume, min=0, max=0.995)
+    volume = processing.quantiles(volume, min=0, max=0.990)
 
     # normalize volume between 0 and 1
     volume = processing.simple_normalization(volume)
@@ -26,8 +26,11 @@ def annotation_2D():
     gt_volume = np.flip(gt_volume, 0)
 
     # choosing a slice and execute dental arch detection
-    section = volume[96]
-    p, start, end = processing.arch_detection(section)
+    # patient [2, 7] -> slice num 96
+    # patient [1] -> slice num ?
+    # patient [4] -> slice num 75
+    section = volume[75]
+    p, start, end = processing.arch_detection(section, debug=True)
 
     # get the coords of the spline + 2 offset curves
     l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end)
