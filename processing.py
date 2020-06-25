@@ -200,14 +200,14 @@ def simple_interpolation(x_func, y_func, volume):
     :param volume: 3D volume of the dental image
     :return: a numpy array over the Z axis of the volume on a fixed (x,y) obtained by interpolation
     """
-    x1, x2 = int(np.ceil(x_func)), int(np.floor(x_func))
-    y1, y2 = int(np.ceil(y_func)), int(np.floor(y_func))
-    dx, dy = x_func - x2, y_func - y2
+    x1, x2 = int(np.floor(x_func)), int(np.floor(x_func) + 1)
+    y1, y2 = int(np.floor(y_func)), int(np.floor(y_func) + 1)
+    dx, dy = x_func - x1, y_func - y1
     P1 = volume[:, y1, x1] * (1 - dx) * (1 - dy)
-    P2 = volume[:, y2, x1] * dx * (1 - dy)
-    P3 = volume[:, y1, x2] * dx * dy
-    P4 = volume[:, y2, x2] * (1 - dx) * dy
-    return np.sum(np.stack((P1, P2, P3, P4)), axis=0)
+    P2 = volume[:, y2, x1] * (1 - dx) * dy
+    P3 = volume[:, y1, x2] * dx * (1 - dy)
+    P4 = volume[:, y2, x2] * dx * dy
+    return P1 + P2 + P3 + P4
 
 
 def cubic_interpolation(p0, p1, p2, p3, coord):
@@ -412,7 +412,7 @@ def create_panorex(volume, coords, high_offset, low_offset):
     panorex = np.zeros((z_shape, len(coords)), np.float32)
     for idx, (x, y) in enumerate(coords):
         # panorex[:, idx] = simple_interpolation(x, y, volume)
-        panorex[:, idx] = bicubic_interpolation(x, y, volume)
+        panorex[:, idx] = simple_interpolation(x, y, volume)
 
     # re-projection of the offsets curves
     panorex_up = np.zeros((z_shape, len(high_offset)), np.float32)
