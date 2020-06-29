@@ -4,13 +4,13 @@ import processing
 
 def create_dataset():
     """
-    creating a dataset for the neural network part
+    creating a dataset for the neural network
     load 3D volumes (data and annotations), create many 2D sets of cuts (data and annotation)
     augmentation to be added yet
     """
 
-    volume = np.load('dataset/volume.npy')
-    gt_volume = np.load('dataset/gt_volume.npy')
+    volume = np.load(r'Y:\work\datasets\canal_segmentation\patient1\volumes\volume.npy')
+    gt_volume = np.load(r'Y:\work\datasets\canal_segmentation\patient1\volumes\gt_volume.npy')
     idxs = [96, 120, 130]
 
     offset = 50
@@ -21,7 +21,7 @@ def create_dataset():
     for idx in idxs:
         section = volume[idx]
 
-        p, start, end = processing.arch_detection(section)
+        p, start, end = processing.arch_detection(section, debug=False)
 
         # get the coords of the spline + 2 offset curves
         l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end, offset=offset)
@@ -32,8 +32,12 @@ def create_dataset():
         side_volume = np.append(side_volume, processing.canal_slice(volume, side_coords), axis=0)
         gt_side_volume = np.append(gt_side_volume, processing.canal_slice(gt_volume, side_coords), axis=0)
 
-    np.save('dataset/slices/data.npy', side_volume)
-    np.save('dataset/slices/gt.npy', gt_side_volume)
+    for i in range(side_volume.shape[0]):
+        side_volume[i] = processing.increase_contrast(side_volume[i])
 
-    if __name__ == "__main__":
-        create_dataset()
+    np.save(r'Y:\work\datasets\canal_segmentation\patient1\slices\data.npy', side_volume)
+    np.save(r'Y:\work\datasets\canal_segmentation\patient1\slices\gt.npy', gt_side_volume)
+
+
+if __name__ == "__main__":
+    create_dataset()

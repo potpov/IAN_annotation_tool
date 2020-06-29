@@ -23,13 +23,12 @@ def no_annotation():
     volume = processing.simple_normalization(volume)
 
     # choosing a slice and execute dental arch detection
-    # speranzoni paziente 7 -> 98 - 169
-    # paziente 1 -> 77 - 138
-    # paziente 3 -> 85 - 169
-    # paziente 8 -> 98 - 169
+    # patient [2, 7] -> slice num 96
+    # patient [1] -> slice num ?
+    # patient [4] -> slice num 75
 
-    section = volume[volume.shape[0] // 2 + 15]
-    p, start, end = processing.arch_detection(section, debug=False)
+    section = volume[74]
+    p, start, end = processing.arch_detection(section, debug=True)
 
     offset = 50
 
@@ -42,19 +41,16 @@ def no_annotation():
     gt_side_volume = np.zeros_like(side_volume)
 
     # gif generation
-    fake_gt = np.tile(gt_side_volume, (3, 1, 1, 1))  # overlay on the original image (colorful)
-    fake_gt = np.moveaxis(fake_gt, 0, -1)
-    processing.recap_on_gif(coords, h_offset, l_offset, side_volume, side_coords, section, fake_gt)
+    # fake_gt = np.tile(gt_side_volume, (3, 1, 1, 1))  # overlay on the original image (colorful)
+    # fake_gt = np.moveaxis(fake_gt, 0, -1)
+    # processing.recap_on_gif(coords, h_offset, l_offset, side_volume, side_coords, section, fake_gt)
 
-    # shuffling the slices before saving
-    idx = np.random.rand(side_volume.shape[0]).argsort()
-    side_volume = side_volume[idx]
-    gt_side_volume = gt_side_volume[idx]
+    for i in range(side_volume.shape[0]):
+        side_volume[i] = processing.increase_contrast(side_volume[i])
 
     if np.any(np.isnan(side_volume)) or np.any(np.isnan(gt_side_volume)):
         raise Exception('some resulting values are nan!')
 
-    np.save(r'Y:\work\datasets\canal_segmentation\patient2\slices\idx.npy', idx)
     np.save(r'Y:\work\datasets\canal_segmentation\patient2\slices\data.npy', side_volume)
     np.save(r'Y:\work\datasets\canal_segmentation\patient2\slices\gt.npy', gt_side_volume)
 

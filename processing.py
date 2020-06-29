@@ -92,6 +92,9 @@ def canal_slice(volume, side_coords, interpolation='bicubic'):
     else:
         raise Exception("weird volume shape")
 
+    # fixing possible overflows
+    cut[cut > 1] = 1
+    cut[cut < 0] = 0
     return cut
 
 
@@ -426,3 +429,12 @@ def create_panorex(volume, coords, high_offset, low_offset):
     viewer.plot_2D(panorex, cmap='bone')
     viewer.plot_2D(panorex_up, cmap='bone')
     return panorex
+
+
+def increase_contrast(image):
+    sharp = image * 255  # [0 - 255]
+    sharp = sharp.astype(np.uint8)
+    clahe = cv2.createCLAHE(clipLimit=1.8, tileGridSize=(8, 8))
+    sharp = clahe.apply(sharp)
+    sharp = sharp.astype(np.float32) / 255  # back to [0-1]
+    return sharp
