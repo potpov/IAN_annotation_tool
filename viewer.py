@@ -11,6 +11,7 @@ import scipy as sp
 import cc3d
 from voxelize.voxelize import voxelize
 from sklearn.metrics import mean_squared_error as mse
+import imageio
 
 
 def slice_volume(volume):
@@ -112,3 +113,73 @@ def draw_annotation(slice, gt_mask):
     else:
         raise Exception("TODO: 3D annotation drawing not implemented yet.")
 
+
+def annotated_volume(volume, ann_volume):
+    th = volume.copy()
+    th[th < 0.2] = 0
+    mlab.contour3d(th, color=(1, 1, 1), opacity=0.2)
+    mlab.contour3d(ann_volume, color=(1, 0, 0))
+    mlab.show()
+
+
+def recap_on_gif(coords, high_offset, low_offset, side_volume, side_coords, slice, gt_side_volume):
+    """
+    create a gif recap where a panoramic of the cross cuts is visible along with the section and the ground truth
+    :param coords: set of coords of the dental line (for drawing)
+    :param high_offset: set of coords of the first offset from coords (for drawing)
+    :param low_offset: set of coords of the second offset from coords (for drawing)
+    :param side_volume: 3D volume of the cuts
+    :param side_coords: coords of the lines we used to cut and generate side_volume
+    :param slice: 2D image where coords and offsets are drawn
+    :param gt_side_volume: RGB 4D volume, same of side_volume but with annotations
+    :return: a gif
+    """
+
+    slice = cv2.normalize(slice, slice, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    original = np.tile(slice, (3, 1, 1))  # overlay on the original image (colorful)
+    original = np.moveaxis(original, 0, -1)
+
+    # drawing the line and the offsets of the upper view
+    for idx in range(len(coords)):
+        original[int(coords[idx][1]), int(coords[idx][0])] = (255, 0, 0)
+        try:
+            original[int(high_offset[idx][1]), int(high_offset[idx][0])] = (0, 255, 0)
+            original[int(low_offset[idx][1]), int(low_offset[idx][0])] = (0, 255, 0)
+        except:
+            continue
+    # create an upper view for each section
+    sections = []
+    for points in side_coords:
+        tmp = original.copy()
+        for x, y in points:
+            if slice.shape[1] > x > 0 and slice.shape[0] > y > 0:
+                tmp[int(y), int(x)] = (0, 0, 255)
+        sections.append(tmp)
+    sections = np.stack(sections)
+
+    # rescaling the projection volume properly
+    y_ratio = original.shape[0] / side_volume.shape[1]
+    width = int(side_volume.shape[2] * y_ratio)
+    height = int(side_volume.shape[1] * y_ratio)
+    scaled_side_volume = np.ndarray(shape=(side_volume.shape[0], height, width))
+    scaled_gt_volume = np.ndarray(shape=(gt_side_volume.shape[0], height, width, 3))
+    for i in range(side_volume.shape[0]):
+        scaled_side_volume[i] = cv2.resize(side_volume[i, :, :], (width, height), interpolation=cv2.INTER_AREA)
+        scaled_gt_volume[i] = cv2.resize(gt_side_volume[i, :, :], (width, height), interpolation=cv2.INTER_AREA)
+
+    # padding the side volume and rescaling
+    # pad_side_volume = np.zeros((side_volume.shape[0], original.shape[0], original.shape[1]))
+    # pad_side_volume[:, :side_volume.shape[1], :side_volume.shape[2]] = side_volume
+    scaled_side_volume = cv2.normalize(scaled_side_volume, scaled_side_volume, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    scaled_gt_volume = cv2.normalize(scaled_gt_volume, scaled_gt_volume, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+    # creating RGB volume
+    scaled_side_volume = np.tile(scaled_side_volume, (3, 1, 1, 1))  # overlay on the original image (colorful)
+    scaled_side_volume = np.moveaxis(scaled_side_volume, 0, -1)
+
+    # GIF creation
+    gif_source = np.concatenate((sections, scaled_side_volume, scaled_gt_volume), axis=2)
+    gif = []
+    for i in range(gif_source.shape[0]):
+        gif.append(gif_source[i, :, :])
+    imageio.mimsave('test.gif', gif)

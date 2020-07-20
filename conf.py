@@ -6,8 +6,9 @@ class dotdict(dict):
 
 
 conf = dotdict({
-    'DICOM_DIR': r'Y:\work\datasets\NNT\patient1\DICOM\annotated\DICOMDIR',
-    'JSON_DIR': r'Y:\work\datasets\side_dumps\patient1\json',
-    'SAVE_DIR': r'Y:\work\datasets\side_dumps\patient1\masks'
+    # 'DICOM_DIR': r'Y:\work\datasets\maxillo\NNT\patient1\DICOM\annotated\DICOMDIR',
+    'DICOM_DIR': r'Y:\work\datasets\maxillo\anonimi\PAZIENTE_7\DICOMDIR',
+    'JSON_DIR': r'Y:\work\datasets\canal_segmentation\patient1\labelme\json',
+    'SAVE_DIR': r'Y:\work\datasets\canal_segmentation\patient1\labelme\masks'
 })
 

@@ -8,28 +8,19 @@ import processing
 from dataloader import load_dicom
 import cv2
 from mayavi import mlab
+from Jaw import Jaw
 
 
-def annotation_3D():
+def annotations_to_dicom():
     """
-    load 2D annotations, stack them and create a 3D canal volume, smooth the surface. save the new volumes for further goals
+    load 2D annotations, stack them and create a 3D canal volume, smooth the surface. save the new volume in a DICOMDIR folder!
     """
 
-    # loading the data
-    metadata, volume = load_dicom(conf.DICOM_DIR)
-
-    # Z-axis has to be flipped
-    volume = np.flip(volume, 0)
-
-    # remove peak values
-    volume = processing.quantiles(volume, min=0, max=0.995)
-
-    # normalize volume between 0 and 1
-    volume = processing.simple_normalization(volume)
+    jaw = Jaw(conf.DICOM_DIR)
 
     # loading previous side cuts and coords
-    side_volume = np.load('dataset/sides/side.npy')
-    side_coords = np.load('dataset/sides/coords.npy', allow_pickle=True)
+    side_volume = np.load(r'Y:\work\datasets\canal_segmentation\patient1\sides\side.npy')
+    side_coords = np.load(r'Y:\work\datasets\canal_segmentation\patient1\sides\coords.npy', allow_pickle=True)
 
     # create a volume with the canal annotations stacked
     canal = np.zeros_like(side_volume)
@@ -44,20 +35,19 @@ def annotation_3D():
         canal[i, mask] = 1
 
     # copy previous volume to a jawbone shaped empty volume to reshape the canal correctly
-    gt_volume = np.zeros_like(volume)
+    gt_volume = np.zeros_like(jaw.get_volume())
     for z_id, points in enumerate(side_coords):
         for w_id, (x, y) in enumerate(points):
             gt_volume[:, int(y), int(x)] = canal[z_id, :, w_id]
 
-    # smoothing surface
-    # it still has to be filled!
-    # better ways to smooth surface? vtk maybe?
-    gt_volume = viewer.delaunay(gt_volume)
-    viewer.plot_3D(gt_volume)
+    jaw.set_gt_volume(gt_volume)
+    jaw.overwrite_annotations()
+    jaw.save_dicom(r'C:\Users\marco\Desktop\test_annotation3D\DICOMDIR')
 
-    # np.save('dataset/volume.npy', volume)
-    # np.save('dataset/gt_volume.npy', gt_volume)
+    # TODO: fill the smooth surface after convex hull and save it
+    # gt_volume = viewer.delaunay(gt_volume)
+    # viewer.plot_3D(gt_volume)
 
 
 if __name__ == "__main__":
-    annotation_3D()
+    annotations_to_dicom()
