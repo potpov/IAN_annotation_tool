@@ -37,19 +37,21 @@ class Jaw:
         self.__normalize()
         self.gt_volume = self.__build_ann_volume()
 
-    def merge_predictions(self, plane, predictions):
+    def merge_predictions(self, plane, pred):
         """
         insert the predictions inside the volume
         Args:
-            plane:
-            predictions:
-
-        Returns:
-
+            plane (3D numpy array or Plane object): plane with coords for the cut
+            pred (2D numpy array): binary predicted image to be insert in the ground truth volume
         """
-        if plane.shape != predictions.shape:
-            raise Exception("plane and predicted image have to be of the same shape!")
-        pass
+        if type(plane) is Plane:  # get numpy array if plane obj is passed
+            plane = plane.get_plane()
+        idx = np.argwhere(pred)  # true value of the mask
+        self.gt_volume [
+            plane[2, idx[:, 1], idx[:, 0]].astype(np.int),
+            plane[1, idx[:, 1], idx[:, 0]].astype(np.int),
+            plane[0, idx[:, 1], idx[:, 0]].astype(np.int)
+        ] = 1
 
     ############
     # DICOM OPS
