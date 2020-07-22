@@ -1,4 +1,4 @@
-from dataloader import dicom_from_dicomdir
+from dicom_loader import dicom_from_dicomdir
 import numpy as np
 from pydicom.filereader import read_dicomdir
 from pydicom.pixel_data_handlers.numpy_handler import pack_bits
@@ -36,6 +36,20 @@ class Jaw:
         self.__remove_quantiles()
         self.__normalize()
         self.gt_volume = self.__build_ann_volume()
+
+    def merge_predictions(self, plane, predictions):
+        """
+        insert the predictions inside the volume
+        Args:
+            plane:
+            predictions:
+
+        Returns:
+
+        """
+        if plane.shape != predictions.shape:
+            raise Exception("plane and predicted image have to be of the same shape!")
+        pass
 
     ############
     # DICOM OPS
