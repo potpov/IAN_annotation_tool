@@ -5,4 +5,4 @@ venv
 dataset
 /side.npy
 /tests/*.gif
-/tests/tilt_plane_x.py
+/tests/tilt_plane_messy.py

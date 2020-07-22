@@ -183,3 +183,26 @@ def recap_on_gif(coords, high_offset, low_offset, side_volume, side_coords, slic
     for i in range(gif_source.shape[0]):
         gif.append(gif_source[i, :, :])
     imageio.mimsave('test.gif', gif)
+
+
+def show_planes(main_volume, other_volumes):
+    """
+    show an arbitrary list of volumes
+    Args:
+        main_volume (numpy array): numpy volume
+        other_volumes (List): list of numpy volumes
+    """
+
+    mlab.contour3d(main_volume, color=(1, 1, 1), opacity=.2)
+
+    colors = np.random.rand(len(main_volume), 3)
+    for idx, volume in enumerate(other_volumes):
+        mlab.contour3d(volume, color=tuple(colors[idx]))
+
+    origin = np.zeros_like(main_volume)
+    origin[0:100, 0, 0] = 1
+    origin[0, 0, 0:100] = 1
+    origin[0, 0:100, 0] = 1
+    mlab.contour3d(origin, color=(0, 0, 0))
+
+    mlab.show()

@@ -20,32 +20,31 @@ if __name__ == "__main__":
     side_coord = side_coords[50]
 
     plane = Plane(jaw.Z, len(side_coord))
-    plane.from_line(side_coord)
+    plane.from_line(side_coord)  # load the plane from a line
 
-    debug_plane = np.zeros((jaw.Z, jaw.H, jaw.W))
-    debug_plane[plane[2].astype(np.int), plane[1].astype(np.int), plane[0].astype(np.int)] = 1
+    debug_start_plane = np.zeros((jaw.Z, jaw.H, jaw.W))
+    debug_start_plane[plane[2].astype(np.int), plane[1].astype(np.int), plane[0].astype(np.int)] = 1
 
-    origin = np.zeros((jaw.Z, jaw.H, jaw.W))
-    origin[0:100, 0, 0] = 1
-    origin[0, 0, 0:100] = 1
-    origin[0, 0:100, 0] = 1
-
-    th = jaw.get_volume()
-    th[th < 0.2] = 0
-
+    start_plane = plane.get_plane()
     plane.tilt_x(30)
-    # plane.tilt_z(30)
+    plane.tilt_z(30)
 
-    rotated_plane = np.zeros((jaw.Z, jaw.H, jaw.W))
-    rotated_plane[plane[2].astype(np.int), plane[1].astype(np.int), plane[0].astype(np.int)] = 1
+    # new rotated plane
+    debug_rotated_plane = np.zeros((jaw.Z, jaw.H, jaw.W))
+    debug_rotated_plane[plane[2].astype(np.int), plane[1].astype(np.int), plane[0].astype(np.int)] = 1
 
-    mlab.contour3d(th, color=(1, 1, 1), opacity=0.2)
-    mlab.contour3d(jaw.get_gt_volume(), color=(1, 0, 0))
-    mlab.contour3d(debug_plane, color=(0, 0, 1))
-    mlab.contour3d(rotated_plane, color=(0, 0, 1))
-    mlab.contour3d(origin, color=(0, 0, 0))
-    mlab.show()
+    plane.set_plane(start_plane)
+    plane.tilt_z(30)
+    plane.tilt_x(30)
 
-    res = jaw.plane_slice(plane, interp_fn='bicubic_interpolation_3d')
-    viewer.plot_2D(res)
+    # new rotated plane
+    debug_rotated_plane_reverse = np.zeros((jaw.Z, jaw.H, jaw.W))
+    debug_rotated_plane_reverse[plane[2].astype(np.int), plane[1].astype(np.int), plane[0].astype(np.int)] = 1
+
+    viewer.show_planes(jaw.get_volume(), [jaw.get_gt_volume(), debug_start_plane, debug_rotated_plane, debug_rotated_plane_reverse])
+
+    # res = jaw.plane_slice(plane, interp_fn='bicubic_interpolation_3d')
+    # viewer.plot_2D(res)
+
+
 

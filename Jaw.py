@@ -170,6 +170,19 @@ class Jaw:
                 cut[row, col] = interp_fn(plane[2, row, col], plane[0, row, col], plane[1, row, col])  # z, x, y
         return cut
 
+    def create_panorex(self, coords):
+        """
+        Create a 2D panorex image from a set of coordinates on the dental arch
+        Args:
+            coords (float numpy array): set of coordinates for the cut
+        Returns:
+            panorex (numpy array)
+        """
+        panorex = np.zeros((self.Z, len(coords)), np.float32)
+        for idx, (x, y) in enumerate(coords):
+            panorex[:, idx] = self.bilinear_interpolation(x, y)
+        return panorex
+
     ###################
     # GETTERS | SETTERS
     ###################
@@ -326,18 +339,6 @@ class Jaw:
             iy.append(self.cubic_interpolation(*ix, y_func - int(y_func)))
         return self.cubic_interpolation(*iy, z_func - int(z_func))
 
-    def create_panorex(self, coords):
-        """
-        Create a 2D panorex image from a set of coordinates on the dental arch
-        Args:
-            coords (float numpy array): set of coordinates for the cut
-        Returns:
-            panorex (numpy array)
-        """
-        panorex = np.zeros((self.Z, len(coords)), np.float32)
-        for idx, (x, y) in enumerate(coords):
-            panorex[:, idx] = self.bilinear_interpolation(x, y)
-        return panorex
 
     ###############
     # PRIVATE UTILS
