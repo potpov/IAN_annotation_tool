@@ -193,6 +193,9 @@ def show_planes(main_volume, other_volumes):
         other_volumes (List): list of numpy volumes
     """
 
+    if type(other_volumes) != list:
+        raise Exception("other_volumes must be a list of volumes! please bound your volumes within brackets")
+
     mlab.contour3d(main_volume, color=(1, 1, 1), opacity=.2)
 
     colors = np.random.rand(len(main_volume), 3)

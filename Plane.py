@@ -143,6 +143,7 @@ class Plane:
         Args:
             degrees (Int): angle to rotate about in degrees
         """
+
         # shifting to the origin
         centres = self.plane[:, self.Z // 2, self.W // 2]
         self.plane = np.subtract(self.plane, centres.reshape(3, 1, 1))

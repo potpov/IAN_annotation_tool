@@ -1,4 +1,4 @@
-from dataloader import dicom_from_dicomdir
+from dicom_loader import dicom_from_dicomdir
 import numpy as np
 from pydicom.filereader import read_dicomdir
 from pydicom.pixel_data_handlers.numpy_handler import pack_bits
@@ -36,6 +36,22 @@ class Jaw:
         self.__remove_quantiles()
         self.__normalize()
         self.gt_volume = self.__build_ann_volume()
+
+    def merge_predictions(self, plane, pred):
+        """
+        insert the predictions inside the volume
+        Args:
+            plane (3D numpy array or Plane object): plane with coords for the cut
+            pred (2D numpy array): binary predicted image to be insert in the ground truth volume
+        """
+        if type(plane) is Plane:  # get numpy array if plane obj is passed
+            plane = plane.get_plane()
+        idx = np.argwhere(pred)  # true value of the mask
+        self.gt_volume [
+            plane[2, idx[:, 1], idx[:, 0]].astype(np.int),
+            plane[1, idx[:, 1], idx[:, 0]].astype(np.int),
+            plane[0, idx[:, 1], idx[:, 0]].astype(np.int)
+        ] = 1
 
     ############
     # DICOM OPS

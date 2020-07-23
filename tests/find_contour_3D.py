@@ -5,7 +5,7 @@ import glob
 import os.path
 import viewer
 import processing
-from dataloader import load_dicom
+from dicom_loader import load_dicom
 import cv2
 from skimage.segmentation import active_contour
 
