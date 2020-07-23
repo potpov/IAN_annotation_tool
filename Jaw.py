@@ -180,7 +180,10 @@ class Jaw:
         """
         panorex = np.zeros((self.Z, len(coords)), np.float32)
         for idx, (x, y) in enumerate(coords):
-            panorex[:, idx] = self.bilinear_interpolation(x, y)
+            try:
+                panorex[:, idx] = self.bilinear_interpolation(x, y)
+            except:
+                continue
         return panorex
 
     ###################
@@ -338,7 +341,6 @@ class Jaw:
                 ix.append(ix0)
             iy.append(self.cubic_interpolation(*ix, y_func - int(y_func)))
         return self.cubic_interpolation(*iy, z_func - int(z_func))
-
 
     ###############
     # PRIVATE UTILS
