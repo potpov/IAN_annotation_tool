@@ -13,6 +13,7 @@ import viewer
 import nn.utils as utils
 from Jaw import Jaw
 from Plane import Plane
+import cv2
 
 
 def predict(input_cuts, model, device, writer):
@@ -30,7 +31,7 @@ def predict(input_cuts, model, device, writer):
         drop_last=False
     )
 
-    results = []
+    res = []
     with torch.no_grad():
         for i, (images) in tqdm(enumerate(test_loader), total=len(test_loader)):
 
@@ -41,10 +42,10 @@ def predict(input_cuts, model, device, writer):
             outputs[outputs >= 0.5] = 1
             outputs[outputs < 0.5] = 0
             utils.dump_results(images, np.zeros_like(outputs), outputs, args, i, writer)
-            results.append(outputs)
+            res.append(outputs)
 
-    results = np.squeeze(np.concatenate(results))
-    return results
+    res = np.squeeze(np.concatenate(res))
+    return res
 
 
 arg_parser = argparse.ArgumentParser()
@@ -72,8 +73,7 @@ args = arg_parser.parse_args()
 utils.set_logger()
 
 
-def main():
-
+if __name__ == '__main__':
     ###########
     # NEURAL NETWORK
 
@@ -108,55 +108,66 @@ def main():
     # generating orthogonal lines to the offsets curves
     side_coords = processing.generate_side_coords(h_offset, l_offset, derivative, offset=2 * offset)
 
-    side_coord = side_coords[20]  # TODO: we have to loop over side coords later!
+    # TODO: we have to loop over side coords later!
+    for slice_num in range(20, 120):
+        side_coord = side_coords[slice_num]
 
-    plane = Plane(jaw.Z, len(side_coord))
-    plane.from_line(side_coord)  # load the plane from a line
+        plane = Plane(jaw.Z, len(side_coord))
+        plane.from_line(side_coord)  # load the plane from a line
 
-    ###########
-    # FIRST ROTATION
-    cuts = []
-    # first cut with no tilt
-    cut = jaw.plane_slice(plane)
-    cuts.append(processing.increase_contrast(cut))
-    # explore all the possible tilts
-    for i in tqdm(range(0, 179), total=179):
-        plane.tilt_z(1)
+        ###########
+        # FIRST ROTATION
+        cuts = []
+        # first cut with no tilt
         cut = jaw.plane_slice(plane)
         cuts.append(processing.increase_contrast(cut))
-    cuts = np.stack(cuts)
+        # explore all the possible tilts
+        for i in tqdm(range(0, 179), total=179):
+            plane.tilt_z(1)
+            cut = jaw.plane_slice(plane)
+            cuts.append(processing.increase_contrast(cut))
+        cuts = np.stack(cuts)
 
-    # predict masks for all the tilts
-    results = predict(cuts, model, device, writer)
+        # predict masks for all the tilts
+        results = predict(cuts, model, device, writer)
 
-    # select the angle with the maximum number of predicted pixels
-    angle_1 = np.argmax(np.sum(results.reshape(180, -1) == 1, axis=1))
-    logging.info('ROTATION 1. the best angle for this slice is {} degrees'.format(angle_1))
+        # select the angle with the maximum number of predicted pixels
+        angle_1 = np.argmax(np.sum(results.reshape(180, -1) == 1, axis=1))
+        logging.info('ROTATION 1. the best angle for this slice is {} degrees'.format(angle_1))
 
-    #############
-    # SECOND ROTATION
-    # starting from the previous best plane
-    plane.from_line(side_coord)
-    if angle_1 != 0:
-        plane.tilt_z(angle_1)
-    cuts = []
-    # first cut with no tilt
-    cut = jaw.plane_slice(plane)
-    cuts.append(processing.increase_contrast(cut))
-    # explore all the possible tilts
-    for i in tqdm(range(0, 179), total=179):
-        plane.tilt_x(1)
+        #############
+        # SECOND ROTATION
+        # starting from the previous best plane
+        plane.from_line(side_coord)
+        if angle_1 != 0:
+            plane.tilt_z(angle_1)
+        cuts = []
+        # first cut with no tilt
         cut = jaw.plane_slice(plane)
         cuts.append(processing.increase_contrast(cut))
-    cuts = np.stack(cuts)
+        # explore all the possible tilts
+        for i in tqdm(range(0, 179), total=179):
+            plane.tilt_x(1)
+            cut = jaw.plane_slice(plane)
+            cuts.append(processing.increase_contrast(cut))
+        cuts = np.stack(cuts)
 
-    # predict masks for all the tilts
-    results = predict(cuts, model, device, writer)
+        # predict masks for all the tilts
+        results = predict(cuts, model, device, writer)
 
-    # select the angle with the maximum number of predicted pixels
-    angle_2 = np.argmax(np.sum(results.reshape(180, -1) == 1, axis=1))
-    logging.info('ROTATION 2. the best angle for this slice is {} degrees'.format(angle_2))
+        # select the angle with the maximum number of predicted pixels
+        angle_2 = np.argmax(np.sum(results.reshape(180, -1) == 1, axis=1))
+        logging.info('ROTATION 2. the best angle for this slice is {} degrees'.format(angle_2))
 
+        # saving result for this slice
+        plane.from_line(side_coord)
+        if angle_1 != 0:
+            plane.tilt_z(angle_1)
+        if angle_2 != 0:
+          plane.tilt_x(angle_2)
+        pred = cv2.resize(results[angle_1], (plane.Z, plane.W), interpolation=cv2.INTER_AREA)
+        pred[pred > 0] = 1
+        jaw.merge_predictions(plane, pred)
 
-if __name__ == '__main__':
-    main()
+    # checking the result
+    viewer.annotated_volume(jaw.get_volume(), jaw.get_gt_volume())
