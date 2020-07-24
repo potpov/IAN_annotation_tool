@@ -258,11 +258,15 @@ class Jaw:
         Returns:
             interpolated value according to https://en.wikipedia.org/wiki/Trilinear_interpolation
         """
+        # avoid possible overflows
+        x_func = self.W - 2 if x_func + 1 >= self.W else x_func
+        z_func = self.Z - 2 if z_func + 1 >= self.Z else z_func
+        y_func = self.H - 2 if y_func + 1 >= self.H else y_func
+
         x1, x2 = int(np.floor(x_func)), int(np.floor(x_func) + 1)
         y1, y2 = int(np.floor(y_func)), int(np.floor(y_func) + 1)
         z1, z2 = int(np.floor(z_func)), int(np.floor(z_func) + 1)
-        if z2 >= self.Z:  # avoid overflow
-            z2 = self.Z - 1
+
         xd, yd, zd = x_func - x1, y_func - y1, z_func - z1
         c11 = self.volume[z1, y1, x1] * (1 - xd) + self.volume[z1, y1, x2] * xd
         c12 = self.volume[z2, y1, x1] * (1 - xd) + self.volume[z2, y1, x2] * xd
