@@ -118,7 +118,7 @@ class ArchHandler(Jaw):
         self.offsetted_arch_amount = offset_amount
         self.offsetted_arch = new_offset
 
-    def compute_panorexes(self, coords=None, arch_offset=10):
+    def compute_panorexes(self, coords=None, arch_offset=1):
         """
         Computes and updates panorex and LHpanorexes, given a new set of coordinates.
         If not specified, it uses the class ones.

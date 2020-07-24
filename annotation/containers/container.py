@@ -38,7 +38,7 @@ class Container(QtGui.QWidget):
         else:
             self.arch_handler = ArchHandler(dicomdir_path)
         self.slice_selection.arch_handler = self.arch_handler
-        self.apc.set_dicom_handler(self.arch_handler)
+        self.apc.set_arch_handler(self.arch_handler)
         self.apc.setParent(None)
         if self.plot3d:
             self.mayavi_widget.visualization.plot_volume(self.volume)

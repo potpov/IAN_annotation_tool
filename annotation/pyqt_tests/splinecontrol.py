@@ -1,15 +1,10 @@
-import os
 import sys
 import PyQt5.QtCore as QtCore
-import numpy as np
-from pydicom.filereader import read_dicomdir
 from pyface.qt import QtGui
-
 import processing
 from Jaw import Jaw
 from annotation.spline.spline import Spline
 from annotation.utils import numpy2pixmap
-from dataloader import dicom_from_dicomdir
 
 
 class SplineControlWidget(QtGui.QWidget):
