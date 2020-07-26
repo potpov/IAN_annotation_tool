@@ -6,6 +6,8 @@ from annotation.utils import numpy2pixmap
 
 
 class SliceSelectionWidget(QtGui.QWidget):
+    slice_selected = QtCore.pyqtSignal(int)
+
     def __init__(self, parent):
         super(SliceSelectionWidget, self).__init__()
         self.container = parent
@@ -40,7 +42,7 @@ class SliceSelectionWidget(QtGui.QWidget):
 
         # confirm slice button
         self.confirm_button = QtWidgets.QPushButton(self, text="Confirm")
-        self.confirm_button.clicked.connect(lambda x: self.container.slice_selected.emit(self.slider.value()))
+        self.confirm_button.clicked.connect(lambda x: self.slice_selected.emit(self.slider.value()))
         self.layout.addWidget(self.confirm_button, 1, 1)
 
     def slider_value_changed(self):

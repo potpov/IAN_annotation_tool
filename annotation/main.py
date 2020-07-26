@@ -20,7 +20,7 @@ class Window(QtGui.QMainWindow):
     def open_dicomdir(self):
         dialog = QtWidgets.QFileDialog()
         file_path = dialog.getOpenFileName(None, "Select DICOMDIR file", filter="DICOMDIR")
-        if file_path:
+        if file_path[0]:
             self.container.dicomdir_changed.emit(file_path[0])
 
 
