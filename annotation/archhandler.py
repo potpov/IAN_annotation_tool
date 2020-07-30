@@ -1,5 +1,8 @@
+import os
+
 import numpy as np
 import cv2
+import json
 
 import processing
 from Jaw import Jaw
@@ -9,6 +12,7 @@ from annotation.utils import get_poly_approx, apply_offset_to_arch
 
 class ArchHandler(Jaw):
     LH_OFFSET = 50
+    DUMP_FILENAME = 'dump.json'
 
     def __init__(self, dicomdir_path):
         """
@@ -18,6 +22,7 @@ class ArchHandler(Jaw):
             dicomdir_path (str): path of the DICOMDIR file
 
         Attributes:
+            dicomdir_path (str): path of the DICOMDIR file
             selected_slice (int): index of the selected slice of the volume
             arch_detections (list): list of tuples of each arch of each slice of the volume
             coords (list, list, list, list): (l_offset, coords, h_offset, derivative) tuple of the arch for the selected slice of the volume
@@ -39,6 +44,7 @@ class ArchHandler(Jaw):
             dicomdir_path (str): path of the DICOMDIR file
         """
         super().__init__(dicomdir_path)
+        self.dicomdir_path = dicomdir_path
         self.selected_slice = None
         self.arch_detections = None
         self.coords = None
@@ -62,6 +68,28 @@ class ArchHandler(Jaw):
                 self.arch_detections.append((p, start, end))
             except:
                 self.arch_detections.append(None)
+
+    def save_state(self):
+        data = {}
+        data['version'] = 1.0
+        data['spline'] = self.spline.get_json()
+        data['selected_slice'] = self.selected_slice
+        with open(os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME), "w") as outfile:
+            json.dump(data, outfile)
+        print("saved")
+
+    def load_state(self):
+        path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
+        if not os.path.isfile(path):
+            print("Nothing to load")
+            return
+
+        with open(path, "r") as infile:
+            data = json.load(infile)
+            self.spline.read_json(data['spline'], build_spline=True)
+            self.selected_slice = data['selected_slice']
+
+        print("loaded")
 
     def compute_initial_state(self, selected_slice):
         """

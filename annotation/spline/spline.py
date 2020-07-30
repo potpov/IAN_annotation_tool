@@ -69,3 +69,17 @@ class Spline():
 
     def get_spline(self):
         return [point for curve in self.curves for point in curve]
+
+    def get_json(self):
+        data = {}
+        data['num_cp'] = self.num_cp
+        data['cp'] = [{'x': float(cp[0]),
+                       'y': float(cp[1])}
+                      for cp in self.cp]
+        return data
+
+    def read_json(self, data, build_spline=True):
+        self.num_cp = data['num_cp']
+        self.cp = [(cp['x'], cp['y']) for cp in data['cp']]
+        if build_spline:
+            self.build_spline()

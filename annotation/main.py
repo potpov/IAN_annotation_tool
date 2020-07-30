@@ -14,7 +14,7 @@ class Window(QtGui.QMainWindow):
         open_action.triggered.connect(self.open_dicomdir)
         file_menu.addAction(open_action)
         self.setMenuBar(self.menubar)
-        self.container = Container(plot3d=False)
+        self.container = Container(self, plot3d=False)
         self.setCentralWidget(self.container)
 
     def open_dicomdir(self):

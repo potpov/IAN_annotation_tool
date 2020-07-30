@@ -15,9 +15,7 @@ class SliceSelectionWidget(QtGui.QWidget):
 
         # layout setup
         self.layout = QtGui.QGridLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(0)
-
+        
         self.slider = Slider(QtCore.Qt.Vertical, "Slice")
         self.slider.setMinimum(0)
         self.slider.setMaximum(0)
@@ -41,7 +39,8 @@ class SliceSelectionWidget(QtGui.QWidget):
         self.layout.addWidget(self.arch_line, 1, 0)
 
         # confirm slice button
-        self.confirm_button = QtWidgets.QPushButton(self, text="Confirm")
+        self.confirm_button = QtWidgets.QPushButton(self, text="Confirm (C)")
+        self.confirm_button.setShortcut("C")
         self.confirm_button.clicked.connect(lambda x: self.slice_selected.emit(self.slider.value()))
         self.layout.addWidget(self.confirm_button, 1, 1)
 

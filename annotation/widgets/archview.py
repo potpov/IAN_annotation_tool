@@ -58,6 +58,10 @@ class SplineArchWidget(QtGui.QWidget):
             painter.drawPoint(int(x), int(y))
 
     def draw(self, painter):
+        if self.arch_handler is None:
+            # when the widget is deleted, the painter may be updated anyway, even after the arch_handler reset
+            return
+
         l_offset, coords, h_offset, derivative = self.arch_handler.coords
 
         painter.drawPixmap(QtCore.QRect(self.x(), self.y(), self.pixmap.width(), self.pixmap.height()), self.pixmap)

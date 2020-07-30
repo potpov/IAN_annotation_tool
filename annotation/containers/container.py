@@ -10,9 +10,11 @@ from annotation.archhandler import ArchHandler
 class Container(QtGui.QWidget):
     dicomdir_changed = QtCore.pyqtSignal(str)
 
-    def __init__(self, plot3d=False):
+    def __init__(self, parent, plot3d=False):
         super(Container, self).__init__()
         self.layout = QtGui.QGridLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.main_window = parent
 
         # widgets
         self.slice_selection = None

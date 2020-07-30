@@ -1,5 +1,7 @@
+import os
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
+import qtawesome as qta
 
 from annotation.components.Slider import Slider
 from annotation.utils import numpy2pixmap
@@ -15,6 +17,22 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         super(ArchPanorexContainerWidget, self).__init__()
         self.parent = parent
         self.layout = QtGui.QGridLayout(self)
+
+        # --- toolbar ---
+        self.toolbar = QtGui.QToolBar()
+        self.toolbar.setIconSize(QtCore.QSize(32, 32))
+
+        # save
+        save_action = QtGui.QAction(qta.icon('fa5s.save'), "Save", self)
+        save_action.triggered.connect(self.save)
+        self.toolbar.addAction(save_action)
+        # load
+        load_action = QtGui.QAction(qta.icon('fa5s.file-upload'), "Load", self)
+        load_action.triggered.connect(self.load)
+        self.toolbar.addAction(load_action)
+
+        self.layout.setMenuBar(self.toolbar)
+        # --- end toolbar ---
 
         # arch view
         self.archview = ArchViewWidget(self)
@@ -43,6 +61,13 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
     def initialize(self):
         self.archview.img = self.arch_handler.get_section(self.arch_handler.selected_slice)
         self.archview.pixmap = numpy2pixmap(self.archview.img)
+
+    def save(self):
+        self.arch_handler.save_state()
+
+    def load(self):
+        self.arch_handler.load_state()
+        self.spline_changed()
 
     def spline_changed(self):
         self.arch_handler.update_coords()
