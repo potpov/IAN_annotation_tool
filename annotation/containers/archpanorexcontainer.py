@@ -1,12 +1,9 @@
-import os
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtCore
 from pyface.qt import QtGui
 import qtawesome as qta
-
-from annotation.components.Slider import Slider
 from annotation.utils import numpy2pixmap
 from annotation.widgets.archpanocontrolpanel import ArchPanoControlPanelWidget
-from annotation.widgets.archview import SplineArchWidget as ArchViewWidget
+from annotation.widgets.archview import SplineArchWidget
 from annotation.widgets.panorex import PanorexWidget
 from annotation.widgets.sidevolume import SideVolume
 
@@ -35,7 +32,7 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         # --- end toolbar ---
 
         # arch view
-        self.archview = ArchViewWidget(self)
+        self.archview = SplineArchWidget(self)
         self.archview.spline_changed.connect(self.spline_changed)
         self.layout.addWidget(self.archview, 0, 0)
 

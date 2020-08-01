@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
+from annotation.actions.Action import CpChangedAction
 from annotation.utils import numpy2pixmap, clip_range
 
 
@@ -41,6 +42,8 @@ class SplineArchWidget(QtGui.QWidget):
         self.img = None
         self.pixmap = None
         self.current_pos = 0
+        self.drag_point = None
+        self.action = None  # action in progress
         self.setMinimumWidth(500)
 
     def paintEvent(self, e):
@@ -58,8 +61,10 @@ class SplineArchWidget(QtGui.QWidget):
             painter.drawPoint(int(x), int(y))
 
     def draw(self, painter):
+        # when the widget is deleted, the painter may be updated anyway, even after the arch_handler reset
         if self.arch_handler is None:
-            # when the widget is deleted, the painter may be updated anyway, even after the arch_handler reset
+            return
+        if self.arch_handler.coords is None:
             return
 
         l_offset, coords, h_offset, derivative = self.arch_handler.coords
@@ -87,7 +92,8 @@ class SplineArchWidget(QtGui.QWidget):
 
     def mousePressEvent(self, QMouseEvent):
         """ Internal mouse-press handler """
-        self._drag_point = None
+        self.drag_point = None
+        self.action = None
         mouse_pos = QMouseEvent.pos()
         mouse_x = mouse_pos.x() - self.x()
         mouse_y = mouse_pos.y() - self.y()
@@ -97,23 +103,29 @@ class SplineArchWidget(QtGui.QWidget):
                 if (abs(point_y - mouse_y)) < self.l // 2:
                     drag_x_offset = point_x - mouse_x
                     drag_y_offset = point_y - mouse_y
-                    self._drag_point = (cp_index, (drag_x_offset, drag_y_offset))
+                    self.drag_point = (cp_index, (drag_x_offset, drag_y_offset))
+                    self.action = CpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
                     break
 
     def mouseReleaseEvent(self, QMouseEvent):
         """ Internal mouse-release handler """
-        self._drag_point = None
+        self.drag_point = None
+        if self.action is not None:
+            self.arch_handler.history.add(self.action)
+        self.action = None
         self.spline_changed.emit()
 
     def mouseMoveEvent(self, QMouseEvent):
         """ Internal mouse-move handler """
-        if self._drag_point is not None:
-            cp_index, (offset_x, offset_y) = self._drag_point
+        if self.drag_point is not None:
+            cp_index, (offset_x, offset_y) = self.drag_point
             new_x = QMouseEvent.pos().x() - self.x() + offset_x
             new_y = QMouseEvent.pos().y() - self.y() + offset_y
 
             new_x = clip_range(new_x, 0, self.pixmap.width() - 1)
             new_y = clip_range(new_y, 0, self.pixmap.height() - 1)
+
+            self.action = CpChangedAction((new_x, new_y), self.action.prev, cp_index)
 
             # Set new point data
             self.arch_handler.spline.set_cp(cp_index, new_x, new_y)

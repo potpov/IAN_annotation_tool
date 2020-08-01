@@ -6,6 +6,8 @@ import json
 
 import processing
 from Jaw import Jaw
+from annotation.actions.Action import SliceChangedAction
+from annotation.actions.History import History
 from annotation.spline.spline import Spline
 from annotation.utils import get_poly_approx, apply_offset_to_arch
 
@@ -23,6 +25,7 @@ class ArchHandler(Jaw):
 
         Attributes:
             dicomdir_path (str): path of the DICOMDIR file
+            history (History): History object that memorizes user changes
             selected_slice (int): index of the selected slice of the volume
             arch_detections (list): list of tuples of each arch of each slice of the volume
             coords (list, list, list, list): (l_offset, coords, h_offset, derivative) tuple of the arch for the selected slice of the volume
@@ -45,6 +48,7 @@ class ArchHandler(Jaw):
         """
         super().__init__(dicomdir_path)
         self.dicomdir_path = dicomdir_path
+        self.history = History()
         self.selected_slice = None
         self.arch_detections = None
         self.coords = None
@@ -74,6 +78,7 @@ class ArchHandler(Jaw):
         data['version'] = 1.0
         data['spline'] = self.spline.get_json()
         data['selected_slice'] = self.selected_slice
+        data['history'] = self.history.dump()
         with open(os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME), "w") as outfile:
             json.dump(data, outfile)
         print("saved")
@@ -88,6 +93,7 @@ class ArchHandler(Jaw):
             data = json.load(infile)
             self.spline.read_json(data['spline'], build_spline=True)
             self.selected_slice = data['selected_slice']
+            self.history.load(data['history'])
 
         print("loaded")
 
@@ -99,6 +105,7 @@ class ArchHandler(Jaw):
             selected_slice (int): index of the selected slice in the jaw volume
         """
         self.selected_slice = selected_slice
+        self.history.add(SliceChangedAction(selected_slice))
         p, start, end = self.arch_detections[selected_slice]
         l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
         self.coords = (l_offset, coords, h_offset, derivative)

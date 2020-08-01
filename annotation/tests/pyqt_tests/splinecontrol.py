@@ -79,7 +79,7 @@ class Window(QtGui.QMainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.resize(500, 500)
-        dicomdir_path = r"C:\Users\crime\Desktop\alveolar_nerve\dataset\DICOM_ANONIMI\PAZIENTE_3\PROVE3__19781222_DICOM\DICOMDIR"
+        dicomdir_path = r"/dataset/DICOM_ANONIMI/PAZIENTE_3/PROVE3__19781222_DICOM/DICOMDIR"
         jaw = Jaw(dicomdir_path)
         self.selected_slice = 93
         self.slice = jaw.volume[self.selected_slice]
