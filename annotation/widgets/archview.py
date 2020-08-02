@@ -68,10 +68,13 @@ class SplineArchWidget(QtGui.QWidget):
             return
 
         l_offset, coords, h_offset, derivative = self.arch_handler.coords
+        l_pano, h_pano = self.arch_handler.LHoffsetted_arches
 
         painter.drawPixmap(QtCore.QRect(self.x(), self.y(), self.pixmap.width(), self.pixmap.height()), self.pixmap)
 
         self.draw_single_arch(painter, self.arch_handler.offsetted_arch, QtGui.QColor(0, 255, 255))
+        self.draw_single_arch(painter, l_pano, QtGui.QColor(0, 255, 255, 120))
+        self.draw_single_arch(painter, h_pano, QtGui.QColor(0, 255, 255, 120))
         self.draw_single_arch(painter, self.arch_handler.spline.get_spline(), QtGui.QColor(255, 0, 0))
         self.draw_single_arch(painter, l_offset, QtGui.QColor(0, 255, 0))
         self.draw_single_arch(painter, h_offset, QtGui.QColor(0, 255, 0))

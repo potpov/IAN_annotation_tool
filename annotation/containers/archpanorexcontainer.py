@@ -1,4 +1,4 @@
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 from pyface.qt import QtGui
 import qtawesome as qta
 from annotation.utils import numpy2pixmap
@@ -9,6 +9,7 @@ from annotation.widgets.sidevolume import SideVolume
 
 
 class ArchPanorexContainerWidget(QtGui.QWidget):
+    spline_selected = QtCore.pyqtSignal(int)
 
     def __init__(self, parent):
         super(ArchPanorexContainerWidget, self).__init__()
@@ -52,6 +53,12 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         self.panel.update_side_volume.connect(self.update_side_volume_handler)
         self.layout.addWidget(self.panel, 1, 0)
 
+        # confirm
+        self.confirm_button = QtWidgets.QPushButton(self, text="Confirm (C)")
+        self.confirm_button.setShortcut("C")
+        self.confirm_button.clicked.connect(self.spline_selected.emit)
+        self.layout.addWidget(self.confirm_button, 1, 2)
+
         self.arch_handler = None
         self.current_pos = 0
 
@@ -69,9 +76,9 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
     def spline_changed(self):
         self.arch_handler.update_coords()
         self.arch_handler.compute_side_coords()
-        self.arch_handler.compute_offsetted_arch(offset_amount=self.panel.getArchValue())
-        self.arch_handler.compute_panorexes(coords=self.arch_handler.offsetted_arch,
-                                            arch_offset=self.panel.getPanoOffsetValue())
+        self.arch_handler.compute_offsetted_arch(offset_amount=self.panel.getArchValue(),
+                                                 arch_offset=self.panel.getPanoOffsetValue())
+        self.arch_handler.compute_panorexes()
         self.show_img()
 
     def pos_changed_handler(self):
@@ -79,14 +86,15 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         self.show_img()
 
     def arch_changed_handler(self):
-        self.arch_handler.compute_offsetted_arch(offset_amount=self.panel.getArchValue())
-        self.arch_handler.compute_panorexes(coords=self.arch_handler.offsetted_arch,
-                                            arch_offset=self.panel.getPanoOffsetValue())
+        self.arch_handler.compute_offsetted_arch(offset_amount=self.panel.getArchValue(),
+                                                 arch_offset=self.panel.getPanoOffsetValue())
+        self.arch_handler.compute_panorexes()
         self.show_img()
 
     def pano_offset_changed_handler(self):
-        self.arch_handler.compute_panorexes(coords=self.arch_handler.offsetted_arch,
-                                            arch_offset=self.panel.getPanoOffsetValue())
+        self.arch_handler.compute_offsetted_arch(offset_amount=self.panel.getArchValue(),
+                                                 arch_offset=self.panel.getPanoOffsetValue())
+        self.arch_handler.compute_panorexes()
         self.show_img()
 
     def update_side_volume_handler(self):

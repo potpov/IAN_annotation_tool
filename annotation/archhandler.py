@@ -33,6 +33,7 @@ class ArchHandler(Jaw):
             panorex (np.ndarray): panorex computed on one set of coordinates
             LHpanorexes (np.ndarray, np.ndarray): (l_panorex, h_panorex) tuple of panorexes offsetted from the main one
             offsetted_arch (list): coordinates of the main arch offsetted by "offsetted_arch_amount"
+            LHoffsetted_arches (list, list): coordinates of two arches slightly distant from the offsetted_arch
             offsetted_arch_amount (int): value between -LH_OFFSET and LH_OFFSET of the coords of the arch for the panorex
             side_coords (list): coordinates of the points that define "side_volume" perimeter
             side_volume (list): volume of the side views of the jaw volume through the two coords arches
@@ -56,6 +57,7 @@ class ArchHandler(Jaw):
         self.panorex = None
         self.LHpanorexes = None
         self.offsetted_arch = None
+        self.LHoffsetted_arches = None
         self.offsetted_arch_amount = 0
         self.side_coords = None
         self.side_volume = None
@@ -112,8 +114,11 @@ class ArchHandler(Jaw):
         self.spline = Spline(coords, 10)
         self.update_coords()
         self.offsetted_arch = self.spline.get_spline()
+        h_coords = apply_offset_to_arch(self.offsetted_arch, -1, p)
+        l_coords = apply_offset_to_arch(self.offsetted_arch, +1, p)
+        self.LHoffsetted_arches = (l_coords, h_coords)
 
-        self.compute_panorexes(coords=self.offsetted_arch)
+        self.compute_panorexes()
         self.compute_side_coords()
         self.compute_side_volume()
 
@@ -126,12 +131,13 @@ class ArchHandler(Jaw):
         self.arch_detections[self.selected_slice] = (p, start, end)
         self.coords = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
 
-    def compute_offsetted_arch(self, offset_amount=0, p=None):
+    def compute_offsetted_arch(self, offset_amount=0, arch_offset=1, p=None):
         """
         Computes the offsetted coordinates of an arch, starting from its polynomial approximation.
 
         Args:
             offset_amount (int): how much to displace the curve
+            arch_offset (int): how much to displace the "parallel" LH offsetted curves
             p (np.poly1d): polynomial approximation of the arch
 
         Returns:
@@ -139,38 +145,28 @@ class ArchHandler(Jaw):
         """
         _, coords, _, _ = self.coords
 
-        if offset_amount == 0 or offset_amount is None:
-            self.offsetted_arch_amount = 0
-            self.offsetted_arch = coords
-            return coords
-
         if p is None:
             p, _, _ = self.arch_detections[self.selected_slice]
 
         new_offset = apply_offset_to_arch(coords, offset_amount, p)
+        h_coords = apply_offset_to_arch(coords, offset_amount - arch_offset, p)
+        l_coords = apply_offset_to_arch(coords, offset_amount + arch_offset, p)
         self.offsetted_arch_amount = offset_amount
         self.offsetted_arch = new_offset
+        self.LHoffsetted_arches = (l_coords, h_coords)
 
-    def compute_panorexes(self, coords=None, arch_offset=1):
+    def compute_panorexes(self):
         """
         Computes and updates panorex and LHpanorexes, given a new set of coordinates.
         If not specified, it uses the class ones.
 
         Args:
-            coords (list of (float, float)): coordinates to use for panorex
             arch_offset (int): coords of the lateral panorexes from the main one
         """
-        if coords is None:
-            coords = self.coords[1]
-            p, start, end = self.arch_detections[self.selected_slice]
-        else:
-            p, start, end = get_poly_approx(coords)
-        self.offsetted_arch = coords
-        h_coords = apply_offset_to_arch(coords, self.offsetted_arch_amount - arch_offset, p)
-        l_coords = apply_offset_to_arch(coords, self.offsetted_arch_amount + arch_offset, p)
-        self.panorex = self.create_panorex(coords)
-        h_panorex = self.create_panorex(h_coords)
-        l_panorex = self.create_panorex(l_coords)
+
+        self.panorex = self.create_panorex(self.offsetted_arch)
+        h_panorex = self.create_panorex(self.LHoffsetted_arches[1])
+        l_panorex = self.create_panorex(self.LHoffsetted_arches[0])
         self.LHpanorexes = (l_panorex, h_panorex)
 
     def compute_side_coords(self):
@@ -215,6 +211,7 @@ class ArchHandler(Jaw):
             - position on the arch
 
         Args:
+            slice (int): index where to slice the volume
             arch (bool): display current arch
             offsets (bool): display current lower and higher arches
             pos (int): position on the arch
