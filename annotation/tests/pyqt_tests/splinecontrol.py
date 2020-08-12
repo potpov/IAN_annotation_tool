@@ -69,7 +69,8 @@ class SplineControlWidget(QtGui.QWidget):
             mouse_y = QMouseEvent.pos().y() - self._drag_point[1][1]
 
             # Set new point data
-            self.curve.set_cp(self._drag_point[0], mouse_x, mouse_y)
+            new_idx = self.curve.update_cp(self._drag_point[0], mouse_x, mouse_y)
+            self._drag_point = (new_idx, self._drag_point[1])
 
             # Redraw curve
             self.update()
@@ -79,7 +80,7 @@ class Window(QtGui.QMainWindow):
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.resize(500, 500)
-        dicomdir_path = r"/dataset/DICOM_ANONIMI/PAZIENTE_3/PROVE3__19781222_DICOM/DICOMDIR"
+        dicomdir_path = r"C:\Users\crime\Desktop\alveolar_nerve\dataset\DICOM_ANONIMI\PAZIENTE_3\PROVE3__19781222_DICOM\DICOMDIR"
         jaw = Jaw(dicomdir_path)
         self.selected_slice = 93
         self.slice = jaw.volume[self.selected_slice]

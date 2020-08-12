@@ -15,7 +15,7 @@ class SliceSelectionWidget(QtGui.QWidget):
 
         # layout setup
         self.layout = QtGui.QGridLayout(self)
-        
+
         self.slider = Slider(QtCore.Qt.Vertical, "Slice")
         self.slider.setMinimum(0)
         self.slider.setMaximum(0)
@@ -34,7 +34,7 @@ class SliceSelectionWidget(QtGui.QWidget):
 
         # arch checkbox setup
         self.arch_line = QtWidgets.QCheckBox("Arch")
-        self.arch_line.setChecked(False)
+        self.arch_line.setChecked(True)
         self.arch_line.toggled.connect(self.toggle_arch_line)
         self.layout.addWidget(self.arch_line, 1, 0)
 

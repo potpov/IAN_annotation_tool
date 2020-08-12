@@ -37,6 +37,8 @@ class ArchHandler(Jaw):
             offsetted_arch_amount (int): value between -LH_OFFSET and LH_OFFSET of the coords of the arch for the panorex
             side_coords (list): coordinates of the points that define "side_volume" perimeter
             side_volume (list): volume of the side views of the jaw volume through the two coords arches
+            L_canal_spline (Spline): object that models the left canal in the panorex with a Catmull-Rom spline
+            R_canal_spline (Spline): object that models the right canal in the panorex with a Catmull-Rom spline
         """
         self.reset(dicomdir_path)
 
@@ -61,6 +63,8 @@ class ArchHandler(Jaw):
         self.offsetted_arch_amount = 0
         self.side_coords = None
         self.side_volume = None
+        self.L_canal_spline = None
+        self.R_canal_spline = None
         self.compute_arch()
 
     def compute_arch(self):
@@ -112,6 +116,8 @@ class ArchHandler(Jaw):
         l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
         self.coords = (l_offset, coords, h_offset, derivative)
         self.spline = Spline(coords, 10)
+        self.L_canal_spline = Spline([], 0)
+        self.R_canal_spline = Spline([], 0)
         self.update_coords()
         self.offsetted_arch = self.spline.get_spline()
         h_coords = apply_offset_to_arch(self.offsetted_arch, -1, p)

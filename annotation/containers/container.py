@@ -37,7 +37,8 @@ class Container(QtGui.QWidget):
         self.slice_selection = SliceSelectionWidget(self)
         self.slice_selection.slice_selected.connect(self.show_arch_pano_widget)
         self.slice_selection.arch_handler = self.arch_handler
-        self.slice_selection.set_img(self.arch_handler.volume[96])
+        img = self.arch_handler.get_section(96, arch=self.slice_selection.arch_line.isChecked())
+        self.slice_selection.set_img(img)
         self.layout.addWidget(self.slice_selection, 0, 0)
 
     def remove_SliceSelectionWidget(self):
@@ -61,8 +62,10 @@ class Container(QtGui.QWidget):
             self.apc = None
 
     def add_AnnotationContainerWidget(self):
+        self.arch_handler.compute_side_volume()
         self.annotation = AnnotationContainerWidget(self)
         self.annotation.set_arch_handler(self.arch_handler)
+        self.annotation.initialize()
         self.annotation.show_img()
         self.layout.addWidget(self.annotation, 0, 0)
 

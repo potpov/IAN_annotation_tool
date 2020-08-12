@@ -1,7 +1,7 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
-from annotation.actions.Action import CpChangedAction
+from annotation.actions.Action import ArchCpChangedAction
 from annotation.utils import numpy2pixmap, clip_range
 
 
@@ -39,12 +39,18 @@ class SplineArchWidget(QtGui.QWidget):
         self.arch_handler = None
         self.num_cp = 10
         self.l = 8  # size of the side of the square for the control points
+        self.selected_slice = None
         self.img = None
         self.pixmap = None
         self.current_pos = 0
         self.drag_point = None
         self.action = None  # action in progress
         self.setMinimumWidth(500)
+
+    def set_img(self):
+        self.selected_slice = self.arch_handler.selected_slice
+        self.img = self.arch_handler.get_section(self.selected_slice)
+        self.pixmap = numpy2pixmap(self.img)
 
     def paintEvent(self, e):
         qp = QtGui.QPainter()
@@ -107,7 +113,7 @@ class SplineArchWidget(QtGui.QWidget):
                     drag_x_offset = point_x - mouse_x
                     drag_y_offset = point_y - mouse_y
                     self.drag_point = (cp_index, (drag_x_offset, drag_y_offset))
-                    self.action = CpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
+                    self.action = ArchCpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
                     break
 
     def mouseReleaseEvent(self, QMouseEvent):
@@ -128,14 +134,17 @@ class SplineArchWidget(QtGui.QWidget):
             new_x = clip_range(new_x, 0, self.pixmap.width() - 1)
             new_y = clip_range(new_y, 0, self.pixmap.height() - 1)
 
-            self.action = CpChangedAction((new_x, new_y), self.action.prev, cp_index)
+            self.action = ArchCpChangedAction((new_x, new_y), self.action.prev, cp_index)
 
             # Set new point data
-            self.arch_handler.spline.set_cp(cp_index, new_x, new_y)
+            new_idx = self.arch_handler.spline.update_cp(cp_index, new_x, new_y)
+            self.drag_point = (new_idx, self.drag_point[1])
 
             # Redraw curve
             self.update()
 
     def show_arch(self, pos=None):
         self.current_pos = pos
+        if self.selected_slice != self.arch_handler.selected_slice:
+            self.set_img()
         self.update()

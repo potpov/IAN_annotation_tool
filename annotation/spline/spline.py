@@ -1,5 +1,5 @@
 import numpy as np
-
+import math
 from annotation.spline.catmullrom import CatmullRomChain, CatmullRomSpline
 from annotation.utils import get_poly_approx
 
@@ -9,8 +9,9 @@ class Spline():
         """
         Creates a spline (Catmull-Rom)
 
-        :param coords: List of points of the curve that we want to parametrize
-        :param num_cp: Desired amount of control points
+        Args:
+            coords (list of (float, float)): List of points of the curve that we want to parametrize
+            num_cp (int): Desired amount of control points
         """
         self.curves = None  # list of curves that form the spline
         self.coords = coords  # curve to start
@@ -20,15 +21,57 @@ class Spline():
         self.compute_cp()
         self.build_spline()
 
-    def set_cp(self, idx, x, y):
-        self.cp[idx] = (x, y)
-        self.update_curve(idx)
+    def update_cp(self, idx, x, y):
+        """
+        Changes the value of a control point given its index and new (x, y) coordinates.
+        Also manages swaps between control points on the x axis.
+
+        Args:
+            idx (int): index of the changed control point
+            x (float): new x
+            y (float): new y
+
+        Returns:
+            (int): new index for the changed control point
+        """
+        new_idx = idx
+
+        if idx - 1 >= 0 and self.cp[idx - 1][0] >= x:
+            new_idx = idx - 1
+            tmp = self.cp[new_idx]
+            self.cp[new_idx] = (x, y)
+            self.cp[idx] = tmp
+            self.update_curve(new_idx)
+            self.update_curve(idx)
+        elif idx + 1 < len(self.cp) and self.cp[idx + 1][0] < x:
+            new_idx = idx + 1
+            tmp = self.cp[new_idx]
+            self.cp[new_idx] = (x, y)
+            self.cp[idx] = tmp
+            self.update_curve(new_idx)
+            self.update_curve(idx)
+        else:
+            self.cp[idx] = (x, y)
+            self.update_curve(idx)
+
+        return new_idx
 
     def compute_cp(self):
+        if len(self.coords) == 0:
+            return
         self.cp = [self.coords[0], ]
         offset = len(self.coords) // self.num_cp
         self.cp.extend(self.coords[1:-1:offset])
         self.cp.append(self.coords[-1])
+
+    def add_cp(self, x, y):
+        for pos, (_x, _y) in enumerate(self.cp):
+            if x < _x:
+                self.cp.insert(pos, (x, y))
+                self.build_spline()
+                return
+        self.cp.append((x, y))
+        self.build_spline()
 
     def build_spline(self):
         self.curves = CatmullRomChain(self.cp)
@@ -68,7 +111,7 @@ class Spline():
         return get_poly_approx(spline)
 
     def get_spline(self):
-        return [point for curve in self.curves for point in curve]
+        return [point for curve in self.curves for point in curve if not math.isnan(point[0])]
 
     def get_json(self):
         data = {}

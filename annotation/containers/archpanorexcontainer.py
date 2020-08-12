@@ -1,7 +1,6 @@
 from PyQt5 import QtCore, QtWidgets
 from pyface.qt import QtGui
 import qtawesome as qta
-from annotation.utils import numpy2pixmap
 from annotation.widgets.archpanocontrolpanel import ArchPanoControlPanelWidget
 from annotation.widgets.archview import SplineArchWidget
 from annotation.widgets.panorex import PanorexWidget
@@ -63,8 +62,7 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         self.current_pos = 0
 
     def initialize(self):
-        self.archview.img = self.arch_handler.get_section(self.arch_handler.selected_slice)
-        self.archview.pixmap = numpy2pixmap(self.archview.img)
+        self.archview.set_img()
 
     def save(self):
         self.arch_handler.save_state()

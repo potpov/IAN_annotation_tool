@@ -1,7 +1,7 @@
 import json
 
 SLICE_CHANGED = "SLICE_CHANGED"
-CP_CHANGED = "CP_CHANGED"
+ARCH_CP_CHANGED = "ARCH_CP_CHANGED"
 NO_ACTION = "NO_ACTION"
 
 
@@ -9,8 +9,8 @@ def create_action(**args):
     kind = args['kind']
     if kind == NO_ACTION:
         return Action()
-    elif kind == CP_CHANGED:
-        return CpChangedAction(args['curr'], args['prev'], args['index'])
+    elif kind == ARCH_CP_CHANGED:
+        return ArchCpChangedAction(args['curr'], args['prev'], args['index'])
     elif kind == SLICE_CHANGED:
         return SliceChangedAction(args['val'])
     else:
@@ -30,9 +30,9 @@ class NoAction(Action):
         self.kind = NO_ACTION
 
 
-class CpChangedAction(Action):
+class ArchCpChangedAction(Action):
     def __init__(self, curr, prev, index):
-        self.kind = CP_CHANGED
+        self.kind = ARCH_CP_CHANGED
 
         if len(curr) != 2 or len(prev) != 2:
             raise ValueError("curr and prev arguments must be tuples with length 2")
