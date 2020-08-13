@@ -69,6 +69,8 @@ def get_poly_approx(coords):
     Returns:
         (np.poly1d, float, float): polynomial approximation, minimum x and maximum x
     """
+    if len(coords) == 0 or coords is None:
+        return None, None, None
     x = [x for x, y in coords]
     y = [y for x, y in coords]
     pol = np.polyfit(x, y, 12)

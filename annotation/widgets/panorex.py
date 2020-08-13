@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
+from annotation import WIDGET_MARGIN
 from annotation.draw import draw_blue_vertical_line
 from annotation.spline.spline import Spline
 from annotation.utils import numpy2pixmap, clip_range
@@ -21,7 +22,7 @@ class CanvasPanorexWidget(QtGui.QWidget):
     def set_img(self):
         self.img = self.arch_handler.panorex
         self.pixmap = numpy2pixmap(self.img)
-        self.setMinimumWidth(self.img.shape[1] + 50)
+        self.setFixedSize(self.img.shape[1] + 50, self.img.shape[0] + 50)
 
     def paintEvent(self, e):
         qp = QtGui.QPainter()
@@ -33,8 +34,8 @@ class CanvasPanorexWidget(QtGui.QWidget):
         for point in coords:
             x, y = point
             painter.setPen(color)
-            x += self.x()
-            y += self.y()
+            x += WIDGET_MARGIN
+            y += WIDGET_MARGIN
             painter.drawPoint(int(x), int(y))
 
     def draw_spline(self, painter, spline: Spline, color: QtGui.QColor):
@@ -45,8 +46,8 @@ class CanvasPanorexWidget(QtGui.QWidget):
             x, y = point
             painter.setPen(QtGui.QColor(0, 255, 0))
             painter.setBrush(QtGui.QColor(0, 255, 0, 100))
-            rect_x = int((x + self.x()) - (self.l // 2))
-            rect_y = int((y + self.y()) - (self.l // 2))
+            rect_x = int((x + WIDGET_MARGIN) - (self.l // 2))
+            rect_y = int((y + WIDGET_MARGIN) - (self.l // 2))
             painter.drawRect(rect_x, rect_y, self.l, self.l)
 
     def draw(self, painter):
@@ -54,14 +55,15 @@ class CanvasPanorexWidget(QtGui.QWidget):
             return
         if self.arch_handler.coords is None:
             return
-        painter.drawPixmap(QtCore.QRect(self.x(), self.y(), self.pixmap.width(), self.pixmap.height()), self.pixmap)
+        painter.drawPixmap(QtCore.QRect(WIDGET_MARGIN, WIDGET_MARGIN, self.pixmap.width(), self.pixmap.height()),
+                           self.pixmap)
 
         self.draw_spline(painter, self.arch_handler.L_canal_spline, QtGui.QColor(255, 0, 0))
         self.draw_spline(painter, self.arch_handler.R_canal_spline, QtGui.QColor(0, 0, 255))
 
         painter.setPen(QtGui.QColor(0, 0, 255))
-        painter.drawLine(self.x() + self.current_pos, self.y(),
-                         self.x() + self.current_pos, self.y() + self.img.shape[0] - 1)
+        painter.drawLine(WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN,
+                         WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN + self.img.shape[0] - 1)
 
     def check_cp_movement(self, spline, name, mouse_x, mouse_y):
         for cp_index, (point_x, point_y) in enumerate(spline.cp):
@@ -76,8 +78,8 @@ class CanvasPanorexWidget(QtGui.QWidget):
         """ Internal mouse-press handler """
         self.drag_point = None
         mouse_pos = QMouseEvent.pos()
-        mouse_x = mouse_pos.x() - self.x()
-        mouse_y = mouse_pos.y() - self.y()
+        mouse_x = mouse_pos.x() - WIDGET_MARGIN
+        mouse_y = mouse_pos.y() - WIDGET_MARGIN
         if QMouseEvent.button() == QtCore.Qt.LeftButton:
             self.check_cp_movement(self.arch_handler.L_canal_spline, "L", mouse_x, mouse_y)
             self.check_cp_movement(self.arch_handler.R_canal_spline, "R", mouse_x, mouse_y)
@@ -100,8 +102,8 @@ class CanvasPanorexWidget(QtGui.QWidget):
         """ Internal mouse-move handler """
         if self.drag_point is not None:
             cp_index, name, (offset_x, offset_y) = self.drag_point
-            new_x = QMouseEvent.pos().x() - self.x() + offset_x
-            new_y = QMouseEvent.pos().y() - self.y() + offset_y
+            new_x = QMouseEvent.pos().x() - WIDGET_MARGIN + offset_x
+            new_y = QMouseEvent.pos().y() - WIDGET_MARGIN + offset_y
 
             new_x = clip_range(new_x, 0, self.pixmap.width() - 1)
             new_y = clip_range(new_y, 0, self.pixmap.height() - 1)

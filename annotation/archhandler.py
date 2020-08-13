@@ -63,6 +63,7 @@ class ArchHandler(Jaw):
         self.offsetted_arch_amount = 0
         self.side_coords = None
         self.side_volume = None
+        self.side_volume_scale = None
         self.L_canal_spline = None
         self.R_canal_spline = None
         self.compute_arch()
@@ -193,6 +194,7 @@ class ArchHandler(Jaw):
 
         # rescaling the projection volume properly
         y_ratio = section.shape[0] / side_volume.shape[1]
+        self.side_volume_scale = y_ratio
         width = int(side_volume.shape[2] * y_ratio)
         height = int(side_volume.shape[1] * y_ratio)
         scaled_side_volume = np.ndarray(shape=(side_volume.shape[0], height, width))

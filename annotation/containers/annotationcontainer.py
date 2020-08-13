@@ -2,7 +2,7 @@ from pyface.qt import QtGui
 
 from annotation.widgets.annotationcontrolpanel import AnnotationControlPanelWidget
 from annotation.widgets.panorex import CanvasPanorexWidget
-from annotation.widgets.sidevolume import SideVolume
+from annotation.widgets.sidevolume import CanvasSideVolume
 
 
 class AnnotationContainerWidget(QtGui.QWidget):
@@ -16,7 +16,7 @@ class AnnotationContainerWidget(QtGui.QWidget):
         self.layout.addWidget(self.panorex, 0, 0)
 
         # side volume
-        self.sidevolume = SideVolume(self)
+        self.sidevolume = CanvasSideVolume(self)
         self.layout.addWidget(self.sidevolume, 0, 1)
 
         # control panel
@@ -29,6 +29,7 @@ class AnnotationContainerWidget(QtGui.QWidget):
 
     def initialize(self):
         self.panorex.set_img()
+        self.sidevolume.set_img()
 
     def pos_changed_handler(self):
         self.current_pos = self.panel.getPosValue()
