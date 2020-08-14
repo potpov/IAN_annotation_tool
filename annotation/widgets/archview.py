@@ -109,20 +109,19 @@ class SplineArchWidget(QtGui.QWidget):
         mouse_y = mouse_pos.y() - WIDGET_MARGIN
 
         for cp_index, (point_x, point_y) in enumerate(self.arch_handler.spline.cp):
-            if abs(point_x - mouse_x) < self.l // 2:
-                if (abs(point_y - mouse_y)) < self.l // 2:
-                    drag_x_offset = point_x - mouse_x
-                    drag_y_offset = point_y - mouse_y
-                    self.drag_point = (cp_index, (drag_x_offset, drag_y_offset))
-                    self.action = ArchCpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
-                    break
+            if abs(point_x - mouse_x) < self.l // 2 and abs(point_y - mouse_y) < self.l // 2:
+                drag_x_offset = point_x - mouse_x
+                drag_y_offset = point_y - mouse_y
+                self.drag_point = (cp_index, (drag_x_offset, drag_y_offset))
+                self.action = ArchCpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
+                break
 
     def mouseReleaseEvent(self, QMouseEvent):
         """ Internal mouse-release handler """
         self.drag_point = None
         if self.action is not None:
             self.arch_handler.history.add(self.action)
-        self.action = None
+            self.action = None
         self.spline_changed.emit()
 
     def mouseMoveEvent(self, QMouseEvent):

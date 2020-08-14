@@ -65,13 +65,24 @@ class Spline():
         self.cp.append(self.coords[-1])
 
     def add_cp(self, x, y):
+        """
+        Adds a new cp to the spline
+
+        Args:
+            x (float): x coordinate
+            y (float): y coordinate
+
+        Returns:
+             (int): index of the newly added cp
+        """
         for pos, (_x, _y) in enumerate(self.cp):
             if x < _x:
                 self.cp.insert(pos, (x, y))
                 self.build_spline()
-                return
+                return pos
         self.cp.append((x, y))
         self.build_spline()
+        return len(self.cp) - 1
 
     def build_spline(self):
         self.curves = CatmullRomChain(self.cp)

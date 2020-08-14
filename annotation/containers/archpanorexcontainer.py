@@ -5,6 +5,7 @@ from annotation.widgets.archpanocontrolpanel import ArchPanoControlPanelWidget
 from annotation.widgets.archview import SplineArchWidget
 from annotation.widgets.panorex import PanorexWidget
 from annotation.widgets.sidevolume import SideVolume
+from annotation.widgets.toolbar import Toolbar
 
 
 class ArchPanorexContainerWidget(QtGui.QWidget):
@@ -15,21 +16,10 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         self.parent = parent
         self.layout = QtGui.QGridLayout(self)
 
-        # --- toolbar ---
-        self.toolbar = QtGui.QToolBar()
-        self.toolbar.setIconSize(QtCore.QSize(32, 32))
-
-        # save
-        save_action = QtGui.QAction(qta.icon('fa5s.save'), "Save", self)
-        save_action.triggered.connect(self.save)
-        self.toolbar.addAction(save_action)
-        # load
-        load_action = QtGui.QAction(qta.icon('fa5s.file-upload'), "Load", self)
-        load_action.triggered.connect(self.load)
-        self.toolbar.addAction(load_action)
-
-        self.layout.setMenuBar(self.toolbar)
-        # --- end toolbar ---
+        # toolbar
+        self.toolbar = Toolbar()
+        self.toolbar.toolbar_load.connect(self.spline_changed)
+        self.layout.setMenuBar(self.toolbar.bar)
 
         # arch view
         self.archview = SplineArchWidget(self)
@@ -64,13 +54,6 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
     def initialize(self):
         self.archview.set_img()
 
-    def save(self):
-        self.arch_handler.save_state()
-
-    def load(self):
-        self.arch_handler.load_state()
-        self.spline_changed()
-
     def spline_changed(self):
         self.arch_handler.update_coords()
         self.arch_handler.compute_side_coords()
@@ -101,6 +84,7 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
 
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler
+        self.toolbar.arch_handler = arch_handler
         self.archview.arch_handler = arch_handler
         self.panorex.arch_handler = arch_handler
         self.sidevolume.arch_handler = arch_handler

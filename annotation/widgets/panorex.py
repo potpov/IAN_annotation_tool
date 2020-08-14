@@ -2,6 +2,8 @@ from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
 from annotation import WIDGET_MARGIN
+from annotation.actions.Action import LeftCanalCpAddedAction, RightCanalCpAddedAction, LeftCanalCpChangedAction, \
+    RightCanalCpChangedAction
 from annotation.draw import draw_blue_vertical_line
 from annotation.spline.spline import Spline
 from annotation.utils import numpy2pixmap, clip_range
@@ -18,6 +20,7 @@ class CanvasPanorexWidget(QtGui.QWidget):
         self.pixmap = None
         self.current_pos = 0
         self.drag_point = None
+        self.action = None
 
     def set_img(self):
         self.img = self.arch_handler.panorex
@@ -67,16 +70,22 @@ class CanvasPanorexWidget(QtGui.QWidget):
 
     def check_cp_movement(self, spline, name, mouse_x, mouse_y):
         for cp_index, (point_x, point_y) in enumerate(spline.cp):
-            if abs(point_x - mouse_x) < self.l // 2:
-                if (abs(point_y - mouse_y)) < self.l // 2:
-                    drag_x_offset = point_x - mouse_x
-                    drag_y_offset = point_y - mouse_y
-                    self.drag_point = (cp_index, name, (drag_x_offset, drag_y_offset))
-                    break
+            if abs(point_x - mouse_x) < self.l // 2 and abs(point_y - mouse_y) < self.l // 2:
+                drag_x_offset = point_x - mouse_x
+                drag_y_offset = point_y - mouse_y
+                self.drag_point = (cp_index, name, (drag_x_offset, drag_y_offset))
+                if name == "L":
+                    self.action = LeftCanalCpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
+                elif name == "R":
+                    self.action = RightCanalCpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
+                else:
+                    raise ValueError("Expected spline name to be either L or R")
+                break
 
     def mousePressEvent(self, QMouseEvent):
         """ Internal mouse-press handler """
         self.drag_point = None
+        self.action = None
         mouse_pos = QMouseEvent.pos()
         mouse_x = mouse_pos.x() - WIDGET_MARGIN
         mouse_y = mouse_pos.y() - WIDGET_MARGIN
@@ -85,17 +94,18 @@ class CanvasPanorexWidget(QtGui.QWidget):
             self.check_cp_movement(self.arch_handler.R_canal_spline, "R", mouse_x, mouse_y)
         elif QMouseEvent.button() == QtCore.Qt.RightButton:
             if mouse_x < self.img.shape[1] // 2:
-                self.arch_handler.L_canal_spline.add_cp(mouse_x, mouse_y)
+                idx = self.arch_handler.L_canal_spline.add_cp(mouse_x, mouse_y)
+                self.arch_handler.history.add(LeftCanalCpAddedAction((mouse_x, mouse_y), idx), debug=True)
             else:
-                self.arch_handler.R_canal_spline.add_cp(mouse_x, mouse_y)
+                idx = self.arch_handler.R_canal_spline.add_cp(mouse_x, mouse_y)
+                self.arch_handler.history.add(RightCanalCpAddedAction((mouse_x, mouse_y), idx), debug=True)
 
     def mouseReleaseEvent(self, QMouseEvent):
         """ Internal mouse-release handler """
         self.drag_point = None
-        # if self.action is not None:
-        #     self.arch_handler.history.add(self.action)
-        # self.action = None
-        # self.spline_changed.emit()
+        if self.action is not None:
+            self.arch_handler.history.add(self.action, debug=True)
+            self.action = None
         self.update()
 
     def mouseMoveEvent(self, QMouseEvent):
@@ -108,12 +118,12 @@ class CanvasPanorexWidget(QtGui.QWidget):
             new_x = clip_range(new_x, 0, self.pixmap.width() - 1)
             new_y = clip_range(new_y, 0, self.pixmap.height() - 1)
 
-            # self.action = ArchCpChangedAction((new_x, new_y), self.action.prev, cp_index)
-
             # Set new point data
             if name == "L":
+                self.action = LeftCanalCpChangedAction((new_x, new_y), self.action.prev, cp_index)
                 spline = self.arch_handler.L_canal_spline
             elif name == "R":
+                self.action = RightCanalCpChangedAction((new_x, new_y), self.action.prev, cp_index)
                 spline = self.arch_handler.R_canal_spline
             else:
                 raise ValueError("Expected spline name to be either L or R")

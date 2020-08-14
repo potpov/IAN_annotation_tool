@@ -84,6 +84,8 @@ class ArchHandler(Jaw):
         data = {}
         data['version'] = 1.0
         data['spline'] = self.spline.get_json()
+        data['L_canal_spline'] = self.L_canal_spline.get_json()
+        data['R_canal_spline'] = self.R_canal_spline.get_json()
         data['selected_slice'] = self.selected_slice
         data['history'] = self.history.dump()
         with open(os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME), "w") as outfile:
@@ -99,6 +101,8 @@ class ArchHandler(Jaw):
         with open(path, "r") as infile:
             data = json.load(infile)
             self.spline.read_json(data['spline'], build_spline=True)
+            self.L_canal_spline.read_json(data['L_canal_spline'], build_spline=True)
+            self.R_canal_spline.read_json(data['R_canal_spline'], build_spline=True)
             self.selected_slice = data['selected_slice']
             self.history.load(data['history'])
 

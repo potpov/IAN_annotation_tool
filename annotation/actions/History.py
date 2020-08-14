@@ -21,7 +21,8 @@ class History:
             raise ValueError("In History Class, it can't happen that self.curr > self.last, but it did...")
         self.h.append(action)
         if debug:
-            print(self.h)
+            # print(self.h)
+            print(action.get_data())
 
     def back(self):
         """DO NOT CALL"""

@@ -3,6 +3,7 @@ from pyface.qt import QtGui
 from annotation.widgets.annotationcontrolpanel import AnnotationControlPanelWidget
 from annotation.widgets.panorex import CanvasPanorexWidget
 from annotation.widgets.sidevolume import CanvasSideVolume
+from annotation.widgets.toolbar import Toolbar
 
 
 class AnnotationContainerWidget(QtGui.QWidget):
@@ -10,6 +11,11 @@ class AnnotationContainerWidget(QtGui.QWidget):
         super(AnnotationContainerWidget, self).__init__()
         self.container = parent
         self.layout = QtGui.QGridLayout(self)
+
+        # toolbar
+        self.toolbar = Toolbar()
+        self.toolbar.toolbar_load.connect(self.show_img)
+        self.layout.setMenuBar(self.toolbar.bar)
 
         # panorex
         self.panorex = CanvasPanorexWidget(self)
@@ -42,5 +48,6 @@ class AnnotationContainerWidget(QtGui.QWidget):
 
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler
+        self.toolbar.arch_handler = arch_handler
         self.panorex.arch_handler = arch_handler
         self.sidevolume.arch_handler = arch_handler
