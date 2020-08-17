@@ -6,6 +6,7 @@ from annotation.components.Slider import Slider
 
 class AnnotationControlPanelWidget(QtGui.QWidget):
     pos_changed = QtCore.pyqtSignal()
+    show_dot_toggled = QtCore.pyqtSignal()
 
     def __init__(self):
         super(AnnotationControlPanelWidget, self).__init__()
@@ -21,6 +22,10 @@ class AnnotationControlPanelWidget(QtGui.QWidget):
         self.pos_slider.valueChanged.connect(self.pos_changed.emit)
         self.pos_slider.setMaximumHeight(50)
         self.layout.addRow(QtWidgets.QLabel("Position"), self.pos_slider)
+
+        self.show_dot = QtWidgets.QCheckBox("")
+        self.show_dot.setChecked(True)
+        self.layout.addRow(QtWidgets.QLabel("Show dot"), self.show_dot)
 
     ###########
     # Getters #

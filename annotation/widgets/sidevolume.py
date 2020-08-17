@@ -15,7 +15,8 @@ class CanvasSideVolume(QtGui.QWidget):
         self.pixmap = None
         self.drag_point = None
         self.current_pos = 0
-        self.r = 5
+        self.r = 3
+        self.show_dot = False
 
     def set_img(self):
         self.img = self.arch_handler.side_volume[self.current_pos]
@@ -38,23 +39,35 @@ class CanvasSideVolume(QtGui.QWidget):
             QtCore.QRect(WIDGET_MARGIN, WIDGET_MARGIN, self.pixmap.width(), self.pixmap.height()),
             self.pixmap)
 
-        z = None
-        p, start, end = self.arch_handler.L_canal_spline.get_poly_spline()
-        if p is not None and self.current_pos in range(int(start), int(end)):
-            z = WIDGET_MARGIN + p(self.current_pos) * self.arch_handler.side_volume_scale
-        p, start, end = self.arch_handler.R_canal_spline.get_poly_spline()
-        if p is not None and self.current_pos in range(int(start), int(end)):
-            z = WIDGET_MARGIN + p(self.current_pos) * self.arch_handler.side_volume_scale
+        if self.show_dot:
+            z = None
+            LR = None
 
-        if z == None:
-            return
-        painter.setPen(QtGui.QColor(0, 255, 0))
-        painter.drawPoint(WIDGET_MARGIN + self.pixmap.width() // 2, z)
-        painter.setBrush(QtGui.QColor(0, 255, 0, 100))
-        x = WIDGET_MARGIN + self.pixmap.width() // 2
-        painter.drawEllipse(QtCore.QPoint(x, z), self.r, self.r)
+            # check intersection with L spline
+            p, start, end = self.arch_handler.L_canal_spline.get_poly_spline()
+            if p is not None and self.current_pos in range(int(start), int(end)):
+                LR = "L"
+                z = WIDGET_MARGIN + p(self.current_pos) * self.arch_handler.side_volume_scale
 
-    def show_side_view(self, pos=0):
+            # check intersection with R spline
+            p, start, end = self.arch_handler.R_canal_spline.get_poly_spline()
+            if p is not None and self.current_pos in range(int(start), int(end)):
+                LR = "R"
+                z = WIDGET_MARGIN + p(self.current_pos) * self.arch_handler.side_volume_scale
+
+            if z is None:
+                return
+
+            color = QtGui.QColor(255, 0, 0) if LR == "L" else QtGui.QColor(0, 0, 255)
+            painter.setPen(color)
+            painter.drawPoint(WIDGET_MARGIN + self.pixmap.width() // 2, z)
+            color.setAlpha(100)
+            painter.setBrush(color)
+            x = WIDGET_MARGIN + self.pixmap.width() // 2
+            painter.drawEllipse(QtCore.QPoint(x, z), self.r, self.r)
+
+    def show_side_view(self, pos=0, show_dot=False):
+        self.show_dot = show_dot
         self.current_pos = pos
         self.set_img()
         self.update()

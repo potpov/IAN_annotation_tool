@@ -8,6 +8,7 @@ import processing
 from Jaw import Jaw
 from annotation.actions.Action import SliceChangedAction
 from annotation.actions.History import History
+from annotation.components.Dialog import LoadingDialog
 from annotation.spline.spline import Spline
 from annotation.utils import get_poly_approx, apply_offset_to_arch
 
@@ -66,7 +67,7 @@ class ArchHandler(Jaw):
         self.side_volume_scale = None
         self.L_canal_spline = None
         self.R_canal_spline = None
-        self.compute_arch()
+        self.compute_arch_dialog()
 
     def compute_arch(self):
         """
@@ -79,6 +80,10 @@ class ArchHandler(Jaw):
                 self.arch_detections.append((p, start, end))
             except:
                 self.arch_detections.append(None)
+
+    def compute_arch_dialog(self):
+        dialog = LoadingDialog(self.compute_arch, message="Computing arches")
+        dialog.exec_()
 
     def save_state(self):
         data = {}
@@ -98,17 +103,26 @@ class ArchHandler(Jaw):
             print("Nothing to load")
             return
 
+        old_spline_cp = self.spline.cp
+
         with open(path, "r") as infile:
             data = json.load(infile)
+            self.initalize_attributes(data['selected_slice'])
             self.spline.read_json(data['spline'], build_spline=True)
             self.L_canal_spline.read_json(data['L_canal_spline'], build_spline=True)
             self.R_canal_spline.read_json(data['R_canal_spline'], build_spline=True)
-            self.selected_slice = data['selected_slice']
             self.history.load(data['history'])
+
+            if old_spline_cp != self.spline.cp:
+                self.offsetted_arch = self.spline.get_spline()
+                self.update_coords()
+                self.compute_panorexes()
+                self.compute_side_coords()
+                self.compute_side_volume_dialog()
 
         print("loaded")
 
-    def compute_initial_state(self, selected_slice):
+    def initalize_attributes(self, selected_slice):
         """
         Sets class attributes after the selection of the slice.
 
@@ -129,9 +143,23 @@ class ArchHandler(Jaw):
         l_coords = apply_offset_to_arch(self.offsetted_arch, +1, p)
         self.LHoffsetted_arches = (l_coords, h_coords)
 
+    def compute_initial_state(self, selected_slice):
+        """
+        Sets class attributes after the selection of the slice.
+        Then computes panorexes and side volume.
+
+        Args:
+            selected_slice (int): index of the selected slice in the jaw volume
+        """
+        self.initalize_attributes(selected_slice)
         self.compute_panorexes()
         self.compute_side_coords()
-        self.compute_side_volume()
+        self.compute_side_volume_dialog()
+
+    def compute_initial_state_dialog(self, selected_slice):
+        dialog = LoadingDialog(func=lambda: self.compute_initial_state(selected_slice),
+                               message="Computing initial state")
+        dialog.exec_()
 
     def update_coords(self):
         """
@@ -214,6 +242,10 @@ class ArchHandler(Jaw):
         scaled_side_volume = np.moveaxis(scaled_side_volume, 0, -1)
 
         self.side_volume = scaled_side_volume
+
+    def compute_side_volume_dialog(self):
+        dialog = LoadingDialog(func=self.compute_side_volume, message="Computing side volume")
+        dialog.exec_()
 
     def get_section(self, slice, arch=False, offsets=False, pos=None):
         """

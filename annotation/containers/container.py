@@ -62,7 +62,7 @@ class Container(QtGui.QWidget):
             self.apc = None
 
     def add_AnnotationContainerWidget(self):
-        self.arch_handler.compute_side_volume()
+        self.arch_handler.compute_side_volume_dialog()
         self.annotation = AnnotationContainerWidget(self)
         self.annotation.set_arch_handler(self.arch_handler)
         self.annotation.initialize()
@@ -80,7 +80,6 @@ class Container(QtGui.QWidget):
             self.arch_handler.reset(dicomdir_path)
         else:
             self.arch_handler = ArchHandler(dicomdir_path)
-
         self.add_SliceSelectionWidget()
         self.remove_ArchPanorexContainerWidget()
         self.remove_AnnotationContainerWidget()
@@ -90,7 +89,7 @@ class Container(QtGui.QWidget):
 
     def show_arch_pano_widget(self, slice):
         self.remove_SliceSelectionWidget()
-        self.arch_handler.compute_initial_state(slice)
+        self.arch_handler.compute_initial_state_dialog(slice)
         self.add_ArchPanorexContainerWidget()
 
     def show_annotation_widget(self):
