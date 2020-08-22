@@ -73,7 +73,7 @@ class Spline():
             y (float): y coordinate
 
         Returns:
-             (int): index of the newly added cp
+            (int): index of the newly added cp
         """
         for pos, (_x, _y) in enumerate(self.cp):
             if x < _x:
@@ -84,10 +84,31 @@ class Spline():
         self.build_spline()
         return len(self.cp) - 1
 
+    def remove_cp(self, idx):
+        """
+        Removes cp from the spline
+
+        Args:
+            idx (int): index of the cp to remove
+        """
+        del self.cp[idx]
+        self.build_spline()
+
     def build_spline(self):
+        """
+        Uses Catmull Rom algorithm to construct the spline.
+        The spline produced is divided in sub-curves by the control points.
+        It stores the spline in self.curves.
+        """
         self.curves = CatmullRomChain(self.cp)
 
     def update_curve(self, cp_idx):
+        """
+        Re-computes self.curves, only updating the 4 sub-curves starting from one cp index.
+
+        Args:
+            cp_idx (int): index of the cp around which we need to update the spline
+        """
         min_curve_idx = max(0, cp_idx - 3)
         max_curve_idx = min(cp_idx, len(self.cp) - 4)
         '''
@@ -106,6 +127,15 @@ class Spline():
             self.curves[curve_idx] = new_curve
 
     def draw_curve(self, img):
+        """
+        UNUSED function to draw the spline on a numpy array
+
+        Args:
+            img (np.ndarray): source gray-scale image
+
+        Returns:
+            (np.ndarray): colored image with the arch in red
+        """
         arch_rgb = np.tile(img, (3, 1, 1))
         arch_rgb = np.moveaxis(arch_rgb, 0, -1)
         curve = self.get_spline()
@@ -118,13 +148,31 @@ class Spline():
         return arch_rgb
 
     def get_poly_spline(self):
+        """
+        Returns a polynomial approximation of the spline
+
+        Returns:
+            (np.poly1d, float, float): polynomial approximation, minimum x and maximum x
+        """
         spline = self.get_spline()
         return get_poly_approx(spline)
 
     def get_spline(self):
+        """
+        Returns self.curves as one only list of coordinates
+
+        Returns:
+            (list of (float, float)): full spline
+        """
         return [point for curve in self.curves for point in curve if not math.isnan(point[0])]
 
     def get_json(self):
+        """
+        Returns a summary of the spline
+
+        Returns:
+            (dict): summary
+        """
         data = {}
         data['num_cp'] = self.num_cp
         data['cp'] = [{'x': float(cp[0]),
@@ -133,6 +181,13 @@ class Spline():
         return data
 
     def read_json(self, data, build_spline=True):
+        """
+        Reads dictionary and loads information on the spline
+
+        Args:
+            data (dict): data to load
+            build_spline (bool): whether to compute the spline or not
+        """
         self.num_cp = data['num_cp']
         self.cp = [(cp['x'], cp['y']) for cp in data['cp']]
         if build_spline:

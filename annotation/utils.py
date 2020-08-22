@@ -1,5 +1,7 @@
+import cv2
 import numpy as np
 from pyface.qt import QtGui
+import matplotlib.pyplot as plt
 
 
 def numpy2pixmap(data):
@@ -117,3 +119,118 @@ def apply_offset_to_arch(coords, offset, p):
     for point in coords:
         new_arch.append(apply_offset_to_point(point, offset, p))
     return new_arch
+
+
+def draw_blue_vertical_line(img, pos):
+    """
+    Draws a blue vertical line in position pos in a 2D image img.
+
+    Args:
+         img (np.ndarray): 2D image
+         pos (int): position
+
+    Returns:
+        (np.ndarray): 3D colored image with vertical line
+    """
+    img_rgb = np.tile(img, (3, 1, 1))
+    img_rgb = np.moveaxis(img_rgb, 0, -1)
+    rg = np.zeros((img.shape[0]))
+    b = np.ones((img.shape[0]))
+    blue_line = np.stack([rg, rg, b])
+    blue_line = np.moveaxis(blue_line, 0, -1)
+    img_rgb[:, pos, :] = blue_line
+    return img_rgb
+
+
+def enhance_contrast(img):
+    """
+    Enhances contrast of an image using CLAHE.
+    Args:
+        img (np.ndarray): image
+
+    Returns:
+        (np.ndarray): contrast enhanced image
+    """
+    # CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    clahe = cv2.createCLAHE(clipLimit=3., tileGridSize=(8, 8))
+
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
+    l, a, b = cv2.split(lab)  # split on 3 different channels
+
+    l2 = clahe.apply(l)  # apply CLAHE to the L-channel
+
+    lab = cv2.merge((l2, a, b))  # merge channels
+    img2 = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert from LAB to BGR
+
+    return img2
+
+
+def sharpen(im):
+    """
+    Applies sharpening to and image.
+
+    Args:
+        im (np.ndarray): image
+
+    Returns:
+        (np.ndarray): sharpened image
+    """
+    kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+    im = cv2.filter2D(im, -1, kernel)
+    return im
+
+
+def plot(img, title="plot"):
+    """
+    Plots an image.
+
+    Args:
+        img (np.ndarray): image
+        title (str): title
+    """
+    plt.title(title)
+    plt.imshow(img, cmap='gray')
+    plt.show()
+
+
+def show_red_mask(img, mask):
+    """
+    Shows a mask onto an image with red pixels.
+
+    Args:
+        img (np.ndarray): image
+        mask (np.ndarray): mask
+
+    Returns:
+        (np.ndarray): image + red mask
+    """
+    img_ = img
+    mask_ = np.bool_(mask)
+    red = img_[:, :, 0]
+    green = img_[:, :, 1]
+    blue = img_[:, :, 2]
+    red[mask_] = 255
+    green[mask_] = 0
+    blue[mask_] = 0
+    return img_
+
+
+def get_square_around_point(center, im_shape, l=20):
+    """
+    Generates two points that define a square with the point "center" as its center.
+
+    Args:
+        center ((float, float)): center point
+        im_shape ((int, int)): shape of the image, used to not overflow
+        l (int): length of the side of the square
+
+    Returns:
+        ((int, int), (int, int)): top-left and bottom-right points
+    """
+    center = tuple(map(int, center))
+    x, y = center
+    h, w = im_shape
+    l2 = l // 2
+    P1 = (clip_range(x - l2, 0, w - 1), clip_range(y - l2, 0, h - 1))
+    P2 = (clip_range(x + l2, 0, w - 1), clip_range(y + l2, 0, h - 1))
+    return P1, P2

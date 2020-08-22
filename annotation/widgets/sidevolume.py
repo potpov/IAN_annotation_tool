@@ -2,21 +2,18 @@ from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
 from annotation import WIDGET_MARGIN
+from annotation.components.Canvas import Canvas
+from annotation.tests.opencv_tests.test_image_processing import extimate_canal
 from annotation.utils import numpy2pixmap
 
 
-class CanvasSideVolume(QtGui.QWidget):
+class CanvasSideVolume(Canvas):
     def __init__(self, parent):
-        super(CanvasSideVolume, self).__init__()
-        self.parent = parent
-
+        super().__init__(parent)
         self.arch_handler = None
-        self.img = None
-        self.pixmap = None
-        self.drag_point = None
         self.current_pos = 0
         self.r = 3
-        self.show_dot = False
+        self.show_dot = True
 
     def set_img(self):
         self.img = self.arch_handler.side_volume[self.current_pos]
@@ -58,15 +55,23 @@ class CanvasSideVolume(QtGui.QWidget):
             if z is None:
                 return
 
+            x = WIDGET_MARGIN + self.pixmap.width() // 2
+
+            img_canal, hull, mask = extimate_canal(self.img.copy(), (x - WIDGET_MARGIN, z - WIDGET_MARGIN))
+            if hull is not None:
+                for point in hull:
+                    hx, hy = point[0]
+                    painter.setPen(QtGui.QColor(200, 121, 219))
+                    painter.drawEllipse(QtCore.QPoint(WIDGET_MARGIN + hx, WIDGET_MARGIN + hy), self.r, self.r)
+
             color = QtGui.QColor(255, 0, 0) if LR == "L" else QtGui.QColor(0, 0, 255)
             painter.setPen(color)
             painter.drawPoint(WIDGET_MARGIN + self.pixmap.width() // 2, z)
             color.setAlpha(100)
             painter.setBrush(color)
-            x = WIDGET_MARGIN + self.pixmap.width() // 2
             painter.drawEllipse(QtCore.QPoint(x, z), self.r, self.r)
 
-    def show_side_view(self, pos=0, show_dot=False):
+    def show_(self, pos=0, show_dot=False):
         self.show_dot = show_dot
         self.current_pos = pos
         self.set_img()
@@ -92,7 +97,7 @@ class SideVolume(QtGui.QWidget):
         y = event.pos().y()
         print("x: {} y: {}".format(x, y))
 
-    def show_side_view(self, pos=0):
+    def show_(self, pos=0):
         try:
             pixmap = numpy2pixmap(self.arch_handler.side_volume[pos])
             self.label.setPixmap(pixmap)

@@ -2,6 +2,7 @@ from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
 from annotation import WIDGET_MARGIN
+from annotation.components.Canvas import Canvas, SplineCanvas
 from annotation.utils import numpy2pixmap, clip_range
 from annotation.actions.Action import ArchCpChangedAction
 
@@ -30,21 +31,14 @@ class SimpleArchWidget(QtGui.QWidget):
         self.label.update()
 
 
-class SplineArchWidget(QtGui.QWidget):
+class SplineArchWidget(SplineCanvas):
     spline_changed = QtCore.pyqtSignal()
 
     def __init__(self, parent):
-        super(SplineArchWidget, self).__init__()
-        self.layout = QtGui.QHBoxLayout(self)
-        self.container = parent
+        super().__init__(parent)
         self.arch_handler = None
-        self.num_cp = 10
-        self.l = 8  # size of the side of the square for the control points
         self.selected_slice = None
-        self.img = None
-        self.pixmap = None
         self.current_pos = 0
-        self.drag_point = None
         self.action = None  # action in progress
 
     def set_img(self):
@@ -52,12 +46,6 @@ class SplineArchWidget(QtGui.QWidget):
         self.img = self.arch_handler.get_section(self.selected_slice)
         self.pixmap = numpy2pixmap(self.img)
         self.setFixedSize(self.img.shape[1] + 50, self.img.shape[0] + 50)
-
-    def paintEvent(self, e):
-        qp = QtGui.QPainter()
-        qp.begin(self)
-        self.draw(qp)
-        qp.end()
 
     def draw_single_arch(self, painter, coords, color: QtGui.QColor):
         for point in coords:
@@ -143,7 +131,7 @@ class SplineArchWidget(QtGui.QWidget):
             # Redraw curve
             self.update()
 
-    def show_arch(self, pos=None):
+    def show_(self, pos=None):
         self.current_pos = pos
         if self.selected_slice != self.arch_handler.selected_slice:
             self.set_img()

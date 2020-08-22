@@ -91,6 +91,6 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
 
     def show_img(self):
         self.panel.setPosSliderMaximum(len(self.arch_handler.offsetted_arch) - 1)
-        self.archview.show_arch(pos=self.current_pos)
-        self.panorex.show_panorex(pos=self.current_pos)
-        self.sidevolume.show_side_view(pos=self.current_pos)
+        self.archview.show_(pos=self.current_pos)
+        self.panorex.show_(pos=self.current_pos)
+        self.sidevolume.show_(pos=self.current_pos)

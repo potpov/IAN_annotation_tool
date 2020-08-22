@@ -20,7 +20,7 @@ class AnnotationContainerWidget(QtGui.QWidget):
         # panorex
         self.panorex = CanvasPanorexWidget(self)
         self.panorex.spline_changed.connect(
-            lambda: self.sidevolume.show_side_view(self.current_pos, self.panel.show_dot.isChecked()))
+            lambda: self.sidevolume.show_(self.current_pos, self.panel.show_dot.isChecked()))
         self.layout.addWidget(self.panorex, 0, 0)
 
         # side volume
@@ -45,8 +45,8 @@ class AnnotationContainerWidget(QtGui.QWidget):
 
     def show_img(self):
         self.panel.setPosSliderMaximum(len(self.arch_handler.offsetted_arch) - 1)
-        self.panorex.show_panorex(pos=self.current_pos)
-        self.sidevolume.show_side_view(pos=self.current_pos, show_dot=self.panel.show_dot.isChecked())
+        self.panorex.show_(pos=self.current_pos)
+        self.sidevolume.show_(pos=self.current_pos, show_dot=self.panel.show_dot.isChecked())
 
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler

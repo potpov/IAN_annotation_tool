@@ -50,7 +50,8 @@ class ArchHandler(Jaw):
         Args:
             dicomdir_path (str): path of the DICOMDIR file
         """
-        super().__init__(dicomdir_path)
+        sup = super()
+        LoadingDialog(func=lambda: sup.__init__(dicomdir_path), message="Loading DICOM").exec_()
         self.dicomdir_path = dicomdir_path
         self.history = History()
         self.selected_slice = None
@@ -67,22 +68,33 @@ class ArchHandler(Jaw):
         self.side_volume_scale = None
         self.L_canal_spline = None
         self.R_canal_spline = None
-        self.compute_arch_dialog()
+        # self.compute_arch_dialog()
+        self.arch_detections = [None] * self.volume.shape[0]
 
-    def compute_arch(self):
+    def compute_all_arch_detections(self):
         """
         Computes the arch for each slice of the jaw volume.
         """
         self.arch_detections = []
         for i, section in enumerate(self.volume):
-            try:
-                p, start, end = processing.arch_detection(section)
-                self.arch_detections.append((p, start, end))
-            except:
-                self.arch_detections.append(None)
+            self.compute_single_arch_detection(i)
+
+    def compute_single_arch_detection(self, i):
+        try:
+            self.arch_detections[i] = processing.arch_detection(self.volume[i])
+        except:
+            self.arch_detections[i] = None
+
+    def get_arch_detection(self, i):
+        if self.arch_detections[i] is None:
+            self.compute_single_arch_detection(i)
+        return self.arch_detections[i]
+
+    def set_arch_detection(self, i, p_start_end):
+        self.arch_detections[i] = p_start_end
 
     def compute_arch_dialog(self):
-        dialog = LoadingDialog(self.compute_arch, message="Computing arches")
+        dialog = LoadingDialog(self.compute_all_arch_detections, message="Computing arches")
         dialog.exec_()
 
     def save_state(self):
@@ -131,7 +143,7 @@ class ArchHandler(Jaw):
         """
         self.selected_slice = selected_slice
         self.history.add(SliceChangedAction(selected_slice))
-        p, start, end = self.arch_detections[selected_slice]
+        p, start, end = self.get_arch_detection(selected_slice)
         l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
         self.coords = (l_offset, coords, h_offset, derivative)
         self.spline = Spline(coords, 10)
@@ -167,7 +179,7 @@ class ArchHandler(Jaw):
         Also updates the offsetted arches.
         """
         p, start, end = self.spline.get_poly_spline()
-        self.arch_detections[self.selected_slice] = (p, start, end)
+        self.set_arch_detection(self.selected_slice, (p, start, end))
         self.coords = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
 
     def compute_offsetted_arch(self, offset_amount=0, arch_offset=1, p=None):
@@ -185,7 +197,7 @@ class ArchHandler(Jaw):
         _, coords, _, _ = self.coords
 
         if p is None:
-            p, _, _ = self.arch_detections[self.selected_slice]
+            p, _, _ = self.get_arch_detection(self.selected_slice)
 
         new_offset = apply_offset_to_arch(coords, offset_amount, p)
         h_coords = apply_offset_to_arch(coords, offset_amount - arch_offset, p)
@@ -268,7 +280,7 @@ class ArchHandler(Jaw):
         if not arch:
             return section
 
-        p, start, end = self.arch_detections[slice]
+        p, start, end = self.get_arch_detection(slice)
         arch_rgb = np.tile(section, (3, 1, 1))
         arch_rgb = np.moveaxis(arch_rgb, 0, -1)
 

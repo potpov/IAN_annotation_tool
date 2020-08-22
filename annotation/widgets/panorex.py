@@ -2,26 +2,27 @@ from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
 from annotation import WIDGET_MARGIN
-from annotation.actions.Action import LeftCanalCpAddedAction, RightCanalCpAddedAction, LeftCanalCpChangedAction, \
-    RightCanalCpChangedAction
-from annotation.draw import draw_blue_vertical_line
+from annotation.actions.Action import (
+    LeftCanalCpAddedAction,
+    RightCanalCpAddedAction,
+    LeftCanalCpChangedAction,
+    RightCanalCpChangedAction,
+    LeftCanalCpRemovedAction,
+    RightCanalCpRemovedAction
+)
+from annotation.components.Canvas import SplineCanvas
+from annotation.utils import draw_blue_vertical_line
 from annotation.spline.spline import Spline
 from annotation.utils import numpy2pixmap, clip_range
 
 
-class CanvasPanorexWidget(QtGui.QWidget):
+class CanvasPanorexWidget(SplineCanvas):
     spline_changed = QtCore.pyqtSignal()
 
     def __init__(self, parent):
-        super(CanvasPanorexWidget, self).__init__()
-        self.parent = parent
-        self.layout = QtGui.QHBoxLayout(self)
-        self.arch_handler = None
-        self.l = 8
-        self.img = None
-        self.pixmap = None
+        super().__init__(parent)
         self.current_pos = 0
-        self.drag_point = None
+        self.arch_handler = None
         self.action = None
 
     def set_img(self):
@@ -85,6 +86,30 @@ class CanvasPanorexWidget(QtGui.QWidget):
                     raise ValueError("Expected spline LR to be either L or R")
                 break
 
+    def cp_clicked(self, spline, mouse_x, mouse_y):
+        for cp_index, (point_x, point_y) in enumerate(spline.cp):
+            if abs(point_x - mouse_x) < self.l // 2 and abs(point_y - mouse_y) < self.l // 2:
+                return cp_index
+        return None
+
+    def handle_right_click(self, mouse_x, mouse_y):
+        remove_L = self.cp_clicked(self.arch_handler.L_canal_spline, mouse_x, mouse_y)
+        remove_R = self.cp_clicked(self.arch_handler.R_canal_spline, mouse_x, mouse_y)
+        if remove_L is not None:
+            self.arch_handler.L_canal_spline.remove_cp(remove_L)
+            self.arch_handler.history.add(LeftCanalCpRemovedAction(remove_L))
+        elif remove_R is not None:
+            self.arch_handler.R_canal_spline.remove_cp(remove_R)
+            self.arch_handler.history.add(RightCanalCpRemovedAction(remove_R))
+
+        else:
+            if mouse_x < self.img.shape[1] // 2:
+                idx = self.arch_handler.L_canal_spline.add_cp(mouse_x, mouse_y)
+                self.arch_handler.history.add(LeftCanalCpAddedAction((mouse_x, mouse_y), idx), debug=True)
+            else:
+                idx = self.arch_handler.R_canal_spline.add_cp(mouse_x, mouse_y)
+                self.arch_handler.history.add(RightCanalCpAddedAction((mouse_x, mouse_y), idx), debug=True)
+
     def mousePressEvent(self, QMouseEvent):
         """ Internal mouse-press handler """
         self.drag_point = None
@@ -97,12 +122,7 @@ class CanvasPanorexWidget(QtGui.QWidget):
             self.check_cp_movement(self.arch_handler.R_canal_spline, "R", mouse_x, mouse_y)
         elif QMouseEvent.button() == QtCore.Qt.RightButton:
             self.spline_changed.emit()
-            if mouse_x < self.img.shape[1] // 2:
-                idx = self.arch_handler.L_canal_spline.add_cp(mouse_x, mouse_y)
-                self.arch_handler.history.add(LeftCanalCpAddedAction((mouse_x, mouse_y), idx), debug=True)
-            else:
-                idx = self.arch_handler.R_canal_spline.add_cp(mouse_x, mouse_y)
-                self.arch_handler.history.add(RightCanalCpAddedAction((mouse_x, mouse_y), idx), debug=True)
+            self.handle_right_click(mouse_x, mouse_y)
 
     def mouseReleaseEvent(self, QMouseEvent):
         """ Internal mouse-release handler """
@@ -140,7 +160,7 @@ class CanvasPanorexWidget(QtGui.QWidget):
             # Redraw curve
             self.update()
 
-    def show_panorex(self, pos=None):
+    def show_(self, pos=None):
         self.current_pos = pos
         self.set_img()
         self.update()
@@ -160,7 +180,7 @@ class SinglePanorexWidget(QtGui.QWidget):
         self.pano.setAlignment(QtCore.Qt.AlignCenter)
         self.layout.addWidget(self.pano)
 
-    def show_panorex(self, panorex=None, pos=None):
+    def show_(self, panorex=None, pos=None):
         if panorex is None:
             panorex = self.arch_handler.panorex
 
@@ -193,11 +213,11 @@ class PanorexWidget(QtGui.QWidget):
         self.l_pano = SinglePanorexWidget(self.parent)
         self.layout.addWidget(self.l_pano)
 
-    def show_panorex(self, pos=None):
+    def show_(self, pos=None):
         panorex = self.arch_handler.panorex
         l_panorex, h_panorex = self.arch_handler.LHpanorexes
 
-        self.h_pano.show_panorex(h_panorex, pos)
-        self.m_pano.show_panorex(panorex, pos)
+        self.h_pano.show_(h_panorex, pos)
+        self.m_pano.show_(panorex, pos)
         # cv2.imwrite(r"C:\Users\crime\Desktop\alveolar_nerve\dataset\panorex.jpg", panorex * 255)
-        self.l_pano.show_panorex(l_panorex, pos)
+        self.l_pano.show_(l_panorex, pos)

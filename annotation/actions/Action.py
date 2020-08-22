@@ -3,9 +3,11 @@ import json
 SLICE_CHANGED = "SLICE_CHANGED"
 ARCH_CP_CHANGED = "ARCH_CP_CHANGED"
 LEFT_CANAL_CP_ADDED = "LEFT_CANAL_CP_ADDED"
-RIGHT_CANAL_CP_ADDED = "RIGHT_CANAL_CP_ADDED"
 LEFT_CANAL_CP_CHANGED = "LEFT_CANAL_CP_CHANGED"
+LEFT_CANAL_CP_REMOVED = "LEFT_CANAL_CP_REMOVED"
+RIGHT_CANAL_CP_ADDED = "RIGHT_CANAL_CP_ADDED"
 RIGHT_CANAL_CP_CHANGED = "RIGHT_CANAL_CP_CHANGED"
+RIGHT_CANAL_CP_REMOVED = "RIGHT_CANAL_CP_REMOVED"
 NO_ACTION = "NO_ACTION"
 
 
@@ -25,6 +27,10 @@ def create_action(**args):
         return LeftCanalCpAddedAction(args['cp'], args['index'])
     elif kind == RIGHT_CANAL_CP_ADDED:
         return RightCanalCpAddedAction(args['cp'], args['index'])
+    elif kind == LEFT_CANAL_CP_REMOVED:
+        return LeftCanalCpRemovedAction(args['index'])
+    elif kind == RIGHT_CANAL_CP_REMOVED:
+        return RightCanalCpRemovedAction(args['index'])
     else:
         raise ValueError("kind not recognized")
 
@@ -87,6 +93,23 @@ class RightCanalCpAddedAction(CpAddedAction):
     def __init__(self, cp, index):
         super().__init__(cp, index)
         self.kind = RIGHT_CANAL_CP_ADDED
+
+
+class CpRemovedAction(Action):
+    def __init__(self, index):
+        self.index = int(index)
+
+
+class LeftCanalCpRemovedAction(CpRemovedAction):
+    def __init__(self, index):
+        super().__init__(index)
+        self.kind = LEFT_CANAL_CP_REMOVED
+
+
+class RightCanalCpRemovedAction(CpRemovedAction):
+    def __init__(self, index):
+        super().__init__(index)
+        self.kind = RIGHT_CANAL_CP_REMOVED
 
 
 class SliceChangedAction(Action):
