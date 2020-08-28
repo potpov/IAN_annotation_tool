@@ -12,7 +12,6 @@ from annotation.actions.Action import (
 )
 from annotation.components.Canvas import SplineCanvas
 from annotation.utils import draw_blue_vertical_line
-from annotation.spline.spline import Spline
 from annotation.utils import numpy2pixmap, clip_range
 
 
@@ -36,35 +35,13 @@ class CanvasPanorexWidget(SplineCanvas):
         self.draw(qp)
         qp.end()
 
-    def draw_single_arch(self, painter, coords, color: QtGui.QColor):
-        for point in coords:
-            x, y = point
-            painter.setPen(color)
-            x += WIDGET_MARGIN
-            y += WIDGET_MARGIN
-            painter.drawPoint(int(x), int(y))
-
-    def draw_spline(self, painter, spline: Spline, color: QtGui.QColor):
-        coords = spline.get_spline()
-        self.draw_single_arch(painter, coords, color)
-
-        for point in spline.cp:
-            x, y = point
-            painter.setPen(QtGui.QColor(0, 255, 0))
-            color.setAlpha(100)
-            painter.setBrush(color)
-            rect_x = int((x + WIDGET_MARGIN) - (self.l // 2))
-            rect_y = int((y + WIDGET_MARGIN) - (self.l // 2))
-            painter.drawRect(rect_x, rect_y, self.l, self.l)
-
     def draw(self, painter):
         if self.arch_handler is None:
             return
         if self.arch_handler.coords is None:
             return
-        painter.drawPixmap(QtCore.QRect(WIDGET_MARGIN, WIDGET_MARGIN, self.pixmap.width(), self.pixmap.height()),
-                           self.pixmap)
 
+        self.draw_background(painter)
         self.draw_spline(painter, self.arch_handler.L_canal_spline, QtGui.QColor(255, 0, 0))
         self.draw_spline(painter, self.arch_handler.R_canal_spline, QtGui.QColor(0, 0, 255))
 

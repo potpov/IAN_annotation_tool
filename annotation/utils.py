@@ -1,3 +1,5 @@
+import os
+
 import cv2
 import numpy as np
 from pyface.qt import QtGui
@@ -83,6 +85,7 @@ def get_poly_approx(coords):
 def apply_offset_to_point(point, offset, p):
     """
     Computes the offsetted position of a point.
+
     It uses the polynomial approximation of the curve.
 
     Args:
@@ -108,6 +111,7 @@ def apply_offset_to_point(point, offset, p):
 def apply_offset_to_arch(coords, offset, p):
     """
     Computes the offsetted position of and arch.
+
     It uses the polynomial approximation of the curve.
 
     Args:
@@ -145,6 +149,7 @@ def draw_blue_vertical_line(img, pos):
 def enhance_contrast(img):
     """
     Enhances contrast of an image using CLAHE.
+
     Args:
         img (np.ndarray): image
 
@@ -234,3 +239,9 @@ def get_square_around_point(center, im_shape, l=20):
     P1 = (clip_range(x - l2, 0, w - 1), clip_range(y - l2, 0, h - 1))
     P2 = (clip_range(x + l2, 0, w - 1), clip_range(y + l2, 0, h - 1))
     return P1, P2
+
+
+def export_img(img, filename):
+    img = cv2.convertScaleAbs(img, alpha=(255.0))
+    print("exporting: {}".format(os.path.basename(filename)))
+    cv2.imwrite(filename, img)

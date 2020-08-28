@@ -51,7 +51,7 @@ class SliceSelectionWidget(QtGui.QWidget):
 
     def set_img(self, img):
         if self.slider.maximum() == 0:
-            max = self.arch_handler.volume.shape[0]
+            max = self.arch_handler.Z
             self.slider.setMaximum(max - 1)
             self.slider.setValue(96)
 

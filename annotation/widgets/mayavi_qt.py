@@ -34,7 +34,7 @@ class Visualization(HasTraits):
 
     def plot_volume(self, volume):
         self.scene.mlab.clf()
-        self.scene.mlab.contour3d(volume, contours=8, opacity=.3)
+        self.scene.mlab.contour3d(volume, contours=4, opacity=.3)
 
     # the layout of the dialog created
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene), height=250, width=300, show_label=False),
@@ -56,7 +56,6 @@ class MayaviQWidget(QtGui.QWidget):
         self.visualization = Visualization()
 
         # The edit_traits call will generate the widget to embed.
-        self.ui = self.visualization.edit_traits(parent=self,
-                                                 kind='subpanel').control
+        self.ui = self.visualization.edit_traits(parent=self, kind='subpanel').control
         layout.addWidget(self.ui)
         self.ui.setParent(self)

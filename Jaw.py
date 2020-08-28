@@ -47,7 +47,7 @@ class Jaw:
         if type(plane) is Plane:  # get numpy array if plane obj is passed
             plane = plane.get_plane()
         idx = np.argwhere(pred)  # true value of the mask
-        self.gt_volume [
+        self.gt_volume[
             plane[2, idx[:, 1], idx[:, 0]].astype(np.int),
             plane[1, idx[:, 1], idx[:, 0]].astype(np.int),
             plane[0, idx[:, 1], idx[:, 0]].astype(np.int)
@@ -62,7 +62,7 @@ class Jaw:
         overwrite the original annotations in the DICOM files with the new annotations
         from the ground truth volume
         """
-        if len(self.dicom_files) != self.gt_volume[0]:
+        if len(self.dicom_files) != self.gt_volume.shape[0]:
             raise Exception("ground truth volume has invalid shape with respect to the DICOM files!")
 
         for slice_num in range(len(self.dicom_files)):

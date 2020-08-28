@@ -79,7 +79,7 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         self.show_img()
 
     def update_side_volume_handler(self):
-        self.arch_handler.compute_side_volume_dialog()
+        self.arch_handler.compute_side_volume_dialog(scale=3)
         self.show_img()
 
     def set_arch_handler(self, arch_handler):

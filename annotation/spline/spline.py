@@ -1,29 +1,37 @@
+import cv2
 import numpy as np
-import math
-from annotation.spline.catmullrom import CatmullRomChain, CatmullRomSpline
+from annotation.spline.catmullrom import CatmullRomChain, CatmullRomSpline, CENTRIPETAL
 from annotation.utils import get_poly_approx
+from functools import reduce
+import operator
+import math
 
 
 class Spline():
-    def __init__(self, coords: list, num_cp=5):
+    def __init__(self, coords, num_cp=5, kind=CENTRIPETAL):
         """
-        Creates a spline (Catmull-Rom)
+        Class that manages a spline produced with the Catmull-Rom algorithm.
+
+        The spline uses a set of control points ordered on the x axis,
+        in order to have only one y for each point in the spline.
 
         Args:
-            coords (list of (float, float)): List of points of the curve that we want to parametrize
-            num_cp (int): Desired amount of control points
+            coords (list of (float, float)): initial set of coordinates
+            num_cp (int): initial desired amount of control points
+            kind (float): value between 0 and 1. Common values are UNIFORM (0.0), CENTRIPETAL (0.5) and CHORDAL (1.0)
         """
         self.curves = None  # list of curves that form the spline
         self.coords = coords  # curve to start
         self.cp = []  # control points
         self.num_cp = num_cp  # desired amount of control points
-
+        self.kind = kind
         self.compute_cp()
         self.build_spline()
 
     def update_cp(self, idx, x, y):
         """
         Changes the value of a control point given its index and new (x, y) coordinates.
+
         Also manages swaps between control points on the x axis.
 
         Args:
@@ -57,12 +65,19 @@ class Spline():
         return new_idx
 
     def compute_cp(self):
+        """
+        Computes control points.
+
+        It starts from the initial set of coordinates, then extracts self.num_cp control points.
+        Finally, adds the first and last point of the set to self.cp
+        """
         if len(self.coords) == 0:
             return
         self.cp = [self.coords[0], ]
         offset = len(self.coords) // self.num_cp
         self.cp.extend(self.coords[1:-1:offset])
         self.cp.append(self.coords[-1])
+        self.num_cp = len(self.cp)
 
     def add_cp(self, x, y):
         """
@@ -75,6 +90,7 @@ class Spline():
         Returns:
             (int): index of the newly added cp
         """
+        self.num_cp += 1
         for pos, (_x, _y) in enumerate(self.cp):
             if x < _x:
                 self.cp.insert(pos, (x, y))
@@ -91,16 +107,18 @@ class Spline():
         Args:
             idx (int): index of the cp to remove
         """
+        self.num_cp -= 1
         del self.cp[idx]
         self.build_spline()
 
     def build_spline(self):
         """
         Uses Catmull Rom algorithm to construct the spline.
+
         The spline produced is divided in sub-curves by the control points.
         It stores the spline in self.curves.
         """
-        self.curves = CatmullRomChain(self.cp)
+        self.curves = CatmullRomChain(self.cp, kind=self.kind)
 
     def update_curve(self, cp_idx):
         """
@@ -192,3 +210,79 @@ class Spline():
         self.cp = [(cp['x'], cp['y']) for cp in data['cp']]
         if build_spline:
             self.build_spline()
+
+
+class ClosedSpline(Spline):
+    def __init__(self, coords, num_cp=5, kind=CENTRIPETAL):
+        """
+        Class that manages a closed spline produced with the Catmull-Rom algorithm.
+
+        The spline uses a set of control poins in counterclockwise order to make the spline as short as possibile.
+
+        Args:
+            coords (list of (float, float)): initial set of coordinates
+            num_cp (int): initial desired amount of control points
+            kind (float): value between 0 and 1. Common values are UNIFORM (0.0), CENTRIPETAL (0.5) and CHORDAL (1.0)
+        """
+        super().__init__(coords, num_cp, kind)
+
+    def update_cp(self, idx, x, y):
+        """
+        Changes the value of a control point given its index and new (x, y) coordinates.
+
+        Args:
+            idx (int): index of the changed control point
+            x (float): new x
+            y (float): new y
+
+        Returns:
+            (int): new index for the changed control point
+        """
+        self.cp[idx] = (x, y)
+        self.update_curve(idx)
+        self.build_spline()
+        return idx
+
+    def add_cp(self, x, y):
+        """
+        Adds a new cp to the spline.
+
+        FROM https://stackoverflow.com/questions/51074984/sorting-according-to-clockwise-point-coordinates
+
+        Args:
+            x (float): x coordinate
+            y (float): y coordinate
+
+        Returns:
+            (int): index of the newly added cp
+        """
+        self.num_cp += 1
+        self.cp.append((x, y))
+        center = tuple(map(operator.truediv, reduce(lambda x, y: map(operator.add, x, y), self.cp), [len(self.cp)] * 2))
+        self.cp = sorted(self.cp, key=lambda pt: (-135 - math.degrees(
+            math.atan2(*tuple(map(operator.sub, pt, center))[::-1]))) % 360)
+        self.build_spline()
+        return len(self.cp) - 1
+
+    def build_spline(self):
+        """
+        Uses Catmull Rom algorithm to construct the spline.
+
+        The spline produced is divided in sub-curves by the control points.
+        It stores the spline in self.curves.
+        """
+        cp = list.copy(self.cp)
+        cp.extend(self.cp[0:3])
+        self.curves = CatmullRomChain(cp, kind=self.kind)
+
+    def generate_mask(self, img_shape):
+        mask = np.zeros(img_shape).astype(np.uint8)
+
+        contour = self.get_spline()
+        if len(contour) == 0:
+            return mask
+        contour = np.asarray(contour).astype(int)
+
+        cv2.drawContours(mask, [contour], -1, (255), 1, 0)
+        cv2.fillPoly(mask, [contour], (255))
+        return mask

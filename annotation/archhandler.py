@@ -8,6 +8,7 @@ import processing
 from Jaw import Jaw
 from annotation.actions.Action import SliceChangedAction
 from annotation.actions.History import History
+from annotation.annotation_masks import AnnotationMasks
 from annotation.components.Dialog import LoadingDialog
 from annotation.spline.spline import Spline
 from annotation.utils import get_poly_approx, apply_offset_to_arch
@@ -66,10 +67,12 @@ class ArchHandler(Jaw):
         self.side_coords = None
         self.side_volume = None
         self.side_volume_scale = None
+        self.side_volume_masks = None
         self.L_canal_spline = None
         self.R_canal_spline = None
         # self.compute_arch_dialog()
-        self.arch_detections = [None] * self.volume.shape[0]
+        self.arch_detections = [None] * self.Z
+        self.annotation_masks = None
 
     def compute_all_arch_detections(self):
         """
@@ -94,8 +97,7 @@ class ArchHandler(Jaw):
         self.arch_detections[i] = p_start_end
 
     def compute_arch_dialog(self):
-        dialog = LoadingDialog(self.compute_all_arch_detections, message="Computing arches")
-        dialog.exec_()
+        LoadingDialog(self.compute_all_arch_detections, message="Computing arches").exec_()
 
     def save_state(self):
         data = {}
@@ -130,7 +132,7 @@ class ArchHandler(Jaw):
                 self.update_coords()
                 self.compute_panorexes()
                 self.compute_side_coords()
-                self.compute_side_volume_dialog()
+                self.compute_side_volume_dialog(scale=3)
 
         print("loaded")
 
@@ -166,12 +168,11 @@ class ArchHandler(Jaw):
         self.initalize_attributes(selected_slice)
         self.compute_panorexes()
         self.compute_side_coords()
-        self.compute_side_volume_dialog()
+        self.compute_side_volume_dialog(scale=3)
 
     def compute_initial_state_dialog(self, selected_slice):
-        dialog = LoadingDialog(func=lambda: self.compute_initial_state(selected_slice),
-                               message="Computing initial state")
-        dialog.exec_()
+        LoadingDialog(func=lambda: self.compute_initial_state(selected_slice),
+                      message="Computing initial state").exec_()
 
     def update_coords(self):
         """
@@ -227,7 +228,7 @@ class ArchHandler(Jaw):
         l_offset, coords, h_offset, derivative = self.coords
         self.side_coords = processing.generate_side_coords(h_offset, l_offset, derivative)
 
-    def compute_side_volume(self):
+    def compute_side_volume(self, scale=None):
         """
         Computes and updates the side volume.
         """
@@ -237,7 +238,7 @@ class ArchHandler(Jaw):
         side_volume = self.line_slice(self.side_coords)
 
         # rescaling the projection volume properly
-        y_ratio = section.shape[0] / side_volume.shape[1]
+        y_ratio = section.shape[0] / side_volume.shape[1] if scale is None else scale
         self.side_volume_scale = y_ratio
         width = int(side_volume.shape[2] * y_ratio)
         height = int(side_volume.shape[1] * y_ratio)
@@ -254,10 +255,10 @@ class ArchHandler(Jaw):
         scaled_side_volume = np.moveaxis(scaled_side_volume, 0, -1)
 
         self.side_volume = scaled_side_volume
+        self.annotation_masks = AnnotationMasks(self.side_volume.shape)
 
-    def compute_side_volume_dialog(self):
-        dialog = LoadingDialog(func=self.compute_side_volume, message="Computing side volume")
-        dialog.exec_()
+    def compute_side_volume_dialog(self, scale=None):
+        LoadingDialog(func=lambda: self.compute_side_volume(scale=scale), message="Computing side volume").exec_()
 
     def get_section(self, slice, arch=False, offsets=False, pos=None):
         """

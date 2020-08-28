@@ -1,8 +1,12 @@
 # source: https://en.wikipedia.org/wiki/Centripetal_Catmull%E2%80%93Rom_spline#Code_example_in_Python
 import numpy as np
 
+UNIFORM = 0.0
+CENTRIPETAL = 0.5
+CHORDAL = 1.0
 
-def CatmullRomSpline(P0, P1, P2, P3):
+
+def CatmullRomSpline(P0, P1, P2, P3, kind=CENTRIPETAL):
     """
     Compute the part of the Catmull-Rom spline between points P1 and P2.
 
@@ -19,7 +23,7 @@ def CatmullRomSpline(P0, P1, P2, P3):
     P0, P1, P2, P3 = map(np.array, [P0, P1, P2, P3])
 
     # Parametric constant: 0.5 for the centripetal spline, 0.0 for the uniform spline, 1.0 for the chordal spline.
-    alpha = 0.5
+    alpha = kind
     # Premultiplied power constant for the following tj() function.
     alpha = alpha / 2
 
@@ -51,7 +55,7 @@ def CatmullRomSpline(P0, P1, P2, P3):
     return C
 
 
-def CatmullRomChain(P):
+def CatmullRomChain(P, kind=CENTRIPETAL):
     """
     Compute Catmull–Rom for a chain of points and return the combined curve.
 
@@ -65,7 +69,7 @@ def CatmullRomChain(P):
 
     C = []
     for i in range(sz - 3):
-        c = CatmullRomSpline(P[i], P[i + 1], P[i + 2], P[i + 3])
+        c = CatmullRomSpline(P[i], P[i + 1], P[i + 2], P[i + 3], kind)
         C.append(c)
 
     return C

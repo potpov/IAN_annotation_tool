@@ -2,7 +2,7 @@ from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
 from annotation import WIDGET_MARGIN
-from annotation.components.Canvas import Canvas, SplineCanvas
+from annotation.components.Canvas import SplineCanvas
 from annotation.utils import numpy2pixmap, clip_range
 from annotation.actions.Action import ArchCpChangedAction
 
@@ -47,14 +47,6 @@ class SplineArchWidget(SplineCanvas):
         self.pixmap = numpy2pixmap(self.img)
         self.setFixedSize(self.img.shape[1] + 50, self.img.shape[0] + 50)
 
-    def draw_single_arch(self, painter, coords, color: QtGui.QColor):
-        for point in coords:
-            x, y = point
-            painter.setPen(color)
-            x += WIDGET_MARGIN
-            y += WIDGET_MARGIN
-            painter.drawPoint(int(x), int(y))
-
     def draw(self, painter):
         # when the widget is deleted, the painter may be updated anyway, even after the arch_handler reset
         if self.arch_handler is None:
@@ -62,31 +54,26 @@ class SplineArchWidget(SplineCanvas):
         if self.arch_handler.coords is None:
             return
 
+        # draw pixmap
+        self.draw_background(painter)
+
         l_offset, coords, h_offset, derivative = self.arch_handler.coords
         l_pano, h_pano = self.arch_handler.LHoffsetted_arches
 
-        painter.drawPixmap(QtCore.QRect(11, 11, self.pixmap.width(), self.pixmap.height()), self.pixmap)
+        # draw arches
+        self.draw_points(painter, self.arch_handler.offsetted_arch, QtGui.QColor(0, 255, 255))
+        self.draw_points(painter, l_pano, QtGui.QColor(0, 255, 255, 120))
+        self.draw_points(painter, h_pano, QtGui.QColor(0, 255, 255, 120))
+        self.draw_points(painter, l_offset, QtGui.QColor(0, 255, 0))
+        self.draw_points(painter, h_offset, QtGui.QColor(0, 255, 0))
 
-        self.draw_single_arch(painter, self.arch_handler.offsetted_arch, QtGui.QColor(0, 255, 255))
-        self.draw_single_arch(painter, l_pano, QtGui.QColor(0, 255, 255, 120))
-        self.draw_single_arch(painter, h_pano, QtGui.QColor(0, 255, 255, 120))
-        self.draw_single_arch(painter, self.arch_handler.spline.get_spline(), QtGui.QColor(255, 0, 0))
-        self.draw_single_arch(painter, l_offset, QtGui.QColor(0, 255, 0))
-        self.draw_single_arch(painter, h_offset, QtGui.QColor(0, 255, 0))
+        # draw spline with control points
+        self.draw_spline(painter, self.arch_handler.spline, QtGui.QColor(255, 0, 0), QtGui.QColor(0, 255, 0))
 
-        for point in self.arch_handler.spline.cp:
-            x, y = point
-            painter.setPen(QtGui.QColor(0, 255, 0))
-            painter.setBrush(QtGui.QColor(0, 255, 0, 100))
-            rect_x = int((x + WIDGET_MARGIN) - (self.l // 2))
-            rect_y = int((y + WIDGET_MARGIN) - (self.l // 2))
-            painter.drawRect(rect_x, rect_y, self.l, self.l)
-
-        painter.setPen(QtGui.QColor(0, 0, 255))
-        points = self.arch_handler.side_coords[self.current_pos]
-        for x, y in points:
-            if self.img.shape[1] > x > 0 and self.img.shape[0] > y > 0:
-                painter.drawPoint(int(x + WIDGET_MARGIN), int(y + WIDGET_MARGIN))
+        # draw side_coords
+        if self.current_pos >= len(self.arch_handler.side_coords):
+            self.current_pos = len(self.arch_handler.side_coords) - 1
+        self.draw_points(painter, self.arch_handler.side_coords[self.current_pos], QtGui.QColor(0, 0, 255))
 
     def mousePressEvent(self, QMouseEvent):
         """ Internal mouse-press handler """

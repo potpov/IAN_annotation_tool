@@ -3,6 +3,7 @@ from pyface.qt import QtGui
 
 from annotation.containers.annotationcontainer import AnnotationContainerWidget
 from annotation.containers.archpanorexcontainer import ArchPanorexContainerWidget
+from annotation.containers.dialog3Dplot import Dialog3DPlot
 from annotation.widgets.sliceselection import SliceSelectionWidget
 from annotation.widgets.mayavi_qt import MayaviQWidget
 from annotation.archhandler import ArchHandler
@@ -11,7 +12,7 @@ from annotation.archhandler import ArchHandler
 class Container(QtGui.QWidget):
     dicomdir_changed = QtCore.pyqtSignal(str)
 
-    def __init__(self, parent, plot3d=False):
+    def __init__(self, parent):
         super(Container, self).__init__()
         self.layout = QtGui.QGridLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -22,16 +23,23 @@ class Container(QtGui.QWidget):
         self.apc = None
         self.annotation = None
 
-        self.plot3d = plot3d
-        if self.plot3d:
-            self.mayavi_widget = MayaviQWidget(self)
-            self.layout.addWidget(self.mayavi_widget, 0, 1)
-
         # signal connections
         self.dicomdir_changed.connect(self.select_dicomdir)
 
         # data
         self.arch_handler = None
+
+    def add_view_menu(self):
+        view_menu = self.main_window.menubar.addMenu("View")
+        _3d_action = QtGui.QAction("3D", self)
+        _3d_action.setShortcut("Ctrl+V")
+        _3d_action.triggered.connect(self.show_Dialog3DPlot)
+        view_menu.addAction(_3d_action)
+
+    def show_Dialog3DPlot(self):
+        dialog = Dialog3DPlot(self)
+        dialog.set_arch_handler(self.arch_handler)
+        dialog.show()
 
     def add_SliceSelectionWidget(self):
         self.slice_selection = SliceSelectionWidget(self)
@@ -62,7 +70,7 @@ class Container(QtGui.QWidget):
             self.apc = None
 
     def add_AnnotationContainerWidget(self):
-        self.arch_handler.compute_side_volume_dialog()
+        self.arch_handler.compute_side_volume_dialog(scale=3)
         self.annotation = AnnotationContainerWidget(self)
         self.annotation.set_arch_handler(self.arch_handler)
         self.annotation.initialize()
@@ -80,12 +88,10 @@ class Container(QtGui.QWidget):
             self.arch_handler.reset(dicomdir_path)
         else:
             self.arch_handler = ArchHandler(dicomdir_path)
+        self.add_view_menu()
         self.add_SliceSelectionWidget()
         self.remove_ArchPanorexContainerWidget()
         self.remove_AnnotationContainerWidget()
-
-        if self.plot3d:
-            self.mayavi_widget.visualization.plot_volume(self.arch_handler.volume)
 
     def show_arch_pano_widget(self, slice):
         self.remove_SliceSelectionWidget()
