@@ -5,10 +5,7 @@ import numpy as np
 import cv2
 from scipy.spatial import Delaunay
 from scipy import spatial as sp_spatial
-import mpl_toolkits.mplot3d as a3
-import matplotlib as mpl
-import scipy as sp
-import cc3d
+from Plane import Plane
 from voxelize.voxelize import voxelize
 from sklearn.metrics import mean_squared_error as mse
 import imageio
@@ -200,6 +197,15 @@ def show_planes(main_volume, other_volumes):
 
     colors = np.random.rand(len(main_volume), 3)
     for idx, volume in enumerate(other_volumes):
+        # handle plane objects
+        if type(volume) == Plane:
+            plane = volume.get_plane()
+            volume = np.zeros_like(main_volume)
+            volume[
+                plane[2].astype(np.int),
+                plane[1].astype(np.int),
+                plane[0].astype(np.int)
+            ] = 1
         mlab.contour3d(volume, color=tuple(colors[idx]))
 
     origin = np.zeros_like(main_volume)

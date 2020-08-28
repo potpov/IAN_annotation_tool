@@ -233,6 +233,35 @@ def grey_to_rgb(grey):
     return np.moveaxis(rgb, 0, -1)
 
 
-def angle_from_centroids(slice_0, slice_1):
-    # TODO: compute the angle from two binary slices
-    pass
+def angle_from_centroids(pred_0, pred_1, plane_0, plane_1):
+    """
+    compute the angle for a proper inclination given two binary slices of predictions/annotations.
+    inclination is given by the angles to use for tilting the next cutting plane around the z and x axis for
+    a achieving a better section
+    Args:
+        pred_0 (np.array): binary numpy array where 1 means canal is present at that pixel
+        pred_1 (np.array): same as pred_0
+        plane_0 (Plane obj): plane with xyz coords used for generating the section of pred_0
+        plane_1 (Plane obj): plane with xyz coords used for generating the section of pred_1
+
+    Returns:
+        angle_z (float)
+        angle_x (float)
+    """
+    if np.any(pred_0 != 0) and np.any(pred_1 != 0):
+        true_coords = np.argwhere(pred_0)
+        xyz_0 = plane_0[:, true_coords[:, 0], true_coords[:, 1]]
+        centroid_0 = xyz_0.mean(axis=1)
+
+        true_coords = np.argwhere(pred_1)
+        xyz_1 = plane_1[:, true_coords[:, 0], true_coords[:, 1]]
+        centroid_1 = xyz_1.mean(axis=1)
+
+        diff = centroid_1 - centroid_0  # 2 -> z, 1 -> y, 0 -> x
+        diff[2] = - diff[2]
+
+        z_angle = np.degrees(np.arctan(diff[2] / diff[0]))  # z / x
+        x_angle = np.degrees(np.arctan(diff[1] / diff[0]))  # y / x
+        return z_angle, x_angle
+    else:
+        return 0, 0  # cant compute centroids from black masks
