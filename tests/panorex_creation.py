@@ -17,9 +17,9 @@ def panorex_creation():
     p, start, end = processing.arch_detection(section)
 
     # get the coords of the spline + 2 offset curves
-    l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end)
+    l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end, offset=5)
 
-    panorex = jaw.create_panorex(coords)
+    panorex = jaw.create_panorex(h_offset)
     # generating panorex
 
     panorex = cv2.normalize(panorex, panorex, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)

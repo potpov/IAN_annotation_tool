@@ -202,5 +202,16 @@ class Plane:
         """
         self.plane = plane
 
+    @staticmethod
+    def empty_like(plane):
+        """
+        similar to numpy zeros_like, create an empty plane with the same shape of plane
+        Args:
+            plane (Plane object): use this for retriving plane dimensions
+        Returns:
+            a new Plane object
+        """
+        return Plane(plane.Z, plane.W)
+
     def __getitem__(self, coord_set):
         return self.plane[coord_set]
