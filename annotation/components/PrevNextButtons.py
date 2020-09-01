@@ -14,5 +14,6 @@ class PrevNextButtons(QtGui.QWidget):
         self.next_btn = QtWidgets.QPushButton("Next")
         self.next_btn.clicked.connect(self.next_clicked.emit)
         self.layout = QtGui.QHBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.addWidget(self.prev_btn)
         self.layout.addWidget(self.next_btn)

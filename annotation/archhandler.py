@@ -11,7 +11,7 @@ from annotation.actions.History import History
 from annotation.annotation_masks import AnnotationMasks
 from annotation.components.Dialog import LoadingDialog
 from annotation.spline.spline import Spline
-from annotation.utils import get_poly_approx, apply_offset_to_arch
+from annotation.utils import apply_offset_to_arch
 
 
 class ArchHandler(Jaw):
@@ -41,6 +41,7 @@ class ArchHandler(Jaw):
             side_volume (list): volume of the side views of the jaw volume through the two coords arches
             L_canal_spline (Spline): object that models the left canal in the panorex with a Catmull-Rom spline
             R_canal_spline (Spline): object that models the right canal in the panorex with a Catmull-Rom spline
+            annotation_masks (AnnotationMasks): object that manages the annotations onto side_volume images
         """
         self.reset(dicomdir_path)
 
@@ -56,7 +57,7 @@ class ArchHandler(Jaw):
         self.dicomdir_path = dicomdir_path
         self.history = History()
         self.selected_slice = None
-        self.arch_detections = None
+        self.arch_detections = [None] * self.Z
         self.coords = None
         self.spline = None
         self.panorex = None
@@ -71,7 +72,6 @@ class ArchHandler(Jaw):
         self.L_canal_spline = None
         self.R_canal_spline = None
         # self.compute_arch_dialog()
-        self.arch_detections = [None] * self.Z
         self.annotation_masks = None
 
     def compute_all_arch_detections(self):
@@ -130,6 +130,7 @@ class ArchHandler(Jaw):
             if old_spline_cp != self.spline.cp:
                 self.offsetted_arch = self.spline.get_spline()
                 self.update_coords()
+                self.compute_offsetted_arch()
                 self.compute_panorexes()
                 self.compute_side_coords()
                 self.compute_side_volume_dialog(scale=3)
@@ -183,13 +184,13 @@ class ArchHandler(Jaw):
         self.set_arch_detection(self.selected_slice, (p, start, end))
         self.coords = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
 
-    def compute_offsetted_arch(self, offset_amount=0, arch_offset=1, p=None):
+    def compute_offsetted_arch(self, offset_amount=0, pano_offset=1, p=None):
         """
         Computes the offsetted coordinates of an arch, starting from its polynomial approximation.
 
         Args:
             offset_amount (int): how much to displace the curve
-            arch_offset (int): how much to displace the "parallel" LH offsetted curves
+            pano_offset (int): how much to displace the "parallel" LH offsetted curves
             p (np.poly1d): polynomial approximation of the arch
 
         Returns:
@@ -201,8 +202,8 @@ class ArchHandler(Jaw):
             p, _, _ = self.get_arch_detection(self.selected_slice)
 
         new_offset = apply_offset_to_arch(coords, offset_amount, p)
-        h_coords = apply_offset_to_arch(coords, offset_amount - arch_offset, p)
-        l_coords = apply_offset_to_arch(coords, offset_amount + arch_offset, p)
+        h_coords = apply_offset_to_arch(coords, offset_amount - pano_offset, p)
+        l_coords = apply_offset_to_arch(coords, offset_amount + pano_offset, p)
         self.offsetted_arch_amount = offset_amount
         self.offsetted_arch = new_offset
         self.LHoffsetted_arches = (l_coords, h_coords)
@@ -213,7 +214,7 @@ class ArchHandler(Jaw):
         If not specified, it uses the class ones.
 
         Args:
-            arch_offset (int): coords of the lateral panorexes from the main one
+            pano_offset (int): coords of the lateral panorexes from the main one
         """
 
         self.panorex = self.create_panorex(self.offsetted_arch)
@@ -255,7 +256,7 @@ class ArchHandler(Jaw):
         scaled_side_volume = np.moveaxis(scaled_side_volume, 0, -1)
 
         self.side_volume = scaled_side_volume
-        self.annotation_masks = AnnotationMasks(self.side_volume.shape)
+        self.annotation_masks = AnnotationMasks(self.side_volume.shape, self)
 
     def compute_side_volume_dialog(self, scale=None):
         LoadingDialog(func=lambda: self.compute_side_volume(scale=scale), message="Computing side volume").exec_()

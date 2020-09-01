@@ -2,7 +2,7 @@ import json
 import os
 import numpy as np
 from annotation.spline.spline import ClosedSpline
-from annotation.utils import export_img
+from annotation.utils import export_img, active_contour_balloon
 
 EXPORT_IMGS_PATH = os.path.join(os.path.abspath(os.path.curdir), "masks")
 EXPORT_IMGS_FILENAME = "_mask.jpg"
@@ -11,9 +11,11 @@ DUMP_MASKS_SPLINES_FILENAME = "masks_splines_dump.json"
 
 class AnnotationMasks():
 
-    def __init__(self, shape):
+    def __init__(self, shape, arch_handler):
         self.n, self.h, self.w, _ = shape
+        self.arch_handler = arch_handler
         self.masks = [None] * self.n
+        self.created_from_snake = [False] * self.n
         self.mask_volume = None
         self.blank_img = np.zeros((self.h, self.w)).astype(np.uint8)
         self.edited = True
@@ -31,11 +33,25 @@ class AnnotationMasks():
         self.mask_volume = mask_volume
         return mask_volume
 
-    def set_mask_spline(self, idx, spline):
+    def set_mask_spline(self, idx, spline, from_snake=False):
         self.edited = True
+        self.created_from_snake[idx] = from_snake
         self.masks[idx] = spline
+        return spline
 
-    def get_mask_spline(self, idx):
+    def get_mask_spline(self, idx, from_snake=False):
+        if self.masks[idx] is None and from_snake is True:
+            init = self.masks[idx - 1] or self.masks[idx + 1]
+            if init is not None:
+                ####
+                ## Approach with skimage.segmentation.active_contour
+                # spline = np.array(init.get_spline())
+                # snake = active_contour(self.arch_handler.side_volume[idx], spline, max_iterations=100)
+                ####
+                snake = active_contour_balloon(self.arch_handler.side_volume[idx], init, debug=False)
+                if snake is None:
+                    return None
+                self.set_mask_spline(idx, ClosedSpline(snake, len(snake) // 15), from_snake)
         return self.masks[idx]
 
     def get_masks_count(self):

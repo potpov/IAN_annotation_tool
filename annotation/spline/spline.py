@@ -74,7 +74,7 @@ class Spline():
         if len(self.coords) == 0:
             return
         self.cp = [self.coords[0], ]
-        offset = len(self.coords) // self.num_cp
+        offset = int(len(self.coords) / self.num_cp)
         self.cp.extend(self.coords[1:-1:offset])
         self.cp.append(self.coords[-1])
         self.num_cp = len(self.cp)
@@ -213,7 +213,7 @@ class Spline():
 
 
 class ClosedSpline(Spline):
-    def __init__(self, coords, num_cp=5, kind=CENTRIPETAL):
+    def __init__(self, coords, num_cp=0, kind=CENTRIPETAL):
         """
         Class that manages a closed spline produced with the Catmull-Rom algorithm.
 
@@ -225,6 +225,20 @@ class ClosedSpline(Spline):
             kind (float): value between 0 and 1. Common values are UNIFORM (0.0), CENTRIPETAL (0.5) and CHORDAL (1.0)
         """
         super().__init__(coords, num_cp, kind)
+
+    def compute_cp(self):
+        """
+        Computes control points.
+
+        It starts from the initial set of coordinates, then extracts self.num_cp control points.
+        """
+        if len(self.coords) == 0:
+            return
+        offset = int(len(self.coords) / self.num_cp)
+        if offset == 0:
+            offset = 1
+        self.cp.extend(self.coords[1:-1:offset])
+        self.num_cp = len(self.cp)
 
     def update_cp(self, idx, x, y):
         """
@@ -276,6 +290,11 @@ class ClosedSpline(Spline):
         self.curves = CatmullRomChain(cp, kind=self.kind)
 
     def generate_mask(self, img_shape):
+        if len(img_shape) == 3:
+            n_channels = img_shape[2]
+        else:
+            n_channels = 1
+
         mask = np.zeros(img_shape).astype(np.uint8)
 
         contour = self.get_spline()
@@ -283,6 +302,7 @@ class ClosedSpline(Spline):
             return mask
         contour = np.asarray(contour).astype(int)
 
-        cv2.drawContours(mask, [contour], -1, (255), 1, 0)
-        cv2.fillPoly(mask, [contour], (255))
+        white_color = (255,) * n_channels
+        cv2.drawContours(mask, [contour], -1, white_color, 1, 0)
+        cv2.fillPoly(mask, [contour], white_color)
         return mask

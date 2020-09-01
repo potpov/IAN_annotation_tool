@@ -40,7 +40,7 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         self.panel.arch_changed.connect(self.arch_changed_handler)
         self.panel.pano_offset_changed.connect(self.pano_offset_changed_handler)
         self.panel.update_side_volume.connect(self.update_side_volume_handler)
-        self.layout.addWidget(self.panel, 1, 0)
+        self.layout.addWidget(self.panel, 1, 0, 1, 2)
 
         # confirm
         self.confirm_button = QtWidgets.QPushButton(self, text="Confirm (C)")
@@ -58,7 +58,7 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         self.arch_handler.update_coords()
         self.arch_handler.compute_side_coords()
         self.arch_handler.compute_offsetted_arch(offset_amount=self.panel.getArchValue(),
-                                                 arch_offset=self.panel.getPanoOffsetValue())
+                                                 pano_offset=self.panel.getPanoOffsetValue())
         self.arch_handler.compute_panorexes()
         self.show_img()
 
@@ -68,13 +68,13 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
 
     def arch_changed_handler(self):
         self.arch_handler.compute_offsetted_arch(offset_amount=self.panel.getArchValue(),
-                                                 arch_offset=self.panel.getPanoOffsetValue())
+                                                 pano_offset=self.panel.getPanoOffsetValue())
         self.arch_handler.compute_panorexes()
         self.show_img()
 
     def pano_offset_changed_handler(self):
         self.arch_handler.compute_offsetted_arch(offset_amount=self.panel.getArchValue(),
-                                                 arch_offset=self.panel.getPanoOffsetValue())
+                                                 pano_offset=self.panel.getPanoOffsetValue())
         self.arch_handler.compute_panorexes()
         self.show_img()
 

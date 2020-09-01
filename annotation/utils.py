@@ -1,9 +1,9 @@
 import os
-
 import cv2
 import numpy as np
 from pyface.qt import QtGui
 import matplotlib.pyplot as plt
+from skimage.segmentation import inverse_gaussian_gradient, morphological_geodesic_active_contour
 
 
 def numpy2pixmap(data):
@@ -245,3 +245,31 @@ def export_img(img, filename):
     img = cv2.convertScaleAbs(img, alpha=(255.0))
     print("exporting: {}".format(os.path.basename(filename)))
     cv2.imwrite(filename, img)
+
+
+def active_contour_balloon(img, spline, debug=False, threshold='auto'):
+    # SRC https://stackoverflow.com/questions/45736132/scikit-image-expanding-active-contour-snakes
+    init = spline.generate_mask(img.shape)
+    init.clip(max=1)
+    debug and plot(init, "init")
+    prep_img = inverse_gaussian_gradient(np.array(img))
+    debug and plot(prep_img, "inverse_gaussian_gradient")
+    morph_GAC = morphological_geodesic_active_contour(
+        prep_img, 5, init, smoothing=1,
+        balloon=1, threshold=threshold,
+        # iter_callback=lambda x: plot(x * 255)
+    )
+    morph_GAC = np.array(morph_GAC * 255).astype(np.uint8)
+    morph_GAC = cv2.cvtColor(morph_GAC, cv2.COLOR_BGR2GRAY)
+    if not morph_GAC.any():
+        return None
+    morph_GAC[morph_GAC > 0] = 255
+    debug and plot(morph_GAC, "morphGAC")
+    try:
+        contours, _ = cv2.findContours(morph_GAC, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    except:
+        return None
+    contours = sorted(contours, key=lambda x: cv2.contourArea(x), reverse=True)
+    contour = np.squeeze(contours[0])
+
+    return contour

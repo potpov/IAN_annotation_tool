@@ -6,26 +6,39 @@ from pyface.qt import QtGui
 from Jaw import Jaw
 from annotation.spline.catmullrom import CHORDAL, UNIFORM, CENTRIPETAL
 from annotation.spline.spline import ClosedSpline
-from annotation.utils import numpy2pixmap, clip_range, plot, export_img
+from annotation.utils import numpy2pixmap, clip_range, plot, export_img, active_contour_balloon
 from annotation.components.Canvas import SplineCanvas
 
-MARGIN = 11
+WIDGET_MARGIN = 11
 
 
 class SplineWidget(SplineCanvas):
     def __init__(self, parent, img):
         super().__init__(parent)
-        self.spline = ClosedSpline([], kind=UNIFORM)
+        self.spline = ClosedSpline([])
         self.img = img
         self.pixmap = numpy2pixmap(img)
         self.setFixedSize(self.img.shape[1] + 50, self.img.shape[0] + 50)
+        self.snake = None
+
+    def snake_button_clicked(self):
+        spline = self.spline.get_spline()
+        if len(spline) == 0:
+            return
+        init = np.array(spline)
+        # self.snake = active_contour(self.img, init, max_iterations=100)
+        self.snake = active_contour_balloon(self.img, self.spline, debug=True, threshold=10)
+        self.spline = ClosedSpline(self.snake, self.spline.num_cp)
+        self.update()
 
     def set_img(self):
         pass
 
     def draw(self, painter):
-        self.draw_background(painter, MARGIN)
-        self.draw_spline(painter, self.spline, QtGui.QColor(255, 0, 0), show_cp_idx=True, offsetXY=MARGIN)
+        self.draw_background(painter, WIDGET_MARGIN)
+        # if self.snake is not None:
+        #     self.draw_points(painter, self.snake, QtGui.QColor(0, 0, 255))
+        self.draw_spline(painter, self.spline, QtGui.QColor(255, 0, 0), show_cp_idx=True, offsetXY=WIDGET_MARGIN)
 
     def show_(self):
         pass
@@ -48,8 +61,8 @@ class SplineWidget(SplineCanvas):
         """ Internal mouse-press handler """
         self.drag_point = None
         mouse_pos = QMouseEvent.pos()
-        mouse_x = mouse_pos.x() - MARGIN
-        mouse_y = mouse_pos.y() - MARGIN
+        mouse_x = mouse_pos.x() - WIDGET_MARGIN
+        mouse_y = mouse_pos.y() - WIDGET_MARGIN
         if QMouseEvent.button() == QtCore.Qt.LeftButton:
             for cp_index, (point_x, point_y) in enumerate(self.spline.cp):
                 if abs(point_x - mouse_x) < self.l // 2 and abs(point_y - mouse_y) < self.l // 2:
@@ -68,8 +81,8 @@ class SplineWidget(SplineCanvas):
         """ Internal mouse-move handler """
         if self.drag_point is not None:
             cp_index, (offset_x, offset_y) = self.drag_point
-            new_x = QMouseEvent.pos().x() - MARGIN + offset_x
-            new_y = QMouseEvent.pos().y() - MARGIN + offset_y
+            new_x = QMouseEvent.pos().x() - WIDGET_MARGIN + offset_x
+            new_y = QMouseEvent.pos().y() - WIDGET_MARGIN + offset_y
 
             new_x = clip_range(new_x, 0, self.pixmap.width() - 1)
             new_y = clip_range(new_y, 0, self.pixmap.height() - 1)
@@ -92,18 +105,22 @@ class Container(QtGui.QWidget):
         self.selected_slice = 93
         self.slice = jaw.volume[self.selected_slice]
 
-        self.widget = SplineWidget(self, self.slice)
+        self.spline_widget = SplineWidget(self, self.slice)
 
-        self.button = QtGui.QPushButton("mask")
-        self.button.clicked.connect(self.button_clicked)
+        self.mask_button = QtGui.QPushButton("mask")
+        self.mask_button.clicked.connect(self.mask_button_clicked)
 
-        self.layout = QtGui.QHBoxLayout(self)
-        self.layout.addWidget(self.widget)
-        self.layout.addWidget(self.button)
+        self.snake_button = QtGui.QPushButton("snake")
+        self.snake_button.clicked.connect(self.spline_widget.snake_button_clicked)
 
-    def button_clicked(self):
+        self.layout = QtGui.QVBoxLayout(self)
+        self.layout.addWidget(self.spline_widget)
+        self.layout.addWidget(self.mask_button)
+        self.layout.addWidget(self.snake_button)
+
+    def mask_button_clicked(self):
         import uuid
-        mask = self.widget.spline.generate_mask(self.slice.shape)
+        mask = self.spline_widget.spline.generate_mask(self.slice.shape)
         plot(mask)
         export_img(mask, 'tmp/mask_{}.jpg'.format(uuid.uuid4()))
 

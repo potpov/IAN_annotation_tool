@@ -85,10 +85,14 @@ class SplineCanvas(Canvas, metaclass=CanvasMeta):
             cp_box_color (QtGui.QColor): color of the control points
             show_cp_idx (bool): draw control point index number
         """
+        if spline is None:
+            return
+
         self.draw_points(painter, spline.get_spline(), spline_color, offsetXY)
 
         for idx, (x, y) in enumerate(spline.cp):
             cp_box_color = cp_box_color or spline_color
+            painter.setPen(cp_box_color)
             cp_box_color.setAlpha(100)
             painter.setBrush(cp_box_color)
             rect_x = int((x + offsetXY) - (self.l // 2))

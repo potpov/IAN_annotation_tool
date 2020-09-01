@@ -1,12 +1,15 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
+from annotation.components.PrevNextButtons import PrevNextButtons
 from annotation.components.Slider import Slider
 
 
 class AnnotationControlPanelWidget(QtGui.QWidget):
     pos_changed = QtCore.pyqtSignal()
-    show_dot_toggled = QtCore.pyqtSignal()
+    flags_changed = QtCore.pyqtSignal()
+    acquire_annotation_clicked = QtCore.pyqtSignal()
+    reset_annotation_clicked = QtCore.pyqtSignal()
 
     def __init__(self):
         super(AnnotationControlPanelWidget, self).__init__()
@@ -23,9 +26,38 @@ class AnnotationControlPanelWidget(QtGui.QWidget):
         self.pos_slider.setMaximumHeight(50)
         self.layout.addRow(QtWidgets.QLabel("Position"), self.pos_slider)
 
-        self.show_dot = QtWidgets.QCheckBox("")
+        self.prev_next_btns = PrevNextButtons()
+        self.prev_next_btns.prev_clicked.connect(lambda: self.pos_slider.setValue(self.pos_slider.value() - 1))
+        self.prev_next_btns.next_clicked.connect(lambda: self.pos_slider.setValue(self.pos_slider.value() + 1))
+        self.layout.addRow(QtWidgets.QLabel(" "), self.prev_next_btns)
+
+        self.show_dot = QtWidgets.QCheckBox("Show dot")
         self.show_dot.setChecked(True)
-        self.layout.addRow(QtWidgets.QLabel("Show dot"), self.show_dot)
+        self.show_dot.clicked.connect(self.flags_changed.emit)
+        self.layout.addRow(QtWidgets.QLabel(""), self.show_dot)
+
+        self.show_hint = QtWidgets.QCheckBox("Show hint")
+        self.show_hint.setChecked(False)
+        self.show_hint.clicked.connect(self.flags_changed.emit)
+        self.layout.addRow(QtWidgets.QLabel(""), self.show_hint)
+
+        self.show_mask_spline = QtWidgets.QCheckBox("Show mask spline")
+        self.show_mask_spline.setChecked(True)
+        self.show_mask_spline.clicked.connect(self.flags_changed.emit)
+        self.layout.addRow(QtWidgets.QLabel(""), self.show_mask_spline)
+        
+        self.auto_acquire_annotation = QtWidgets.QCheckBox("Automatically acquire annotation from previous/succeeding")
+        self.auto_acquire_annotation.setChecked(False)
+        self.auto_acquire_annotation.clicked.connect(self.flags_changed.emit)
+        self.layout.addRow(QtWidgets.QLabel(""), self.auto_acquire_annotation)
+
+        self.acquire_annotation = QtWidgets.QPushButton("Acquire annotation from previous/succeeding")
+        self.acquire_annotation.clicked.connect(self.acquire_annotation_clicked.emit)
+        self.layout.addRow(QtWidgets.QLabel(""), self.acquire_annotation)
+
+        self.reset_annotation = QtWidgets.QPushButton("Reset current annotation")
+        self.reset_annotation.clicked.connect(self.reset_annotation_clicked.emit)
+        self.layout.addRow(QtWidgets.QLabel(""), self.reset_annotation)
 
     ###########
     # Getters #
