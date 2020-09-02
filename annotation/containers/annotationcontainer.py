@@ -1,5 +1,6 @@
 from pyface.qt import QtGui
 
+from annotation.containers.dialog3Dplot import Dialog3DPlot
 from annotation.widgets.annotationcontrolpanel import AnnotationControlPanelWidget
 from annotation.widgets.panorex import CanvasPanorexWidget
 from annotation.widgets.sidevolume import CanvasSideVolume
@@ -32,6 +33,7 @@ class AnnotationContainerWidget(QtGui.QWidget):
         self.panel.flags_changed.connect(self.sidevolume_show)
         self.panel.reset_annotation_clicked.connect(self.reset_annotation_clicked_handler)
         self.panel.acquire_annotation_clicked.connect(self.acquire_annotation_clicked_handler)
+        self.panel.gt_volume_clicked.connect(self.gt_volume_clicked_handler)
         self.layout.addWidget(self.panel, 1, 0, 1, 2)
 
         self.arch_handler = None
@@ -52,6 +54,18 @@ class AnnotationContainerWidget(QtGui.QWidget):
     def acquire_annotation_clicked_handler(self):
         self.arch_handler.annotation_masks.get_mask_spline(self.current_pos, from_snake=True)
         self.sidevolume_show()
+
+    def gt_volume_clicked_handler(self):
+        self.arch_handler.compute_side_volume_masks(debug=True)
+        dialog = Dialog3DPlot(self, "gt_volume")
+        dialog.set_arch_handler(self.arch_handler)
+        dialog.show(self.arch_handler.gt_volume)
+        dialog2 = Dialog3DPlot(self, "delaunay")
+        dialog2.set_arch_handler(self.arch_handler)
+        dialog2.show(self.arch_handler.gt_volume_delaunay)
+        dialog3 = Dialog3DPlot(self, "volume + delaunay")
+        dialog3.set_arch_handler(self.arch_handler)
+        dialog3.show(self.arch_handler.volume + self.arch_handler.gt_volume_delaunay)
 
     def show_img(self):
         self.panel.setPosSliderMaximum(len(self.arch_handler.offsetted_arch) - 1)

@@ -10,6 +10,7 @@ class AnnotationControlPanelWidget(QtGui.QWidget):
     flags_changed = QtCore.pyqtSignal()
     acquire_annotation_clicked = QtCore.pyqtSignal()
     reset_annotation_clicked = QtCore.pyqtSignal()
+    gt_volume_clicked = QtCore.pyqtSignal()
 
     def __init__(self):
         super(AnnotationControlPanelWidget, self).__init__()
@@ -31,33 +32,44 @@ class AnnotationControlPanelWidget(QtGui.QWidget):
         self.prev_next_btns.next_clicked.connect(lambda: self.pos_slider.setValue(self.pos_slider.value() + 1))
         self.layout.addRow(QtWidgets.QLabel(" "), self.prev_next_btns)
 
-        self.show_dot = QtWidgets.QCheckBox("Show dot")
+        self.show_dot = QtWidgets.QCheckBox("Show dot (D)")
         self.show_dot.setChecked(True)
+        self.show_dot.setShortcut("D")
         self.show_dot.clicked.connect(self.flags_changed.emit)
         self.layout.addRow(QtWidgets.QLabel(""), self.show_dot)
 
-        self.show_hint = QtWidgets.QCheckBox("Show hint")
+        self.show_hint = QtWidgets.QCheckBox("Show hint (H)")
         self.show_hint.setChecked(False)
+        self.show_hint.setShortcut("H")
         self.show_hint.clicked.connect(self.flags_changed.emit)
         self.layout.addRow(QtWidgets.QLabel(""), self.show_hint)
 
-        self.show_mask_spline = QtWidgets.QCheckBox("Show mask spline")
+        self.show_mask_spline = QtWidgets.QCheckBox("Show mask spline (S)")
         self.show_mask_spline.setChecked(True)
+        self.show_mask_spline.setShortcut("S")
         self.show_mask_spline.clicked.connect(self.flags_changed.emit)
         self.layout.addRow(QtWidgets.QLabel(""), self.show_mask_spline)
-        
-        self.auto_acquire_annotation = QtWidgets.QCheckBox("Automatically acquire annotation from previous/succeeding")
+
+        self.auto_acquire_annotation = QtWidgets.QCheckBox(
+            "Automatically acquire annotation from previous/succeeding (Ctrl+A)")
         self.auto_acquire_annotation.setChecked(False)
+        self.auto_acquire_annotation.setShortcut("Ctrl+A")
         self.auto_acquire_annotation.clicked.connect(self.flags_changed.emit)
         self.layout.addRow(QtWidgets.QLabel(""), self.auto_acquire_annotation)
 
-        self.acquire_annotation = QtWidgets.QPushButton("Acquire annotation from previous/succeeding")
+        self.acquire_annotation = QtWidgets.QPushButton("Acquire annotation from previous/succeeding (A)")
+        self.acquire_annotation.setShortcut("A")
         self.acquire_annotation.clicked.connect(self.acquire_annotation_clicked.emit)
         self.layout.addRow(QtWidgets.QLabel(""), self.acquire_annotation)
 
-        self.reset_annotation = QtWidgets.QPushButton("Reset current annotation")
+        self.reset_annotation = QtWidgets.QPushButton("Reset current annotation (R)")
         self.reset_annotation.clicked.connect(self.reset_annotation_clicked.emit)
+        self.reset_annotation.setShortcut("R")
         self.layout.addRow(QtWidgets.QLabel(""), self.reset_annotation)
+
+        self.gt_volume = QtWidgets.QPushButton("gt_volume")
+        self.gt_volume.clicked.connect(self.gt_volume_clicked.emit)
+        self.layout.addRow(QtWidgets.QLabel(""), self.gt_volume)
 
     ###########
     # Getters #

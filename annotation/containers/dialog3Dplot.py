@@ -20,7 +20,11 @@ class Dialog3DPlot(QtGui.QDialog):
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler
 
-    def show(self):
-        if self.arch_handler is not None:
+    def show(self, volume=None):
+        if volume is not None:
+            LoadingDialog(lambda: self.mayavi.visualization.plot_volume(volume), "Plotting").exec_()
+            super().show()
+            return
+        elif self.arch_handler is not None:
             LoadingDialog(lambda: self.mayavi.visualization.plot_volume(self.arch_handler.volume), "Plotting").exec_()
             super().show()

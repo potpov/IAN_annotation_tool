@@ -4,16 +4,17 @@ import numpy as np
 from annotation.spline.spline import ClosedSpline
 from annotation.utils import export_img, active_contour_balloon
 
-EXPORT_IMGS_PATH = os.path.join(os.path.abspath(os.path.curdir), "masks")
-EXPORT_IMGS_FILENAME = "_mask.jpg"
-DUMP_MASKS_SPLINES_FILENAME = "masks_splines_dump.json"
-
 
 class AnnotationMasks():
+    MASK_DIR = 'masks'
+    EXPORT_IMGS_PATH = ""
+    EXPORT_IMGS_FILENAME = "_mask.jpg"
+    DUMP_MASKS_SPLINES_FILENAME = "masks_splines_dump.json"
 
     def __init__(self, shape, arch_handler):
         self.n, self.h, self.w, _ = shape
         self.arch_handler = arch_handler
+        self.EXPORT_IMGS_PATH = os.path.join(os.path.dirname(self.arch_handler.dicomdir_path), self.MASK_DIR)
         self.masks = [None] * self.n
         self.created_from_snake = [False] * self.n
         self.mask_volume = None
@@ -39,7 +40,11 @@ class AnnotationMasks():
         self.masks[idx] = spline
         return spline
 
-    def get_mask_spline(self, idx, from_snake=False):
+    def downscale_spline(self, spline, downscale_factor):
+        coords = [tuple(map(lambda x: int(x / downscale_factor), point)) for point in spline.get_spline()]
+        return ClosedSpline(coords, len(coords) // (15 // downscale_factor))
+
+    def get_mask_spline(self, idx, from_snake=False, downscale_factor=1):
         if self.masks[idx] is None and from_snake is True:
             init = self.masks[idx - 1] or self.masks[idx + 1]
             if init is not None:
@@ -52,6 +57,9 @@ class AnnotationMasks():
                 if snake is None:
                     return None
                 self.set_mask_spline(idx, ClosedSpline(snake, len(snake) // 15), from_snake)
+
+        if self.masks[idx] is not None and downscale_factor != 1:
+            return self.downscale_spline(self.masks[idx], downscale_factor)
         return self.masks[idx]
 
     def get_masks_count(self):
@@ -61,8 +69,8 @@ class AnnotationMasks():
         if self.mask_volume is None or self.edited:
             self.compute_mask_volume(without_blanks)
         for i, img in enumerate(self.mask_volume):
-            filename = "{}{}".format(EXPORT_IMGS_FILENAME, i)
-            export_img(img, os.path.join(EXPORT_IMGS_PATH, filename))
+            filename = "{}{}".format(self.EXPORT_IMGS_FILENAME, i)
+            export_img(img, os.path.join(self.EXPORT_IMGS_PATH, filename))
         self.edited = False
 
     def export_mask_splines(self):
@@ -70,19 +78,19 @@ class AnnotationMasks():
             'n': self.n,
             'h': self.h,
             'w': self.w,
-            'masks': [
-                mask.get_json()
-                for mask in self.masks
-            ]
+            'scaling': self.arch_handler.side_volume_scale,
+            'masks': [mask.get_json() if mask is not None else None for mask in self.masks]
         }
-        with open(os.path.join(EXPORT_IMGS_PATH, DUMP_MASKS_SPLINES_FILENAME), "w") as outfile:
+        if not os.path.exists(self.EXPORT_IMGS_PATH):
+            os.makedirs(self.EXPORT_IMGS_PATH)
+        with open(os.path.join(self.EXPORT_IMGS_PATH, self.DUMP_MASKS_SPLINES_FILENAME), "w") as outfile:
             json.dump(dump, outfile)
         print("masks splines dumped!")
 
     def load_mask_splines(self):
-        path = os.path.join(EXPORT_IMGS_PATH, DUMP_MASKS_SPLINES_FILENAME)
+        path = os.path.join(self.EXPORT_IMGS_PATH, self.DUMP_MASKS_SPLINES_FILENAME)
         if not os.path.isfile(path):
-            print("Nothing to load")
+            print("No masks to load")
             return
 
         with open(path, "r") as infile:
@@ -92,8 +100,11 @@ class AnnotationMasks():
             self.w = data['w']
             self.masks = []
             for spline_dump in data['masks']:
-                spline = ClosedSpline([])
-                spline.read_json(spline_dump)
+                if spline_dump is None:
+                    spline = None
+                else:
+                    spline = ClosedSpline([])
+                    spline.read_json(spline_dump)
                 self.masks.append(spline)
 
         print('masks splines loaded!')

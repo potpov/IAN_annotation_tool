@@ -5,7 +5,6 @@ from annotation.containers.annotationcontainer import AnnotationContainerWidget
 from annotation.containers.archpanorexcontainer import ArchPanorexContainerWidget
 from annotation.containers.dialog3Dplot import Dialog3DPlot
 from annotation.widgets.sliceselection import SliceSelectionWidget
-from annotation.widgets.mayavi_qt import MayaviQWidget
 from annotation.archhandler import ArchHandler
 
 
@@ -30,8 +29,8 @@ class Container(QtGui.QWidget):
         self.arch_handler = None
 
     def add_view_menu(self):
-        view_menu = self.main_window.menubar.addMenu("View")
-        _3d_action = QtGui.QAction("3D", self)
+        view_menu = self.main_window.menubar.addMenu("&View")
+        _3d_action = QtGui.QAction("&3D", self)
         _3d_action.setShortcut("Ctrl+V")
         _3d_action.triggered.connect(self.show_Dialog3DPlot)
         view_menu.addAction(_3d_action)
@@ -70,6 +69,8 @@ class Container(QtGui.QWidget):
             self.apc = None
 
     def add_AnnotationContainerWidget(self):
+        self.arch_handler.compute_offsetted_arch(pano_offset=0)
+        self.arch_handler.compute_panorexes()
         self.arch_handler.compute_side_volume_dialog(scale=3)
         self.annotation = AnnotationContainerWidget(self)
         self.annotation.set_arch_handler(self.arch_handler)

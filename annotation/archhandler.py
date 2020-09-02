@@ -5,6 +5,7 @@ import cv2
 import json
 
 import processing
+import viewer
 from Jaw import Jaw
 from annotation.actions.Action import SliceChangedAction
 from annotation.actions.History import History
@@ -17,6 +18,7 @@ from annotation.utils import apply_offset_to_arch
 class ArchHandler(Jaw):
     LH_OFFSET = 50
     DUMP_FILENAME = 'dump.json'
+    ANNOTATED_DICOM_DIRECTORY = 'annotated_dicom'
 
     def __init__(self, dicomdir_path):
         """
@@ -39,6 +41,7 @@ class ArchHandler(Jaw):
             offsetted_arch_amount (int): value between -LH_OFFSET and LH_OFFSET of the coords of the arch for the panorex
             side_coords (list): coordinates of the points that define "side_volume" perimeter
             side_volume (list): volume of the side views of the jaw volume through the two coords arches
+            side_volume_scale (int): multiplier for side_volume images dimensions
             L_canal_spline (Spline): object that models the left canal in the panorex with a Catmull-Rom spline
             R_canal_spline (Spline): object that models the right canal in the panorex with a Catmull-Rom spline
             annotation_masks (AnnotationMasks): object that manages the annotations onto side_volume images
@@ -67,8 +70,7 @@ class ArchHandler(Jaw):
         self.offsetted_arch_amount = 0
         self.side_coords = None
         self.side_volume = None
-        self.side_volume_scale = None
-        self.side_volume_masks = None
+        self.side_volume_scale = 1
         self.L_canal_spline = None
         self.R_canal_spline = None
         # self.compute_arch_dialog()
@@ -109,6 +111,8 @@ class ArchHandler(Jaw):
         data['history'] = self.history.dump()
         with open(os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME), "w") as outfile:
             json.dump(data, outfile)
+        if self.annotation_masks is not None:
+            self.annotation_masks.export_mask_splines()
         print("saved")
 
     def load_state(self):
@@ -130,11 +134,12 @@ class ArchHandler(Jaw):
             if old_spline_cp != self.spline.cp:
                 self.offsetted_arch = self.spline.get_spline()
                 self.update_coords()
-                self.compute_offsetted_arch()
+                self.compute_offsetted_arch(pano_offset=0)
                 self.compute_panorexes()
                 self.compute_side_coords()
                 self.compute_side_volume_dialog(scale=3)
 
+        self.annotation_masks.load_mask_splines()
         print("loaded")
 
     def initalize_attributes(self, selected_slice):
@@ -202,8 +207,11 @@ class ArchHandler(Jaw):
             p, _, _ = self.get_arch_detection(self.selected_slice)
 
         new_offset = apply_offset_to_arch(coords, offset_amount, p)
-        h_coords = apply_offset_to_arch(coords, offset_amount - pano_offset, p)
-        l_coords = apply_offset_to_arch(coords, offset_amount + pano_offset, p)
+        if pano_offset == 0:
+            h_coords = l_coords = new_offset
+        else:
+            h_coords = apply_offset_to_arch(coords, offset_amount - pano_offset, p)
+            l_coords = apply_offset_to_arch(coords, offset_amount + pano_offset, p)
         self.offsetted_arch_amount = offset_amount
         self.offsetted_arch = new_offset
         self.LHoffsetted_arches = (l_coords, h_coords)
@@ -311,3 +319,47 @@ class ArchHandler(Jaw):
                 arch_rgb[int(y_sample), sample, :] = (1, 0, 0)
 
         return arch_rgb
+
+    def compute_side_volume_masks(self, debug=False):
+        n, h, w, c = self.side_volume.shape
+        shape = (n, int(h / self.side_volume_scale), int(w / self.side_volume_scale), c)
+        canal = np.zeros(shape, dtype=np.uint8)
+        debug and print("extracting mask canal... ", end='')
+        for i in range(canal.shape[0]):
+            mask_spline = self.annotation_masks.get_mask_spline(i, downscale_factor=self.side_volume_scale)
+            if mask_spline is None:
+                continue
+            mask = mask_spline.generate_mask(shape[1:-1])
+            mask[mask < 125] = 0
+            mask[mask > 0] = 1
+            mask = mask.astype(np.bool_)
+            canal[i, mask] = 1
+        debug and print("done!")
+
+        if not canal.any():
+            return
+
+        debug and print("computing gt_volume... ", end='')
+        gt_volume = np.zeros_like(self.volume)
+        for z_id, points in enumerate(self.side_coords):
+            for w_id, (x, y) in enumerate(points):
+                x /= self.side_volume_scale
+                y /= self.side_volume_scale
+                gray_canal = cv2.cvtColor(canal[z_id], cv2.COLOR_BGR2GRAY)
+                gt_volume[:, int(y), int(x)] = gray_canal[:, w_id]
+        self.set_gt_volume(gt_volume)
+        debug and print("done!")
+
+        debug and print("overwriting annotations... ", end='')
+        self.overwrite_annotations()
+        debug and print("done!")
+
+        debug and print("saving dicom... ", end='')
+        self.save_dicom(os.path.join(os.path.dirname(self.dicomdir_path), self.ANNOTATED_DICOM_DIRECTORY))
+        debug and print("done!")
+
+        debug and print("delaunay... ", end='')
+        gt_volume = viewer.delaunay(gt_volume)
+        debug and print("done!")
+
+        self.gt_volume_delaunay = gt_volume
