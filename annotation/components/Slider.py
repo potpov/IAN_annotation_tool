@@ -49,6 +49,7 @@ class Slider(QtGui.QWidget):
         self.reset.clicked.connect(self.resetToDefault)
 
         # layout settings
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.addWidget(self.slider)
         self.layout.addWidget(self.box)
         self.layout.addWidget(self.reset)

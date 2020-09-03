@@ -8,7 +8,7 @@ import math
 
 
 class Spline():
-    def __init__(self, coords, num_cp=5, kind=CENTRIPETAL):
+    def __init__(self, coords, num_cp=0, kind=CENTRIPETAL):
         """
         Class that manages a spline produced with the Catmull-Rom algorithm.
 

@@ -1,6 +1,8 @@
 import json
 import os
 import numpy as np
+
+from annotation.components.Dialog import show_message_box
 from annotation.spline.spline import ClosedSpline
 from annotation.utils import export_img, active_contour_balloon
 
@@ -20,6 +22,26 @@ class AnnotationMasks():
         self.mask_volume = None
         self.blank_img = np.zeros((self.h, self.w)).astype(np.uint8)
         self.edited = True
+
+    def check_shape(self, new_shape):
+        n_, h_, w_, _ = new_shape
+        if n_ != self.n:
+            # show_message_box(kind="Warning", title="Side volume amount of images mismatch",
+            #                  message="""The loaded annotations expect a different amount of images inside side_volume.""")
+            diff = n_ - self.n
+            if diff > 0:  # enlarge
+                self.masks.extend([None] * diff)
+                self.created_from_snake.extend([False] * diff)
+            else:  # shrink
+                # 'diff' is negative, so I will discard the last 'diff' elements
+                self.masks = self.masks[:diff]
+                self.created_from_snake = self.created_from_snake[:diff]
+        if h_ != self.h or w_ != self.w:
+            # show_message_box(kind="Warning", title="Side volume shape mismatch",
+            #                  message="""The shape of the current side volume does not match with the shape of the loaded annotations.
+            #                              This may lead to inconsistency of the annotations.""")
+            self.blank_img = np.zeros((h_, w_)).astype(np.uint8)
+        self.n, self.h, self.w, _ = new_shape
 
     def compute_mask_image(self, spline):
         return spline.generate_mask((self.h, self.w)) if spline is not None else self.blank_img
@@ -42,7 +64,7 @@ class AnnotationMasks():
 
     def downscale_spline(self, spline, downscale_factor):
         coords = [tuple(map(lambda x: int(x / downscale_factor), point)) for point in spline.get_spline()]
-        return ClosedSpline(coords, len(coords) // (15 // downscale_factor))
+        return ClosedSpline(coords, len(coords) // (12 // downscale_factor))
 
     def get_mask_spline(self, idx, from_snake=False, downscale_factor=1):
         if self.masks[idx] is None and from_snake is True:
@@ -56,7 +78,7 @@ class AnnotationMasks():
                 snake = active_contour_balloon(self.arch_handler.side_volume[idx], init, debug=False)
                 if snake is None:
                     return None
-                self.set_mask_spline(idx, ClosedSpline(snake, len(snake) // 15), from_snake)
+                self.set_mask_spline(idx, ClosedSpline(snake, len(snake) // 12), from_snake)
 
         if self.masks[idx] is not None and downscale_factor != 1:
             return self.downscale_spline(self.masks[idx], downscale_factor)

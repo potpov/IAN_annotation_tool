@@ -25,3 +25,17 @@ class LoadingDialog(QtWidgets.QDialog):
         self.thread = WorkerThread(self.func)
         self.thread.finished.connect(self.close)
         self.thread.start()
+
+
+def show_message_box(kind="", title="", message="", details="", ok_callback=None, ko_callback=None):
+    kind = kind.capitalize()
+    if kind not in ['Information', 'Question', 'Warning', 'Critical']:
+        kind = 'Information'
+    msg = QtWidgets.QMessageBox()
+    msg.setIcon(getattr(QtWidgets.QMessageBox, kind))
+    msg.setWindowTitle(title)
+    msg.setText(message)
+    if details != "":
+        msg.setDetailedText(details)
+    msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+    msg.exec_()

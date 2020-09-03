@@ -10,7 +10,7 @@ class AnnotationControlPanelWidget(QtGui.QWidget):
     flags_changed = QtCore.pyqtSignal()
     acquire_annotation_clicked = QtCore.pyqtSignal()
     reset_annotation_clicked = QtCore.pyqtSignal()
-    gt_volume_clicked = QtCore.pyqtSignal()
+    show_result_clicked = QtCore.pyqtSignal()
 
     def __init__(self):
         super(AnnotationControlPanelWidget, self).__init__()
@@ -67,9 +67,9 @@ class AnnotationControlPanelWidget(QtGui.QWidget):
         self.reset_annotation.setShortcut("R")
         self.layout.addRow(QtWidgets.QLabel(""), self.reset_annotation)
 
-        self.gt_volume = QtWidgets.QPushButton("gt_volume")
-        self.gt_volume.clicked.connect(self.gt_volume_clicked.emit)
-        self.layout.addRow(QtWidgets.QLabel(""), self.gt_volume)
+        self.show_result = QtWidgets.QPushButton("Show result")
+        self.show_result.clicked.connect(self.show_result_clicked.emit)
+        self.layout.addRow(QtWidgets.QLabel(""), self.show_result)
 
     ###########
     # Getters #

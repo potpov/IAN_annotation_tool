@@ -59,21 +59,22 @@ class CanvasSideVolume(SplineCanvas):
         if z is None:
             return
         img_canal, hull, mask = extimate_canal(self.img.copy(), (x - WIDGET_MARGIN, z - WIDGET_MARGIN))
+        painter.setPen(col.ANNOTATION_HINT_SPLINE)
+        brush = QtGui.QColor(col.ANNOTATION_HINT_SPLINE)
+        brush.setAlpha(120)
+        painter.setBrush(brush)
         if hull is not None:
             for point in hull:
                 hx, hy = point[0]
-                painter.setPen(col.ANNOTATION_HINT_SPLINE)
-                brush = col.ANNOTATION_SPLINE.setAlpha(120)
-                painter.setBrush(brush)
                 painter.drawEllipse(QtCore.QPoint(WIDGET_MARGIN + hx, WIDGET_MARGIN + hy), self.r, self.r)
 
     def draw_dot(self, painter, x, z, LR):
         if z is None:
             return
-        color = col.L_CANAL_SPLINE if LR == "L" else col.R_CANAL_SPLINE
+        color = QtGui.QColor(col.L_CANAL_SPLINE if LR == "L" else col.R_CANAL_SPLINE)
         painter.setPen(color)
         painter.drawPoint(WIDGET_MARGIN + self.pixmap.width() // 2, z)
-        color.setAlpha(100)
+        color.setAlpha(120)
         painter.setBrush(color)
         painter.drawEllipse(QtCore.QPoint(x, z), self.r, self.r)
 

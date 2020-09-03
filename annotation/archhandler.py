@@ -45,6 +45,8 @@ class ArchHandler(Jaw):
             L_canal_spline (Spline): object that models the left canal in the panorex with a Catmull-Rom spline
             R_canal_spline (Spline): object that models the right canal in the panorex with a Catmull-Rom spline
             annotation_masks (AnnotationMasks): object that manages the annotations onto side_volume images
+            canal (np.ndarray): same as side_volume, but has just the canal (obtained from masks)
+            gt_delaunay (np.ndarray): same as gt_volume, the canal has been smoothed with delaunay algorithm
         """
         self.reset(dicomdir_path)
 
@@ -73,11 +75,14 @@ class ArchHandler(Jaw):
         self.side_volume_scale = 1
         self.L_canal_spline = None
         self.R_canal_spline = None
-        # self.compute_arch_dialog()
         self.annotation_masks = None
+        self.canal = None
+        self.gt_delaunay = np.zeros_like(self.gt_volume)
 
     def compute_all_arch_detections(self):
         """
+        DEPRECATED
+
         Computes the arch for each slice of the jaw volume.
         """
         self.arch_detections = []
@@ -99,6 +104,7 @@ class ArchHandler(Jaw):
         self.arch_detections[i] = p_start_end
 
     def compute_arch_dialog(self):
+        """DEPRECATED"""
         LoadingDialog(self.compute_all_arch_detections, message="Computing arches").exec_()
 
     def save_state(self):
@@ -264,7 +270,10 @@ class ArchHandler(Jaw):
         scaled_side_volume = np.moveaxis(scaled_side_volume, 0, -1)
 
         self.side_volume = scaled_side_volume
-        self.annotation_masks = AnnotationMasks(self.side_volume.shape, self)
+        if self.annotation_masks is None:
+            self.annotation_masks = AnnotationMasks(self.side_volume.shape, self)
+        else:
+            self.annotation_masks.check_shape(self.side_volume.shape)
 
     def compute_side_volume_dialog(self, scale=None):
         LoadingDialog(func=lambda: self.compute_side_volume(scale=scale), message="Computing side volume").exec_()
@@ -320,12 +329,28 @@ class ArchHandler(Jaw):
 
         return arch_rgb
 
-    def compute_side_volume_masks(self, debug=False):
+    def extract_annotations(self):
+        """
+        Method that wraps some steps in order to extract an annotated volume, starting from AnnotationMasks splines.
+        """
+        LoadingDialog(self.compute_3d_canal, "Computing 3D canal").exec_()
+        if self.canal is None or not self.canal.any():
+            return
+        LoadingDialog(self.compute_gt_volume, "Computing ground truth volume").exec_()
+        LoadingDialog(self.save_annotations_dicom, "Saving new DICOMs").exec_()
+        LoadingDialog(self.compute_gt_volume_delaunay, "Applying delaunay").exec_()
+
+    def compute_3d_canal(self):
+        """
+        Extracts a volume with the same shape as side_volume, but with just the canal position.
+
+        The canal is created by appending the masks created by the annotations (splines).
+        The actual shape of the canal is the original one (not scaled)
+        """
         n, h, w, c = self.side_volume.shape
         shape = (n, int(h / self.side_volume_scale), int(w / self.side_volume_scale), c)
-        canal = np.zeros(shape, dtype=np.uint8)
-        debug and print("extracting mask canal... ", end='')
-        for i in range(canal.shape[0]):
+        self.canal = np.zeros(shape, dtype=np.uint8)
+        for i in range(self.canal.shape[0]):
             mask_spline = self.annotation_masks.get_mask_spline(i, downscale_factor=self.side_volume_scale)
             if mask_spline is None:
                 continue
@@ -333,33 +358,35 @@ class ArchHandler(Jaw):
             mask[mask < 125] = 0
             mask[mask > 0] = 1
             mask = mask.astype(np.bool_)
-            canal[i, mask] = 1
-        debug and print("done!")
+            self.canal[i, mask] = 1
 
-        if not canal.any():
-            return
-
-        debug and print("computing gt_volume... ", end='')
+    def compute_gt_volume(self):
+        """
+        Transfers the canal computed in compute_3d_canal in the original volume position, following the arch.
+        """
         gt_volume = np.zeros_like(self.volume)
         for z_id, points in enumerate(self.side_coords):
             for w_id, (x, y) in enumerate(points):
-                x /= self.side_volume_scale
-                y /= self.side_volume_scale
-                gray_canal = cv2.cvtColor(canal[z_id], cv2.COLOR_BGR2GRAY)
+                gray_canal = cv2.cvtColor(self.canal[z_id], cv2.COLOR_BGR2GRAY)
                 gt_volume[:, int(y), int(x)] = gray_canal[:, w_id]
         self.set_gt_volume(gt_volume)
-        debug and print("done!")
 
-        debug and print("overwriting annotations... ", end='')
+    def save_annotations_dicom(self):
+        """
+        Exports the new DICOM with the annotations.
+        """
         self.overwrite_annotations()
-        debug and print("done!")
-
-        debug and print("saving dicom... ", end='')
         self.save_dicom(os.path.join(os.path.dirname(self.dicomdir_path), self.ANNOTATED_DICOM_DIRECTORY))
-        debug and print("done!")
 
-        debug and print("delaunay... ", end='')
-        gt_volume = viewer.delaunay(gt_volume)
-        debug and print("done!")
+    def compute_gt_volume_delaunay(self):
+        """
+        Applies delaunay algorithm in order to have a smoother gt_volume
+        """
+        gt_volume = viewer.delaunay(self.gt_volume)
+        self.gt_delaunay = gt_volume
 
-        self.gt_volume_delaunay = gt_volume
+    def get_jaw_with_gt(self):
+        return self.volume + self.gt_volume if self.gt_volume.any() else self.volume
+
+    def get_jaw_with_delaunay(self):
+        return self.volume + self.gt_delaunay if self.gt_delaunay.any() else self.volume

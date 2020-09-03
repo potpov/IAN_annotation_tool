@@ -16,6 +16,7 @@ class Container(QtGui.QWidget):
         self.layout = QtGui.QGridLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.main_window = parent
+        self.view_menu = None
 
         # widgets
         self.slice_selection = None
@@ -29,16 +30,39 @@ class Container(QtGui.QWidget):
         self.arch_handler = None
 
     def add_view_menu(self):
-        view_menu = self.main_window.menubar.addMenu("&View")
-        _3d_action = QtGui.QAction("&3D", self)
-        _3d_action.setShortcut("Ctrl+V")
-        _3d_action.triggered.connect(self.show_Dialog3DPlot)
-        view_menu.addAction(_3d_action)
+        if self.view_menu is not None:
+            return
 
-    def show_Dialog3DPlot(self):
+        self.view_menu = self.main_window.menubar.addMenu("&View")
+
+        view_volume = QtGui.QAction("&Volume", self)
+        view_volume.setShortcut("Ctrl+V")
+        view_volume.triggered.connect(lambda: self.show_Dialog3DPlot(self.arch_handler.volume))
+
+        view_gt_volume = QtGui.QAction("&GT volume", self)
+        view_gt_volume.triggered.connect(lambda: self.show_Dialog3DPlot(self.arch_handler.gt_volume))
+
+        view_gt_delaunay = QtGui.QAction("GT volume (&delaunay)", self)
+        view_gt_delaunay.triggered.connect(lambda: self.show_Dialog3DPlot(self.arch_handler.gt_delaunay))
+
+        view_volume_with_gt = QtGui.QAction("Volume with canal", self)
+        view_volume_with_gt.triggered.connect(lambda: self.show_Dialog3DPlot(self.arch_handler.get_jaw_with_gt()))
+
+        view_volume_with_delaunay = QtGui.QAction("Volume with canal (delaunay)", self)
+        view_volume_with_delaunay.triggered.connect(
+            lambda: self.show_Dialog3DPlot(self.arch_handler.get_jaw_with_delaunay()))
+
+        self.view_menu.addAction(view_volume)
+        self.view_menu.addAction(view_gt_volume)
+        self.view_menu.addAction(view_gt_delaunay)
+        self.view_menu.addAction(view_volume_with_gt)
+        self.view_menu.addAction(view_volume_with_delaunay)
+
+    def show_Dialog3DPlot(self, volume=None):
+        if volume is None:
+            return
         dialog = Dialog3DPlot(self)
-        dialog.set_arch_handler(self.arch_handler)
-        dialog.show()
+        dialog.show(volume)
 
     def add_SliceSelectionWidget(self):
         self.slice_selection = SliceSelectionWidget(self)
@@ -90,6 +114,7 @@ class Container(QtGui.QWidget):
         else:
             self.arch_handler = ArchHandler(dicomdir_path)
         self.add_view_menu()
+        self.remove_SliceSelectionWidget()
         self.add_SliceSelectionWidget()
         self.remove_ArchPanorexContainerWidget()
         self.remove_AnnotationContainerWidget()
