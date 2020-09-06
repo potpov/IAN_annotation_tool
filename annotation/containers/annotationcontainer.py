@@ -1,5 +1,6 @@
 from pyface.qt import QtGui
 
+from annotation.components.Dialog import LoadingDialog
 from annotation.containers.dialog3Dplot import Dialog3DPlot
 from annotation.widgets.annotationcontrolpanel import AnnotationControlPanelWidget
 from annotation.widgets.panorex import CanvasPanorexWidget
@@ -34,6 +35,7 @@ class AnnotationContainerWidget(QtGui.QWidget):
         self.panel.reset_annotation_clicked.connect(self.reset_annotation_clicked_handler)
         self.panel.acquire_annotation_clicked.connect(self.acquire_annotation_clicked_handler)
         self.panel.show_result_clicked.connect(self.show_result_clicked_handler)
+        self.panel.export_mask_imgs_clicked.connect(self.export_mask_imgs_clicked_handler)
         self.layout.addWidget(self.panel, 1, 0, 1, 2)
 
         self.arch_handler = None
@@ -60,6 +62,9 @@ class AnnotationContainerWidget(QtGui.QWidget):
         self.arch_handler.extract_annotations()
         dialog = Dialog3DPlot(self, "Volume with annotations")
         dialog.show(self.arch_handler.get_jaw_with_delaunay())
+
+    def export_mask_imgs_clicked_handler(self):
+        LoadingDialog(self.arch_handler.annotation_masks.export_mask_imgs, "Exporting mask images").exec_()
 
     def show_img(self):
         self.panel.setPosSliderMaximum(len(self.arch_handler.offsetted_arch) - 1)

@@ -11,6 +11,7 @@ class AnnotationControlPanelWidget(QtGui.QWidget):
     acquire_annotation_clicked = QtCore.pyqtSignal()
     reset_annotation_clicked = QtCore.pyqtSignal()
     show_result_clicked = QtCore.pyqtSignal()
+    export_mask_imgs_clicked = QtCore.pyqtSignal()
 
     def __init__(self):
         super(AnnotationControlPanelWidget, self).__init__()
@@ -70,6 +71,10 @@ class AnnotationControlPanelWidget(QtGui.QWidget):
         self.show_result = QtWidgets.QPushButton("Show result")
         self.show_result.clicked.connect(self.show_result_clicked.emit)
         self.layout.addRow(QtWidgets.QLabel(""), self.show_result)
+
+        self.export_mask_imgs = QtWidgets.QPushButton("Export mask images")
+        self.export_mask_imgs.clicked.connect(self.export_mask_imgs_clicked.emit)
+        self.layout.addRow(QtWidgets.QLabel(""), self.export_mask_imgs)
 
     ###########
     # Getters #

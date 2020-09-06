@@ -194,7 +194,7 @@ def plot(img, title="plot"):
         title (str): title
     """
     plt.title(title)
-    plt.imshow(img, cmap='gray')
+    plt.imshow(img, cmap='gray', interpolation='none')
     plt.show()
 
 

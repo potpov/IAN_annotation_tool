@@ -1,6 +1,7 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
 
+from annotation.components.Dialog import question
 from annotation.containers.annotationcontainer import AnnotationContainerWidget
 from annotation.containers.archpanorexcontainer import ArchPanorexContainerWidget
 from annotation.containers.dialog3Dplot import Dialog3DPlot
@@ -95,7 +96,7 @@ class Container(QtGui.QWidget):
     def add_AnnotationContainerWidget(self):
         self.arch_handler.compute_offsetted_arch(pano_offset=0)
         self.arch_handler.compute_panorexes()
-        self.arch_handler.compute_side_volume_dialog(scale=3)
+        self.arch_handler.compute_side_volume_dialog(self.arch_handler.SIDE_VOLUME_SCALE)
         self.annotation = AnnotationContainerWidget(self)
         self.annotation.set_arch_handler(self.arch_handler)
         self.annotation.initialize()
@@ -109,15 +110,26 @@ class Container(QtGui.QWidget):
             self.annotation = None
 
     def select_dicomdir(self, dicomdir_path):
+        def yes_callback(self):
+            self.arch_handler.initalize_attributes(0)
+            self.arch_handler.load_state()
+            self.add_ArchPanorexContainerWidget()
+
         if self.arch_handler is not None:
-            self.arch_handler.reset(dicomdir_path)
+            self.arch_handler.__init__(dicomdir_path)
         else:
             self.arch_handler = ArchHandler(dicomdir_path)
+
         self.add_view_menu()
         self.remove_SliceSelectionWidget()
-        self.add_SliceSelectionWidget()
         self.remove_ArchPanorexContainerWidget()
         self.remove_AnnotationContainerWidget()
+        if self.arch_handler.is_there_data_to_load():
+            question(self, "Load data?", "A save file was found. Do you want to load it?",
+                     yes_callback=lambda: yes_callback(self), no_callback=self.add_SliceSelectionWidget)
+        else:
+            # if there is no data to load, then we start from the first screen
+            self.add_SliceSelectionWidget()
 
     def show_arch_pano_widget(self, slice):
         self.remove_SliceSelectionWidget()

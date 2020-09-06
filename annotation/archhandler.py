@@ -19,6 +19,7 @@ class ArchHandler(Jaw):
     LH_OFFSET = 50
     DUMP_FILENAME = 'dump.json'
     ANNOTATED_DICOM_DIRECTORY = 'annotated_dicom'
+    SIDE_VOLUME_SCALE = 3  # desired scale of side_volume
 
     def __init__(self, dicomdir_path):
         """
@@ -31,13 +32,13 @@ class ArchHandler(Jaw):
             dicomdir_path (str): path of the DICOMDIR file
             history (History): History object that memorizes user changes
             selected_slice (int): index of the selected slice of the volume
-            arch_detections (list): list of tuples of each arch of each slice of the volume
-            coords (list, list, list, list): (l_offset, coords, h_offset, derivative) tuple of the arch for the selected slice of the volume
+            arch_detections (list of (numpy.poly1d, float, float): list of tuples of each arch of each slice of the volume
+            coords ((list of (float, float), list of (float, float), list of (float, float), list of float)): (l_offset, coords, h_offset, derivative) tuple of the arch for the selected slice of the volume
             spline (Spline): object that models the arch as a Catmull-Rom spline
-            panorex (np.ndarray): panorex computed on one set of coordinates
-            LHpanorexes (np.ndarray, np.ndarray): (l_panorex, h_panorex) tuple of panorexes offsetted from the main one
-            offsetted_arch (list): coordinates of the main arch offsetted by "offsetted_arch_amount"
-            LHoffsetted_arches (list, list): coordinates of two arches slightly distant from the offsetted_arch
+            panorex (numpy.ndarray): panorex computed on one set of coordinates
+            LHpanorexes ((numpy.ndarray, numpy.ndarray)): (l_panorex, h_panorex) tuple of panorexes offsetted from the main one
+            offsetted_arch (list of (float, float)): coordinates of the main arch offsetted by "offsetted_arch_amount"
+            LHoffsetted_arches ((list of (float, float), list of (float, float))): coordinates of two arches slightly distant from the offsetted_arch
             offsetted_arch_amount (int): value between -LH_OFFSET and LH_OFFSET of the coords of the arch for the panorex
             side_coords (list): coordinates of the points that define "side_volume" perimeter
             side_volume (list): volume of the side views of the jaw volume through the two coords arches
@@ -45,17 +46,8 @@ class ArchHandler(Jaw):
             L_canal_spline (Spline): object that models the left canal in the panorex with a Catmull-Rom spline
             R_canal_spline (Spline): object that models the right canal in the panorex with a Catmull-Rom spline
             annotation_masks (AnnotationMasks): object that manages the annotations onto side_volume images
-            canal (np.ndarray): same as side_volume, but has just the canal (obtained from masks)
-            gt_delaunay (np.ndarray): same as gt_volume, the canal has been smoothed with delaunay algorithm
-        """
-        self.reset(dicomdir_path)
-
-    def reset(self, dicomdir_path):
-        """
-        Resets current ArchHandler object
-
-        Args:
-            dicomdir_path (str): path of the DICOMDIR file
+            canal (numpy.ndarray): same as side_volume, but has just the canal (obtained from masks) and it is scaled to original volume dimensions
+            gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with delaunay algorithm
         """
         sup = super()
         LoadingDialog(func=lambda: sup.__init__(dicomdir_path), message="Loading DICOM").exec_()
@@ -78,6 +70,10 @@ class ArchHandler(Jaw):
         self.annotation_masks = None
         self.canal = None
         self.gt_delaunay = np.zeros_like(self.gt_volume)
+
+    def is_there_data_to_load(self):
+        path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
+        return os.path.isfile(path)
 
     def compute_all_arch_detections(self):
         """
@@ -143,7 +139,7 @@ class ArchHandler(Jaw):
                 self.compute_offsetted_arch(pano_offset=0)
                 self.compute_panorexes()
                 self.compute_side_coords()
-                self.compute_side_volume_dialog(scale=3)
+                self.compute_side_volume_dialog(self.SIDE_VOLUME_SCALE)
 
         self.annotation_masks.load_mask_splines()
         print("loaded")
@@ -164,7 +160,7 @@ class ArchHandler(Jaw):
         self.L_canal_spline = Spline([], 0)
         self.R_canal_spline = Spline([], 0)
         self.update_coords()
-        self.offsetted_arch = self.spline.get_spline()
+        self.offsetted_arch = self.coords[1]
         h_coords = apply_offset_to_arch(self.offsetted_arch, -1, p)
         l_coords = apply_offset_to_arch(self.offsetted_arch, +1, p)
         self.LHoffsetted_arches = (l_coords, h_coords)
@@ -180,7 +176,7 @@ class ArchHandler(Jaw):
         self.initalize_attributes(selected_slice)
         self.compute_panorexes()
         self.compute_side_coords()
-        self.compute_side_volume_dialog(scale=3)
+        self.compute_side_volume_dialog(self.SIDE_VOLUME_SCALE)
 
     def compute_initial_state_dialog(self, selected_slice):
         LoadingDialog(func=lambda: self.compute_initial_state(selected_slice),
@@ -202,7 +198,7 @@ class ArchHandler(Jaw):
         Args:
             offset_amount (int): how much to displace the curve
             pano_offset (int): how much to displace the "parallel" LH offsetted curves
-            p (np.poly1d): polynomial approximation of the arch
+            p (numpy.poly1d): polynomial approximation of the arch
 
         Returns:
             list of (float, float): list of xy coordinates of the new offsetted arch
@@ -265,11 +261,9 @@ class ArchHandler(Jaw):
         # padding the side volume and rescaling
         scaled_side_volume = cv2.normalize(scaled_side_volume, scaled_side_volume, 0, 1, cv2.NORM_MINMAX)
 
-        # creating RGB volume
-        scaled_side_volume = np.tile(scaled_side_volume, (3, 1, 1, 1))  # overlay on the original image (colorful)
-        scaled_side_volume = np.moveaxis(scaled_side_volume, 0, -1)
-
         self.side_volume = scaled_side_volume
+
+        # configuring annotations_masks
         if self.annotation_masks is None:
             self.annotation_masks = AnnotationMasks(self.side_volume.shape, self)
         else:
@@ -292,7 +286,7 @@ class ArchHandler(Jaw):
             pos (int): position on the arch
 
         Returns:
-            np.ndarray: slice of the jaw volume
+            numpy.ndarray: slice of the jaw volume
         """
         section = self.volume[slice]
 
@@ -323,7 +317,7 @@ class ArchHandler(Jaw):
                     if section.shape[1] > x > 0 and section.shape[0] > y > 0:
                         arch_rgb[int(y), int(x)] = (0, 0, 1)
         else:  # just show the arch
-            for sample in range(start, end):
+            for sample in range(int(start), int(end)):
                 y_sample = np.clip(p(sample), 0, arch_rgb.shape[0] - 1)
                 arch_rgb[int(y_sample), sample, :] = (1, 0, 0)
 
@@ -333,32 +327,13 @@ class ArchHandler(Jaw):
         """
         Method that wraps some steps in order to extract an annotated volume, starting from AnnotationMasks splines.
         """
-        LoadingDialog(self.compute_3d_canal, "Computing 3D canal").exec_()
+        LoadingDialog(self.annotation_masks.compute_mask_volume, "Computing 3D canal").exec_()
+        self.canal = self.annotation_masks.mask_volume
         if self.canal is None or not self.canal.any():
             return
         LoadingDialog(self.compute_gt_volume, "Computing ground truth volume").exec_()
         LoadingDialog(self.save_annotations_dicom, "Saving new DICOMs").exec_()
         LoadingDialog(self.compute_gt_volume_delaunay, "Applying delaunay").exec_()
-
-    def compute_3d_canal(self):
-        """
-        Extracts a volume with the same shape as side_volume, but with just the canal position.
-
-        The canal is created by appending the masks created by the annotations (splines).
-        The actual shape of the canal is the original one (not scaled)
-        """
-        n, h, w, c = self.side_volume.shape
-        shape = (n, int(h / self.side_volume_scale), int(w / self.side_volume_scale), c)
-        self.canal = np.zeros(shape, dtype=np.uint8)
-        for i in range(self.canal.shape[0]):
-            mask_spline = self.annotation_masks.get_mask_spline(i, downscale_factor=self.side_volume_scale)
-            if mask_spline is None:
-                continue
-            mask = mask_spline.generate_mask(shape[1:-1])
-            mask[mask < 125] = 0
-            mask[mask > 0] = 1
-            mask = mask.astype(np.bool_)
-            self.canal[i, mask] = 1
 
     def compute_gt_volume(self):
         """
@@ -367,8 +342,7 @@ class ArchHandler(Jaw):
         gt_volume = np.zeros_like(self.volume)
         for z_id, points in enumerate(self.side_coords):
             for w_id, (x, y) in enumerate(points):
-                gray_canal = cv2.cvtColor(self.canal[z_id], cv2.COLOR_BGR2GRAY)
-                gt_volume[:, int(y), int(x)] = gray_canal[:, w_id]
+                gt_volume[:, int(y), int(x)] = self.canal[z_id, :, w_id]
         self.set_gt_volume(gt_volume)
 
     def save_annotations_dicom(self):
@@ -386,7 +360,7 @@ class ArchHandler(Jaw):
         self.gt_delaunay = gt_volume
 
     def get_jaw_with_gt(self):
-        return self.volume + self.gt_volume if self.gt_volume.any() else self.volume
+        return self.volume + self.gt_volume if self.gt_volume.any() else None
 
     def get_jaw_with_delaunay(self):
-        return self.volume + self.gt_delaunay if self.gt_delaunay.any() else self.volume
+        return self.volume + self.gt_delaunay if self.gt_delaunay.any() else None

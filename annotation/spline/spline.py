@@ -289,20 +289,29 @@ class ClosedSpline(Spline):
         cp.extend(self.cp[0:3])
         self.curves = CatmullRomChain(cp, kind=self.kind)
 
-    def generate_mask(self, img_shape):
-        if len(img_shape) == 3:
-            n_channels = img_shape[2]
-        else:
-            n_channels = 1
+    def generate_mask(self, img_shape, resize_shape=None):
+        """
+        Computes an image with white pixels were the mask is placed, black elsewhere.
 
+        Args:
+            img_shape (tuple of int): shape of the output image (2D, no color channels)
+        """
+        if len(img_shape) != 2:
+            raise ValueError("img_shape must have 2 dimensions (h, w)")
+
+        n_channels = 1
         mask = np.zeros(img_shape).astype(np.uint8)
 
         contour = self.get_spline()
         if len(contour) == 0:
-            return mask
+            return np.zeros(resize_shape or img_shape).astype(np.uint8)
         contour = np.asarray(contour).astype(int)
+        white = (255,) * n_channels
+        cv2.drawContours(mask, [contour], -1, white, 1, 0)
+        cv2.fillPoly(mask, [contour], white)
 
-        white_color = (255,) * n_channels
-        cv2.drawContours(mask, [contour], -1, white_color, 1, 0)
-        cv2.fillPoly(mask, [contour], white_color)
+        if resize_shape is not None:
+            shape = (resize_shape[1], resize_shape[0])
+            mask = cv2.resize(mask, shape, interpolation=cv2.INTER_AREA)
+
         return mask
