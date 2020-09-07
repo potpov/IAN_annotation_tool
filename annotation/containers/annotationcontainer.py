@@ -1,5 +1,7 @@
 from pyface.qt import QtGui
 
+from annotation.components.Dialog import LoadingDialog
+from annotation.containers.dialog3Dplot import Dialog3DPlot
 from annotation.widgets.annotationcontrolpanel import AnnotationControlPanelWidget
 from annotation.widgets.panorex import CanvasPanorexWidget
 from annotation.widgets.sidevolume import CanvasSideVolume
@@ -19,8 +21,7 @@ class AnnotationContainerWidget(QtGui.QWidget):
 
         # panorex
         self.panorex = CanvasPanorexWidget(self)
-        self.panorex.spline_changed.connect(
-            lambda: self.sidevolume.show_(self.current_pos, self.panel.show_dot.isChecked()))
+        self.panorex.spline_changed.connect(self.sidevolume_show)
         self.layout.addWidget(self.panorex, 0, 0)
 
         # side volume
@@ -30,7 +31,12 @@ class AnnotationContainerWidget(QtGui.QWidget):
         # control panel
         self.panel = AnnotationControlPanelWidget()
         self.panel.pos_changed.connect(self.pos_changed_handler)
-        self.layout.addWidget(self.panel, 1, 0)
+        self.panel.flags_changed.connect(self.sidevolume_show)
+        self.panel.reset_annotation_clicked.connect(self.reset_annotation_clicked_handler)
+        self.panel.acquire_annotation_clicked.connect(self.acquire_annotation_clicked_handler)
+        self.panel.show_result_clicked.connect(self.show_result_clicked_handler)
+        self.panel.export_mask_imgs_clicked.connect(self.export_mask_imgs_clicked_handler)
+        self.layout.addWidget(self.panel, 1, 0, 1, 2)
 
         self.arch_handler = None
         self.current_pos = 0
@@ -43,10 +49,35 @@ class AnnotationContainerWidget(QtGui.QWidget):
         self.current_pos = self.panel.getPosValue()
         self.show_img()
 
+    def reset_annotation_clicked_handler(self):
+        self.panel.auto_acquire_annotation.setChecked(False)
+        self.arch_handler.annotation_masks.set_mask_spline(self.current_pos, None)
+        self.sidevolume_show()
+
+    def acquire_annotation_clicked_handler(self):
+        self.arch_handler.annotation_masks.get_mask_spline(self.current_pos, from_snake=True)
+        self.sidevolume_show()
+
+    def show_result_clicked_handler(self):
+        self.arch_handler.extract_annotations()
+        dialog = Dialog3DPlot(self, "Volume with annotations")
+        dialog.show(self.arch_handler.get_jaw_with_delaunay())
+
+    def export_mask_imgs_clicked_handler(self):
+        LoadingDialog(self.arch_handler.annotation_masks.export_mask_imgs, "Exporting mask images").exec_()
+
     def show_img(self):
         self.panel.setPosSliderMaximum(len(self.arch_handler.offsetted_arch) - 1)
         self.panorex.show_(pos=self.current_pos)
-        self.sidevolume.show_(pos=self.current_pos, show_dot=self.panel.show_dot.isChecked())
+        self.sidevolume_show()
+
+    def sidevolume_show(self):
+        self.sidevolume.show_(pos=self.current_pos,
+                              show_dot=self.panel.show_dot.isChecked(),
+                              show_hint=self.panel.show_hint.isChecked(),
+                              auto_propagate=self.panel.auto_acquire_annotation.isChecked(),
+                              show_mask_spline=self.panel.show_mask_spline.isChecked()
+                              )
 
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler

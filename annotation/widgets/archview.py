@@ -1,7 +1,7 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
-from annotation import WIDGET_MARGIN
+from annotation import WIDGET_MARGIN, colors as col
 from annotation.components.Canvas import SplineCanvas
 from annotation.utils import numpy2pixmap, clip_range
 from annotation.actions.Action import ArchCpChangedAction
@@ -61,19 +61,19 @@ class SplineArchWidget(SplineCanvas):
         l_pano, h_pano = self.arch_handler.LHoffsetted_arches
 
         # draw arches
-        self.draw_points(painter, self.arch_handler.offsetted_arch, QtGui.QColor(0, 255, 255))
-        self.draw_points(painter, l_pano, QtGui.QColor(0, 255, 255, 120))
-        self.draw_points(painter, h_pano, QtGui.QColor(0, 255, 255, 120))
-        self.draw_points(painter, l_offset, QtGui.QColor(0, 255, 0))
-        self.draw_points(painter, h_offset, QtGui.QColor(0, 255, 0))
+        self.draw_points(painter, self.arch_handler.offsetted_arch, col.PANO_SPLINE)
+        self.draw_points(painter, l_pano, col.PANO_OFF_SPLINE)
+        self.draw_points(painter, h_pano, col.PANO_OFF_SPLINE)
+        self.draw_points(painter, l_offset, col.ARCH_OFF_SPLINE)
+        self.draw_points(painter, h_offset, col.ARCH_OFF_SPLINE)
 
         # draw spline with control points
-        self.draw_spline(painter, self.arch_handler.spline, QtGui.QColor(255, 0, 0), QtGui.QColor(0, 255, 0))
+        self.draw_spline(painter, self.arch_handler.spline, col.ARCH_SPLINE, col.ARCH_SPLINE_CP)
 
         # draw side_coords
         if self.current_pos >= len(self.arch_handler.side_coords):
             self.current_pos = len(self.arch_handler.side_coords) - 1
-        self.draw_points(painter, self.arch_handler.side_coords[self.current_pos], QtGui.QColor(0, 0, 255))
+        self.draw_points(painter, self.arch_handler.side_coords[self.current_pos], col.POS)
 
     def mousePressEvent(self, QMouseEvent):
         """ Internal mouse-press handler """

@@ -31,9 +31,9 @@ class ArchPanoControlPanelWidget(QtGui.QWidget):
         self.prev_next_btns.next_clicked.connect(lambda: self.pos_slider.setValue(self.pos_slider.value() + 1))
         self.layout.addRow(QtWidgets.QLabel(" "), self.prev_next_btns)
 
-        self.update_side_volume_btn = QtWidgets.QPushButton("Update")
+        self.update_side_volume_btn = QtWidgets.QPushButton("Update side volume")
         self.update_side_volume_btn.clicked.connect(self.update_side_volume.emit)
-        self.layout.addRow(QtWidgets.QLabel("Side cuts"), self.update_side_volume_btn)
+        self.layout.addRow(QtWidgets.QLabel("Side volume"), self.update_side_volume_btn)
 
         self.arch_slider = Slider(QtCore.Qt.Horizontal)
         self.arch_slider.setRange(-50, 50)

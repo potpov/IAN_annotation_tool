@@ -1,7 +1,7 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
-from annotation import WIDGET_MARGIN
+from annotation import WIDGET_MARGIN, colors as col
 from annotation.components.Canvas import SplineCanvas
 from annotation.spline.spline import ClosedSpline
 from annotation.tests.opencv_tests.test_image_processing import extimate_canal
@@ -9,12 +9,18 @@ from annotation.utils import numpy2pixmap, clip_range
 
 
 class CanvasSideVolume(SplineCanvas):
+
     def __init__(self, parent):
         super().__init__(parent)
         self.arch_handler = None
         self.current_pos = 0
         self.r = 3
-        self.show_dot = True
+
+        # flags
+        self.show_dot = False
+        self.show_hint = False
+        self.auto_propagate = False
+        self.show_mask_spline = False
 
     def set_img(self):
         self.img = self.arch_handler.side_volume[self.current_pos]
@@ -27,6 +33,51 @@ class CanvasSideVolume(SplineCanvas):
         self.draw(qp)
         qp.end()
 
+    def extract_x_z_LR(self):
+        x = WIDGET_MARGIN + self.pixmap.width() // 2
+        z = None
+        LR = None
+
+        # check intersection with L spline
+        p, start, end = self.arch_handler.L_canal_spline.get_poly_spline()
+        if p is not None and self.current_pos in range(int(start), int(end)):
+            LR = "L"
+            z = WIDGET_MARGIN + p(self.current_pos) * self.arch_handler.side_volume_scale
+
+        # check intersection with R spline
+        p, start, end = self.arch_handler.R_canal_spline.get_poly_spline()
+        if p is not None and self.current_pos in range(int(start), int(end)):
+            LR = "R"
+            z = WIDGET_MARGIN + p(self.current_pos) * self.arch_handler.side_volume_scale
+
+        if z is None:
+            return x, z, LR
+
+        return x, z, LR
+
+    def draw_hint(self, painter, x, z):
+        if z is None:
+            return
+        img_canal, hull, mask = extimate_canal(self.img.copy(), (x - WIDGET_MARGIN, z - WIDGET_MARGIN))
+        painter.setPen(col.ANNOTATION_HINT_SPLINE)
+        brush = QtGui.QColor(col.ANNOTATION_HINT_SPLINE)
+        brush.setAlpha(120)
+        painter.setBrush(brush)
+        if hull is not None:
+            for point in hull:
+                hx, hy = point[0]
+                painter.drawEllipse(QtCore.QPoint(WIDGET_MARGIN + hx, WIDGET_MARGIN + hy), self.r, self.r)
+
+    def draw_dot(self, painter, x, z, LR):
+        if z is None:
+            return
+        color = QtGui.QColor(col.L_CANAL_SPLINE if LR == "L" else col.R_CANAL_SPLINE)
+        painter.setPen(color)
+        painter.drawPoint(WIDGET_MARGIN + self.pixmap.width() // 2, z)
+        color.setAlpha(120)
+        painter.setBrush(color)
+        painter.drawEllipse(QtCore.QPoint(x, z), self.r, self.r)
+
     def draw(self, painter):
         if self.arch_handler is None:
             return
@@ -35,47 +86,19 @@ class CanvasSideVolume(SplineCanvas):
 
         self.draw_background(painter)
 
-        if self.show_dot:
-            z = None
-            LR = None
-
-            # check intersection with L spline
-            p, start, end = self.arch_handler.L_canal_spline.get_poly_spline()
-            if p is not None and self.current_pos in range(int(start), int(end)):
-                LR = "L"
-                z = WIDGET_MARGIN + p(self.current_pos) * self.arch_handler.side_volume_scale
-
-            # check intersection with R spline
-            p, start, end = self.arch_handler.R_canal_spline.get_poly_spline()
-            if p is not None and self.current_pos in range(int(start), int(end)):
-                LR = "R"
-                z = WIDGET_MARGIN + p(self.current_pos) * self.arch_handler.side_volume_scale
-
-            if z is None:
-                return
-
-            x = WIDGET_MARGIN + self.pixmap.width() // 2
-
-            img_canal, hull, mask = extimate_canal(self.img.copy(), (x - WIDGET_MARGIN, z - WIDGET_MARGIN))
-            if hull is not None:
-                for point in hull:
-                    hx, hy = point[0]
-                    painter.setPen(QtGui.QColor(200, 121, 219))
-                    painter.drawEllipse(QtCore.QPoint(WIDGET_MARGIN + hx, WIDGET_MARGIN + hy), self.r, self.r)
-
-            color = QtGui.QColor(255, 0, 0) if LR == "L" else QtGui.QColor(0, 0, 255)
-            painter.setPen(color)
-            painter.drawPoint(WIDGET_MARGIN + self.pixmap.width() // 2, z)
-            color.setAlpha(100)
-            painter.setBrush(color)
-            painter.drawEllipse(QtCore.QPoint(x, z), self.r, self.r)
+        x, z, LR = self.extract_x_z_LR()
 
         # draw mask spline
-        spline = self.arch_handler.annotation_masks.get_mask_spline(self.current_pos)
-        if spline is None:
-            return
+        if self.show_mask_spline:
+            spline = self.arch_handler.annotation_masks.get_mask_spline(self.current_pos,
+                                                                        from_snake=self.auto_propagate)
+            self.draw_spline(painter, spline, col.ANNOTATION_SPLINE)
 
-        self.draw_spline(painter, spline, QtGui.QColor(0, 255, 0))
+        if self.show_dot:
+            self.draw_dot(painter, x, z, LR)
+
+        if self.show_hint:
+            self.draw_hint(painter, x, z)
 
     def cp_clicked(self, spline, mouse_x, mouse_y):
         for cp_index, (point_x, point_y) in enumerate(spline.cp):
@@ -97,12 +120,19 @@ class CanvasSideVolume(SplineCanvas):
         self.arch_handler.annotation_masks.set_mask_spline(self.current_pos, spline)
 
     def mousePressEvent(self, QMouseEvent):
+        # if we don't show the spline, then we don't react to clicks
+        if not self.show_mask_spline:
+            return
+
         self.drag_point = None
         mouse_pos = QMouseEvent.pos()
         mouse_x = mouse_pos.x() - WIDGET_MARGIN
         mouse_y = mouse_pos.y() - WIDGET_MARGIN
-        spline = self.arch_handler.annotation_masks.get_mask_spline(self.current_pos)
-        if QMouseEvent.button() == QtCore.Qt.LeftButton and spline is not None:
+        spline = self.arch_handler.annotation_masks.get_mask_spline(self.current_pos) or \
+                 self.arch_handler.annotation_masks.set_mask_spline(self.current_pos,
+                                                                    ClosedSpline([]),
+                                                                    from_snake=False)
+        if QMouseEvent.button() == QtCore.Qt.LeftButton:
             for cp_index, (point_x, point_y) in enumerate(spline.cp):
                 if abs(point_x - mouse_x) < self.l // 2 and abs(point_y - mouse_y) < self.l // 2:
                     drag_x_offset = point_x - mouse_x
@@ -136,9 +166,13 @@ class CanvasSideVolume(SplineCanvas):
             # Redraw curve
             self.update()
 
-    def show_(self, pos=0, show_dot=False):
-        self.show_dot = show_dot
+    def show_(self, pos=0, show_dot=False, show_hint=False,
+              auto_propagate=False, show_mask_spline=False):
         self.current_pos = pos
+        self.show_dot = show_dot
+        self.show_hint = show_hint
+        self.auto_propagate = auto_propagate
+        self.show_mask_spline = show_mask_spline
         self.set_img()
         self.update()
 

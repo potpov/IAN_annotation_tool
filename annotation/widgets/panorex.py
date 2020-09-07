@@ -1,7 +1,7 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
-from annotation import WIDGET_MARGIN
+from annotation import WIDGET_MARGIN, colors as col
 from annotation.actions.Action import (
     LeftCanalCpAddedAction,
     RightCanalCpAddedAction,
@@ -42,10 +42,10 @@ class CanvasPanorexWidget(SplineCanvas):
             return
 
         self.draw_background(painter)
-        self.draw_spline(painter, self.arch_handler.L_canal_spline, QtGui.QColor(255, 0, 0))
-        self.draw_spline(painter, self.arch_handler.R_canal_spline, QtGui.QColor(0, 0, 255))
+        self.draw_spline(painter, self.arch_handler.L_canal_spline, col.L_CANAL_SPLINE)
+        self.draw_spline(painter, self.arch_handler.R_canal_spline, col.R_CANAL_SPLINE)
 
-        painter.setPen(QtGui.QColor(0, 0, 255))
+        painter.setPen(col.POS)
         painter.drawLine(WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN,
                          WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN + self.img.shape[0] - 1)
 
