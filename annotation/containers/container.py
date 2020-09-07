@@ -1,7 +1,7 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
 
-from annotation.components.Dialog import question
+from annotation.components.Dialog import question, information
 from annotation.containers.annotationcontainer import AnnotationContainerWidget
 from annotation.containers.archpanorexcontainer import ArchPanorexContainerWidget
 from annotation.containers.dialog3Dplot import Dialog3DPlot
@@ -60,8 +60,8 @@ class Container(QtGui.QWidget):
         self.view_menu.addAction(view_volume_with_delaunay)
 
     def show_Dialog3DPlot(self, volume=None):
-        if volume is None:
-            return
+        if volume is None or not volume.any():
+            information(self, "Plot", "No volume to show")
         dialog = Dialog3DPlot(self)
         dialog.show(volume)
 

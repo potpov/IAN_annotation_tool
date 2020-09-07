@@ -342,7 +342,8 @@ class ArchHandler(Jaw):
         gt_volume = np.zeros_like(self.volume)
         for z_id, points in enumerate(self.side_coords):
             for w_id, (x, y) in enumerate(points):
-                gt_volume[:, int(y), int(x)] = self.canal[z_id, :, w_id]
+                if 0 <= int(x) < self.W and 0 <= int(y) < self.H:
+                    gt_volume[:, int(y), int(x)] = self.canal[z_id, :, w_id]
         self.set_gt_volume(gt_volume)
 
     def save_annotations_dicom(self):

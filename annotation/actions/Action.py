@@ -9,6 +9,11 @@ RIGHT_CANAL_CP_ADDED = "RIGHT_CANAL_CP_ADDED"
 RIGHT_CANAL_CP_CHANGED = "RIGHT_CANAL_CP_CHANGED"
 RIGHT_CANAL_CP_REMOVED = "RIGHT_CANAL_CP_REMOVED"
 NO_ACTION = "NO_ACTION"
+SIDE_VOLUME_CP_ADDED = "SIDE_VOLUME_CP_ADDED"
+SIDE_VOLUME_CP_REMOVED = "SIDE_VOLUME_CP_REMOVED"
+SIDE_VOLUME_CP_CHANGED = "SIDE_VOLUME_CP_CHANGED"
+SIDE_VOLUME_SPLINE_EXTRACTED = "SIDE_VOLUME_SPLINE_EXTRACTED"
+SIDE_VOLUME_SPLINE_RESET = "SIDE_VOLUME_SPLINE_RESET"
 
 
 def create_action(**args):
@@ -31,6 +36,16 @@ def create_action(**args):
         return LeftCanalCpRemovedAction(args['index'])
     elif kind == RIGHT_CANAL_CP_REMOVED:
         return RightCanalCpRemovedAction(args['index'])
+    elif kind == SIDE_VOLUME_CP_ADDED:
+        return SideVolumeCpAddedAction(args['cp'], args['index'], args['pos'])
+    elif kind == SIDE_VOLUME_CP_REMOVED:
+        return SideVolumeCpRemovedAction(args['index'], args['pos'])
+    elif kind == SIDE_VOLUME_CP_CHANGED:
+        return SideVolumeCpChangedAction(args['curr'], args['prev'], args['index'], args['pos'])
+    elif kind == SIDE_VOLUME_SPLINE_EXTRACTED:
+        return SideVolumeSplineExtractedAction(args['pos'], args['from_pos'])
+    elif kind == SIDE_VOLUME_SPLINE_RESET:
+        return SideVolumeSplineResetAction(args['pos'])
     else:
         raise ValueError("kind not recognized")
 
@@ -116,3 +131,37 @@ class SliceChangedAction(Action):
     def __init__(self, val):
         self.kind = SLICE_CHANGED
         self.val = int(val)
+
+
+class SideVolumeCpAddedAction(CpAddedAction):
+    def __init__(self, cp, index, pos):
+        super().__init__(cp, index)
+        self.kind = SIDE_VOLUME_CP_ADDED
+        self.pos = pos
+
+
+class SideVolumeCpRemovedAction(CpRemovedAction):
+    def __init__(self, index, pos):
+        super().__init__(index)
+        self.kind = SIDE_VOLUME_CP_REMOVED
+        self.pos = pos
+
+
+class SideVolumeCpChangedAction(CpChangedAction):
+    def __init__(self, curr, prev, index, pos):
+        super().__init__(curr, prev, index)
+        self.kind = SIDE_VOLUME_CP_CHANGED
+        self.pos = pos
+
+
+class SideVolumeSplineExtractedAction(Action):
+    def __init__(self, pos, from_pos):
+        self.kind = SIDE_VOLUME_SPLINE_EXTRACTED
+        self.pos = pos
+        self.from_pos = from_pos
+
+
+class SideVolumeSplineResetAction(Action):
+    def __init__(self, pos):
+        self.kind = SIDE_VOLUME_SPLINE_RESET
+        self.pos = pos

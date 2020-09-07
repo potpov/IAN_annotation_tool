@@ -2,6 +2,7 @@ from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
 from annotation import WIDGET_MARGIN, colors as col
+from annotation.actions.Action import SideVolumeCpRemovedAction, SideVolumeCpAddedAction, SideVolumeCpChangedAction
 from annotation.components.Canvas import SplineCanvas
 from annotation.spline.spline import ClosedSpline
 from annotation.tests.opencv_tests.test_image_processing import extimate_canal
@@ -21,6 +22,9 @@ class CanvasSideVolume(SplineCanvas):
         self.show_hint = False
         self.auto_propagate = False
         self.show_mask_spline = False
+
+        # action
+        self.action = None
 
     def set_img(self):
         self.img = self.arch_handler.side_volume[self.current_pos]
@@ -113,9 +117,12 @@ class CanvasSideVolume(SplineCanvas):
 
         idx_to_remove = self.cp_clicked(spline, mouse_x, mouse_y)
         if idx_to_remove is not None:
+            self.arch_handler.history.add(SideVolumeCpRemovedAction(idx_to_remove, self.current_pos), debug=True)
             spline.remove_cp(idx_to_remove)
         else:
-            spline.add_cp(mouse_x, mouse_y)
+            added_cp_idx = spline.add_cp(mouse_x, mouse_y)
+            self.arch_handler.history.add(SideVolumeCpAddedAction((mouse_x, mouse_y), added_cp_idx, self.current_pos),
+                                          debug=True)
 
         self.arch_handler.annotation_masks.set_mask_spline(self.current_pos, spline)
 
@@ -125,6 +132,7 @@ class CanvasSideVolume(SplineCanvas):
             return
 
         self.drag_point = None
+        self.action = None
         mouse_pos = QMouseEvent.pos()
         mouse_x = mouse_pos.x() - WIDGET_MARGIN
         mouse_y = mouse_pos.y() - WIDGET_MARGIN
@@ -138,11 +146,16 @@ class CanvasSideVolume(SplineCanvas):
                     drag_x_offset = point_x - mouse_x
                     drag_y_offset = point_y - mouse_y
                     self.drag_point = (cp_index, (drag_x_offset, drag_y_offset))
+                    self.action = SideVolumeCpChangedAction((point_x, point_y), (point_x, point_y), cp_index,
+                                                            self.current_pos)
         elif QMouseEvent.button() == QtCore.Qt.RightButton:
             self.handle_right_click(mouse_x, mouse_y)
 
     def mouseReleaseEvent(self, QMouseEvent):
         self.drag_point = None
+        if self.action is not None:
+            self.arch_handler.history.add(self.action, debug=True)
+            self.action = None
         self.update()
 
     def mouseMoveEvent(self, QMouseEvent):
@@ -158,8 +171,9 @@ class CanvasSideVolume(SplineCanvas):
             new_x = clip_range(new_x, 0, self.pixmap.width() - 1)
             new_y = clip_range(new_y, 0, self.pixmap.height() - 1)
 
-            # Set new point data
+            self.action = SideVolumeCpChangedAction((new_x, new_y), self.action.prev, cp_index, self.current_pos)
 
+            # Set new point data
             new_idx = spline.update_cp(cp_index, new_x, new_y)
             self.drag_point = (new_idx, self.drag_point[1])
 

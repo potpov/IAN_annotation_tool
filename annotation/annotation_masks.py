@@ -3,6 +3,7 @@ import os
 import numpy as np
 from datetime import datetime
 
+from annotation.actions.Action import SideVolumeSplineExtractedAction
 from annotation.components.Dialog import show_message_box, LoadingDialog
 from annotation.spline.spline import ClosedSpline
 from annotation.utils import export_img, active_contour_balloon
@@ -69,7 +70,11 @@ class AnnotationMasks():
 
     def get_mask_spline(self, idx, from_snake=False):
         if self.masks[idx] is None and from_snake is True:
-            init = self.masks[idx - 1] or self.masks[idx + 1]
+            from_idx = idx - 1
+            init = self.masks[from_idx]
+            if init is None:
+                from_idx = idx + 1
+                init = self.masks[from_idx]
             if init is not None:
                 ####
                 ## Approach with skimage.segmentation.active_contour
@@ -79,6 +84,7 @@ class AnnotationMasks():
                 snake = active_contour_balloon(self.arch_handler.side_volume[idx], init, debug=False)
                 if snake is None:
                     return None
+                self.arch_handler.history.add(SideVolumeSplineExtractedAction(idx, from_idx), debug=True)
                 self.set_mask_spline(idx, ClosedSpline(snake, len(snake) // self.NUM_CP_LOSS), from_snake)
 
         return self.masks[idx]
@@ -87,12 +93,14 @@ class AnnotationMasks():
         if self.mask_volume is None or self.edited:
             self.compute_mask_volume()
         now = datetime.now()
-        directory_name = "{:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(
+        directory_name = "masks-{:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(
             now.year, now.month, now.day, now.hour, now.minute, now.second)
         path = os.path.join(self.EXPORT_IMGS_PATH, directory_name)
         if not os.path.exists(path):
             os.makedirs(path)
         for i, img in enumerate(self.mask_volume):
+            if not img.any():  # skipping totally black images
+                continue
             filename = "{}{}".format(i, self.EXPORT_IMGS_FILENAME)
             export_img(img, os.path.join(path, filename))
         self.edited = False

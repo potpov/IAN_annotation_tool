@@ -1,5 +1,6 @@
 from pyface.qt import QtGui
 
+from annotation.actions.Action import SideVolumeSplineResetAction
 from annotation.components.Dialog import LoadingDialog
 from annotation.containers.dialog3Dplot import Dialog3DPlot
 from annotation.widgets.annotationcontrolpanel import AnnotationControlPanelWidget
@@ -52,6 +53,7 @@ class AnnotationContainerWidget(QtGui.QWidget):
     def reset_annotation_clicked_handler(self):
         self.panel.auto_acquire_annotation.setChecked(False)
         self.arch_handler.annotation_masks.set_mask_spline(self.current_pos, None)
+        self.arch_handler.history.add(SideVolumeSplineResetAction(self.current_pos), debug=True)
         self.sidevolume_show()
 
     def acquire_annotation_clicked_handler(self):

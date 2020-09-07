@@ -82,10 +82,10 @@ class CanvasPanorexWidget(SplineCanvas):
         else:
             if mouse_x < self.img.shape[1] // 2:
                 idx = self.arch_handler.L_canal_spline.add_cp(mouse_x, mouse_y)
-                self.arch_handler.history.add(LeftCanalCpAddedAction((mouse_x, mouse_y), idx), debug=True)
+                self.arch_handler.history.add(LeftCanalCpAddedAction((mouse_x, mouse_y), idx))
             else:
                 idx = self.arch_handler.R_canal_spline.add_cp(mouse_x, mouse_y)
-                self.arch_handler.history.add(RightCanalCpAddedAction((mouse_x, mouse_y), idx), debug=True)
+                self.arch_handler.history.add(RightCanalCpAddedAction((mouse_x, mouse_y), idx))
 
     def mousePressEvent(self, QMouseEvent):
         """ Internal mouse-press handler """
@@ -106,7 +106,7 @@ class CanvasPanorexWidget(SplineCanvas):
         self.drag_point = None
         if self.action is not None:
             self.spline_changed.emit()
-            self.arch_handler.history.add(self.action, debug=True)
+            self.arch_handler.history.add(self.action)
             self.action = None
         self.update()
 

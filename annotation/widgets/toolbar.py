@@ -2,6 +2,8 @@ from PyQt5 import QtCore, QtWidgets
 from pyface.qt import QtGui
 import qtawesome as qta
 
+from annotation.components.Dialog import question
+
 
 class Toolbar(QtGui.QWidget):
     toolbar_save = QtCore.pyqtSignal()
@@ -29,9 +31,22 @@ class Toolbar(QtGui.QWidget):
         self.arch_handler = None
 
     def save(self):
-        self.arch_handler.save_state()
-        self.toolbar_save.emit()
+        def yes(self):
+            self.arch_handler.save_state()
+            self.toolbar_save.emit()
+
+        if self.arch_handler.is_there_data_to_load():
+            question(self, "Save", "Save data was found. Are you sure you want to overwrite the save?",
+                     yes_callback=lambda: yes(self))
+        else:
+            yes(self)
 
     def load(self):
-        self.arch_handler.load_state()
-        self.toolbar_load.emit()
+        def yes(self):
+            self.arch_handler.load_state()
+            self.toolbar_load.emit()
+
+        if self.arch_handler.is_there_data_to_load():
+            question(self, "Load",
+                     "Save data was found. Are you sure you want to discard current changes and load from disk?",
+                     yes_callback=lambda: yes(self))

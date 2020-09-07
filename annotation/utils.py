@@ -248,7 +248,7 @@ def export_img(img, filename):
 
 
 def active_contour_balloon(img, spline, debug=False, threshold='auto'):
-    # SRC https://stackoverflow.com/questions/45736132/scikit-image-expanding-active-contour-snakes
+    # source: https://stackoverflow.com/questions/45736132/scikit-image-expanding-active-contour-snakes
     init = spline.generate_mask(img.shape)
     init.clip(max=1)
     debug and plot(init, "init")
@@ -260,7 +260,6 @@ def active_contour_balloon(img, spline, debug=False, threshold='auto'):
         # iter_callback=lambda x: plot(x * 255)
     )
     morph_GAC = np.array(morph_GAC * 255).astype(np.uint8)
-    morph_GAC = cv2.cvtColor(morph_GAC, cv2.COLOR_BGR2GRAY)
     if not morph_GAC.any():
         return None
     morph_GAC[morph_GAC > 0] = 255

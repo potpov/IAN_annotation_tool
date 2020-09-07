@@ -71,7 +71,7 @@ class Spline():
         It starts from the initial set of coordinates, then extracts self.num_cp control points.
         Finally, adds the first and last point of the set to self.cp
         """
-        if len(self.coords) == 0:
+        if len(self.coords) == 0 or self.num_cp == 0:
             return
         self.cp = [self.coords[0], ]
         offset = int(len(self.coords) / self.num_cp)
@@ -232,7 +232,7 @@ class ClosedSpline(Spline):
 
         It starts from the initial set of coordinates, then extracts self.num_cp control points.
         """
-        if len(self.coords) == 0:
+        if len(self.coords) == 0 or self.num_cp == 0:
             return
         offset = int(len(self.coords) / self.num_cp)
         if offset == 0:

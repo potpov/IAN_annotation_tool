@@ -53,7 +53,7 @@ class MessageDialog(QtWidgets.QDialog):
         self.thread.start()
 
 
-def question(parent, title, message, yes_callback, no_callback):
+def question(parent, title, message, yes_callback=lambda: None, no_callback=lambda: None):
     q = QtGui.QMessageBox()
     r = q.question(parent, title, message, q.Yes | q.No)
     if r == q.Yes:
@@ -62,15 +62,18 @@ def question(parent, title, message, yes_callback, no_callback):
         no_callback()
 
 
-##################
-# FIXME: if I create a messagebox like this, closing it will make the application crash if Windows sound is still active.
+def warning(parent, title, message):
+    w = QtGui.QMessageBox()
+    w.warning(parent, title, message)
 
-def information(title, message, parent=None):
+
+def information(parent, title, message):
     q = QtGui.QMessageBox()
     q.information(parent, title, message)
 
 
 def show_message_box(kind, title, message, yes_callback=None, no_callback=None, details="", parent=None):
+    # FIXME: if I create a messagebox like this, closing it will make the application crash if Windows sound is still active.
     return
     ##########
     kind = kind.capitalize()

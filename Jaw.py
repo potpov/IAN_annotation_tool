@@ -57,6 +57,23 @@ class Jaw:
     # DICOM OPS
     ############
 
+    def add_annotation_overlay(self, ds, overlay_data):
+        """
+        Add annotation overlay at OVERLAY_ADDR
+
+        Args:
+            ds (pydicom.dataset.FileDataset): where to add the annotation overlay
+            overlay_data (bytes): data for 'OverlayData' field
+        """
+        ds.add_new((OVERLAY_ADDR, 0x0010), "US", self.H)
+        ds.add_new((OVERLAY_ADDR, 0x0011), "US", self.W)
+        ds.add_new((OVERLAY_ADDR, 0x0022), "LO", "Marker")
+        ds.add_new((OVERLAY_ADDR, 0x0040), "CS", "G")
+        ds.add_new((OVERLAY_ADDR, 0x0050), "SS", [1, 1])
+        ds.add_new((OVERLAY_ADDR, 0x0100), "US", 1)
+        ds.add_new((OVERLAY_ADDR, 0x0102), "US", 0)
+        ds.add_new((OVERLAY_ADDR, 0x3000), "OB", overlay_data)
+
     def overwrite_annotations(self):
         """
         overwrite the original annotations in the DICOM files with the new annotations
@@ -70,7 +87,10 @@ class Jaw:
             packed_bytes = pack_bits(overlay)
             if len(packed_bytes) % 2:  # padding if needed
                 packed_bytes += b'\x00'
-            self.dicom_files[slice_num][OVERLAY_ADDR, 0x3000].value = packed_bytes
+            if self.dicom_files[slice_num].get((OVERLAY_ADDR, 0x3000)) is None:
+                self.add_annotation_overlay(self.dicom_files[slice_num], packed_bytes)
+            else:
+                self.dicom_files[slice_num][OVERLAY_ADDR, 0x3000].value = packed_bytes
 
     def save_dicom(self, path):
         """
