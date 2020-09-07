@@ -1,13 +1,7 @@
 import numpy as np
-import pyecvl._core.ecvl as ecvl
 from conf import conf
-import glob
 import os.path
-import viewer
-import processing
-from dicom_loader import load_dicom
 import cv2
-from mayavi import mlab
 from Jaw import Jaw
 
 
