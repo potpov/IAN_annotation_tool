@@ -7,13 +7,14 @@ from torch.utils.tensorboard import SummaryWriter
 from nn.dataloader import AlveolarDataloader
 from nn.models.SegNet import SegNet
 import processing
+
 import numpy as np
 from tqdm import tqdm
-import viewer
 import nn.utils as utils
 from Jaw import Jaw
 from Plane import Plane
 import cv2
+from pathlib import Path
 
 
 def predict(input_cuts, model, device, writer):
@@ -51,6 +52,10 @@ def predict(input_cuts, model, device, writer):
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--experiment_name', default="exp1", help="name of the experiment")
 
+arg_parser.add_argument('--experiments_dir',
+                        default=r'Y:\work\logs\results',
+                        help="name of the experiment")
+
 arg_parser.add_argument('--shuffle', action='store_true', help="shuffle the dataset indices?")
 
 arg_parser.add_argument('--checkpoint_file',
@@ -68,9 +73,14 @@ arg_parser.add_argument('--num_classes', default=1, type=int, help='num class of
 arg_parser.add_argument('--data_loader_workers', default=8, type=int, help='num_workers of Dataloader')
 arg_parser.add_argument('--batch_size', default=64, type=int, help='input batch size')
 arg_parser.add_argument('--model', default="SegNet", help='used model')
+arg_parser.add_argument('--angles_num', default=10, help='number of angles to test')
+
 
 args = arg_parser.parse_args()
 utils.set_logger()
+
+# create folder for results
+Path(os.path.join(args.experiments_dir, args.experiment_name)).mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == '__main__':
@@ -100,6 +110,7 @@ if __name__ == '__main__':
     # DICOM PRE-PROCESSING
 
     jaw = Jaw(args.dicomdir_path)
+    jaw_old = Jaw(args.dicomdir_path)  # saving here results with the old method
 
     p, start, end = processing.arch_detection(jaw.get_slice(args.slice), debug=False)
     offset = 50
@@ -108,66 +119,74 @@ if __name__ == '__main__':
     # generating orthogonal lines to the offsets curves
     side_coords = processing.generate_side_coords(h_offset, l_offset, derivative, offset=2 * offset)
 
-    # TODO: we have to loop over side coords later!
-    for slice_num in range(20, 120):
-        side_coord = side_coords[slice_num]
+    cuts = []
+    plane = Plane(jaw.Z, len(side_coords[1]))
+    print(Path(__file__).parent.absolute())
 
-        plane = Plane(jaw.Z, len(side_coord))
+    z_axis_coeff = np.load(os.path.join(Path(__file__).parent.absolute(), 'z_axis_func_coeff.npy'))
+    p = np.poly1d(z_axis_coeff)
+
+    for slice_num, side_coord in enumerate(side_coords):
+
         plane.from_line(side_coord)  # load the plane from a line
 
-        ###########
+        current_z = p(slice_num / len(side_coords))  # normalized val to the function
+
         # FIRST ROTATION
-        cuts = []
-        # first cut with no tilt
-        cut = jaw.plane_slice(plane)
-        cuts.append(processing.increase_contrast(cut))
-        # explore all the possible tilts
-        for i in tqdm(range(0, 179), total=179):
-            plane.tilt_z(1)
+        for i in tqdm(range(0, args.angles_num), total=args.angles_num):
+            plane.tilt_z(i - args.angles_num // 2, current_z)
             cut = jaw.plane_slice(plane)
             cuts.append(processing.increase_contrast(cut))
-        cuts = np.stack(cuts)
+            for j in range(args.angles_num):
+                plane.tilt_x(j - args.angles_num // 2)
+            plane.from_line(side_coord)  # reset
 
-        # predict masks for all the tilts
-        results = predict(cuts, model, device, writer)
+    cuts = np.stack(cuts)  # put slices and angles together
+    results = predict(cuts, model, device, writer)
+    result_slices = np.split(results, len(side_coords), axis=0)  # split slices from angles
 
+    for slice_num, result_slice in enumerate(result_slices):
         # select the angle with the maximum number of predicted pixels
-        angle_1 = np.argmax(np.sum(results.reshape(180, -1) == 1, axis=1))
-        logging.info('ROTATION 1. the best angle for this slice is {} degrees'.format(angle_1))
+        angle_1 = np.argmax(np.sum(result_slice.reshape(args.angles_num, -1) == 1, axis=1)) - args.angles_num // 2
+        logging.info('ROTATION. the best angle for this slice is {} degrees'.format(angle_1))
 
-        #############
-        # SECOND ROTATION
-        # starting from the previous best plane
-        plane.from_line(side_coord)
-        if angle_1 != 0:
-            plane.tilt_z(angle_1)
-        cuts = []
-        # first cut with no tilt
-        cut = jaw.plane_slice(plane)
-        cuts.append(processing.increase_contrast(cut))
-        # explore all the possible tilts
-        for i in tqdm(range(0, 179), total=179):
-            plane.tilt_x(1)
-            cut = jaw.plane_slice(plane)
-            cuts.append(processing.increase_contrast(cut))
-        cuts = np.stack(cuts)
+        plane.from_line(side_coords[slice_num])
 
-        # predict masks for all the tilts
-        results = predict(cuts, model, device, writer)
+        # saving the prediction of the cut with no rotation (OLD METHOD)
+        pred = cv2.resize(result_slice[args.angles_num // 2], (plane.Z, plane.W), interpolation=cv2.INTER_AREA)
+        pred[pred > 0.5] = 1
+        pred[pred <= 0.5] = 0
+        jaw_old.merge_predictions(plane, pred)
 
-        # select the angle with the maximum number of predicted pixels
-        angle_2 = np.argmax(np.sum(results.reshape(180, -1) == 1, axis=1))
-        logging.info('ROTATION 2. the best angle for this slice is {} degrees'.format(angle_2))
-
-        # saving result for this slice
-        plane.from_line(side_coord)
-        if angle_1 != 0:
-            plane.tilt_z(angle_1)
-        if angle_2 != 0:
-          plane.tilt_x(angle_2)
-        pred = cv2.resize(results[angle_1], (plane.Z, plane.W), interpolation=cv2.INTER_AREA)
-        pred[pred > 0] = 1
+        # saving result with the best X rotation (NEW METHOD)
+        plane.tilt_z(angle_1)
+        pred = cv2.resize(result_slice[angle_1], (plane.Z, plane.W), interpolation=cv2.INTER_AREA)
+        pred[pred > 0.5] = 1
+        pred[pred <= 0.5] = 0
         jaw.merge_predictions(plane, pred)
 
-    # checking the result
-    viewer.annotated_volume(jaw.get_volume(), jaw.get_gt_volume())
+    logging.info('process completed. results are going to be saved in {}'.format(str(os.path.join(args.experiments_dir, args.experiment_name))))
+
+    np.save(os.path.join(args.experiments_dir, args.experiment_name, 'tiltx.npy'), jaw.get_gt_volume())  # save volume
+    np.save(os.path.join(args.experiments_dir, args.experiment_name, 'old.npy'), jaw_old.get_gt_volume())  # save volume
+
+    # #############
+    # # SECOND ROTATION
+    # # starting from the previous best plane
+    # plane.from_line(side_coord)
+    # if angle_1 != 0:
+    #     plane.tilt_z(angle_1)
+    # cuts = []
+    # # first cut with no tilt
+    # cut = jaw.plane_slice(plane)
+    # cuts.append(processing.increase_contrast(cut))
+    # # explore all the possible tilts
+    # for i in tqdm(range(0, 179), total=179):
+    #     plane.tilt_x(1)
+    #     cut = jaw.plane_slice(plane)
+    #     cuts.append(processing.increase_contrast(cut))
+    # cuts = np.stack(cuts)
+    #
+    # # predict masks for all the tilts
+    # results = predict(cuts, model, device, writer)
+

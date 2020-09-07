@@ -1,6 +1,9 @@
+import os
 from matplotlib import pyplot as plt
 from matplotlib.tri import Triangulation, TriAnalyzer, UniformTriRefiner
-from mayavi import mlab
+if "REMOTE" not in os.environ:
+    from mayavi import mlab
+
 import numpy as np
 import cv2
 from scipy.spatial import Delaunay

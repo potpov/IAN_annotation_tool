@@ -29,16 +29,19 @@ class Plane:
             np.moveaxis(np.tile(np.arange(0, self.Z, dtype=np.float), (x_set.size, 1)), 0, 1)
         ))
 
-    def get_h_axis(self):
+    def get_h_axis(self, z_level):
         """
+        TODO: aggiorna
         create a vector parallel to the Z axis of the plane to be used as reference in the rotation
         Returns:
         ux, uy, ux (Float): values for each component of the vector
         """
+
         plane_centre = {
-            'z': self.Z // 2,
-            'w': self.W // 2
-        }
+                'z': z_level,
+                'w': self.W // 2
+            }
+
         # get the axis from the vectors of differences upon the centre of the plane (ux, uy, uz)
         u = np.array([
             self.plane[0, plane_centre['z'] + 1, plane_centre['w']] - self.plane[
@@ -51,14 +54,14 @@ class Plane:
         ux, uy, uz = u / np.linalg.norm(u)  # normalization
         return ux, uy, uz
 
-    def get_w_axis(self):
+    def get_w_axis(self, z_level):
         """
         create a vector parallel to the X axis of the plane to be used as reference in the rotation
         Returns:
         ux, uy, ux (Float): values for each component of the vector
         """
         plane_centre = {
-            'z': self.Z // 2,
+            'z': z_level,
             'w': self.W // 2
         }
         # get the axis from the vectors of differences upon the centre of the plane (ux, uy, uz)
@@ -73,8 +76,9 @@ class Plane:
         ux, uy, uz = u / np.linalg.norm(u)  # normalization
         return ux, uy, uz
 
-    def tilt_x(self, degrees):
+    def tilt_x(self, degrees, z_level=None):
         """
+        TODO: aggiusta
         execute a rotation with the following steps:
             1- translate the space to the origin by subtracting the center coords of the plane
             to all the other elements of the plane
@@ -87,11 +91,18 @@ class Plane:
         Args:
             degrees (Int): angle to rotate about in degrees
         """
+
+        # Z index of the plane should be as close as possible to the avarage canal Z position
+        if not z_level:
+            z_level = self.Z // 2  # if we have no clues then let's rotate with respect to the middle of the plane
+        else:
+            z_level = np.abs(self.plane[2] - z_level).argmin() // self.W
+
         # shifting to the origin
-        centres = self.plane[:, self.Z // 2, self.W // 2]
+        centres = self.plane[:, z_level, self.W // 2]
         self.plane = np.subtract(self.plane, centres.reshape(3, 1, 1))  # broadcasting is real fancy
 
-        ux, uy, uz = self.get_h_axis()
+        ux, uy, uz = self.get_h_axis(z_level)
 
         # align to Z
         d = np.sqrt(uy ** 2 + uz ** 2)
@@ -129,7 +140,7 @@ class Plane:
         # threshold for overflows
         self.plane[2][self.plane[2] >= self.Z] = self.Z - 1
 
-    def tilt_z(self, degrees):
+    def tilt_z(self, degrees, z_level=None):
         """
         execute a rotation with the following steps:
             1- translate the space to the origin by subtracting the center coords of the plane
@@ -144,11 +155,17 @@ class Plane:
             degrees (Int): angle to rotate about in degrees
         """
 
+        # Z index of the plane should be as close as possible to the avarage canal Z position
+        if not z_level:
+            z_level = self.Z // 2  # if we have no clues then let's rotate with respect to the middle of the plane
+        else:
+            z_level = np.abs(self.plane[2] - z_level).argmin() // self.W
+
         # shifting to the origin
-        centres = self.plane[:, self.Z // 2, self.W // 2]
+        centres = self.plane[:, z_level, self.W // 2]
         self.plane = np.subtract(self.plane, centres.reshape(3, 1, 1))
 
-        ux, uy, uz = self.get_w_axis()
+        ux, uy, uz = self.get_w_axis(z_level)
 
         # align to Y axis
         d = np.sqrt(uy ** 2 + ux ** 2)
