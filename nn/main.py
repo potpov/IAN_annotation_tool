@@ -56,7 +56,8 @@ arg_parser.add_argument('--experiments_dir',
                         default=r'Y:\work\logs\results',
                         help="name of the experiment")
 
-arg_parser.add_argument('--shuffle', action='store_true', help="shuffle the dataset indices?")
+arg_parser.add_argument('--shuffle', action='store_true', help="shuffle the dataset indices? default false")
+arg_parser.add_argument('--skip_contrast', action='store_true', help="skip? default false")
 
 arg_parser.add_argument('--checkpoint_file',
                         default=r'Y:\work\logs\checkpoints\segnet_hc_absnorm\maxillo_best.pth',
@@ -73,7 +74,7 @@ arg_parser.add_argument('--num_classes', default=1, type=int, help='num class of
 arg_parser.add_argument('--data_loader_workers', default=8, type=int, help='num_workers of Dataloader')
 arg_parser.add_argument('--batch_size', default=64, type=int, help='input batch size')
 arg_parser.add_argument('--model', default="SegNet", help='used model')
-arg_parser.add_argument('--angles_num', default=10, help='number of angles to test')
+arg_parser.add_argument('--angles_num', default=10, type=int, help='number of angles to test')
 
 
 args = arg_parser.parse_args()
@@ -121,25 +122,30 @@ if __name__ == '__main__':
 
     cuts = []
     plane = Plane(jaw.Z, len(side_coords[1]))
-    print(Path(__file__).parent.absolute())
 
     z_axis_coeff = np.load(os.path.join(Path(__file__).parent.absolute(), 'z_axis_func_coeff.npy'))
     p = np.poly1d(z_axis_coeff)
 
+    if args.angles_num % 2 != 0:
+        raise Exception("please choose an even degree number")
+    if args.angles_num < 0 or args.angles_num > 180:
+        raise Exception("degrees must be withing 180, we test from -angles to +angles")
+
+    if args.skip_contrast:
+        f = lambda img: img
+    else:
+        f = lambda img: processing.increase_contrast(img)
+
     for slice_num, side_coord in enumerate(side_coords):
 
         plane.from_line(side_coord)  # load the plane from a line
-
         current_z = p(slice_num / len(side_coords))  # normalized val to the function
-
         # FIRST ROTATION
-        for i in tqdm(range(0, args.angles_num), total=args.angles_num):
-            plane.tilt_z(i - args.angles_num // 2, current_z)
+        plane.tilt_z(-args.angles_num)
+        for i in tqdm(range(0, 1 + args.angles_num * 2), total=1 + args.angles_num * 2):
             cut = jaw.plane_slice(plane)
-            cuts.append(processing.increase_contrast(cut))
-            for j in range(args.angles_num):
-                plane.tilt_x(j - args.angles_num // 2)
-            plane.from_line(side_coord)  # reset
+            cuts.append(f(cut))  # TODO: provare senza increase contrast
+            plane.tilt_z(1)
 
     cuts = np.stack(cuts)  # put slices and angles together
     results = predict(cuts, model, device, writer)
@@ -147,20 +153,24 @@ if __name__ == '__main__':
 
     for slice_num, result_slice in enumerate(result_slices):
         # select the angle with the maximum number of predicted pixels
-        angle_1 = np.argmax(np.sum(result_slice.reshape(args.angles_num, -1) == 1, axis=1)) - args.angles_num // 2
-        logging.info('ROTATION. the best angle for this slice is {} degrees'.format(angle_1))
+        # values from 0 to args.angles_num * 2
+        z_angle_index = np.argmax(np.sum(result_slice.reshape(1 + args.angles_num * 2, -1) == 1, axis=1))
+        # values from -args.angles_num to args.angles_num
+        z_angle = z_angle_index - args.angles_num
+        if z_angle == 0:
+            logging.info('the best angle for slice {} is default angle'.format(slice_num))
+        else:
+            logging.info('the best angle for slice {} is {} degrees'.format(slice_num, z_angle))
 
         plane.from_line(side_coords[slice_num])
-
-        # saving the prediction of the cut with no rotation (OLD METHOD)
-        pred = cv2.resize(result_slice[args.angles_num // 2], (plane.Z, plane.W), interpolation=cv2.INTER_AREA)
+        pred = cv2.resize(result_slice[args.angles_num], (plane.Z, plane.W), interpolation=cv2.INTER_AREA)
         pred[pred > 0.5] = 1
         pred[pred <= 0.5] = 0
         jaw_old.merge_predictions(plane, pred)
 
         # saving result with the best X rotation (NEW METHOD)
-        plane.tilt_z(angle_1)
-        pred = cv2.resize(result_slice[angle_1], (plane.Z, plane.W), interpolation=cv2.INTER_AREA)
+        plane.tilt_z(z_angle)
+        pred = cv2.resize(result_slice[z_angle_index], (plane.Z, plane.W), interpolation=cv2.INTER_AREA)
         pred[pred > 0.5] = 1
         pred[pred <= 0.5] = 0
         jaw.merge_predictions(plane, pred)
