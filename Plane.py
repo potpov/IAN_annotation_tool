@@ -31,8 +31,11 @@ class Plane:
 
     def get_h_axis(self, z_level):
         """
-        TODO: aggiorna
         create a vector parallel to the Z axis of the plane to be used as reference in the rotation
+        Args:
+            z_level (Int): level of the z axis where our rotation axis has to be placed. if this is not specified the rotation axis
+            is placed in the middle of the plane, otherwise we search over the coords in the plane for the closest value and we
+            place the rotation axis at that cell of the plane so that the source of the rotation lays there.
         Returns:
         ux, uy, ux (Float): values for each component of the vector
         """
@@ -57,6 +60,10 @@ class Plane:
     def get_w_axis(self, z_level):
         """
         create a vector parallel to the X axis of the plane to be used as reference in the rotation
+        Args:
+            z_level (Int): level of the z axis where our rotation axis has to be placed. if this is not specified the rotation axis
+            is placed in the middle of the plane, otherwise we search over the coords in the plane for the closest value and we
+            place the rotation axis at that cell of the plane so that the source of the rotation lays there.
         Returns:
         ux, uy, ux (Float): values for each component of the vector
         """
@@ -78,7 +85,6 @@ class Plane:
 
     def tilt_x(self, degrees, z_level=None):
         """
-        TODO: aggiusta
         execute a rotation with the following steps:
             1- translate the space to the origin by subtracting the center coords of the plane
             to all the other elements of the plane
@@ -90,7 +96,13 @@ class Plane:
             further information at http://paulbourke.net/geometry/rotate/
         Args:
             degrees (Int): angle to rotate about in degrees
+            z_level (Int): level of the z axis where our rotation axis has to be placed. if this is not specified the rotation axis
+            is placed in the middle of the plane, otherwise we search over the coords in the plane for the closest value and we
+            place the rotation axis at that cell of the plane so that the source of the rotation lays there.
         """
+
+        if degrees == 0:
+            return
 
         # Z index of the plane should be as close as possible to the avarage canal Z position
         if not z_level:
@@ -153,7 +165,13 @@ class Plane:
             further information at http://paulbourke.net/geometry/rotate/
         Args:
             degrees (Int): angle to rotate about in degrees
+            z_level (Int): level of the z axis where our rotation axis has to be placed. if this is not specified the rotation axis
+            is placed in the middle of the plane, otherwise we search over the coords in the plane for the closest value and we
+            place the rotation axis at that cell of the plane so that the source of the rotation lays there.
         """
+
+        if degrees == 0:
+            return
 
         # Z index of the plane should be as close as possible to the avarage canal Z position
         if not z_level:
