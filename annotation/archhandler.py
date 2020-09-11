@@ -7,6 +7,7 @@ import json
 import processing
 import viewer
 from Jaw import Jaw
+from Plane import Plane
 from annotation.actions.Action import SliceChangedAction
 from annotation.actions.History import History
 from annotation.annotation_masks import AnnotationMasks
@@ -70,6 +71,7 @@ class ArchHandler(Jaw):
         self.annotation_masks = None
         self.canal = None
         self.gt_delaunay = np.zeros_like(self.gt_volume)
+        self.t_side_volume = None
 
     def is_there_data_to_load(self):
         path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
@@ -365,3 +367,34 @@ class ArchHandler(Jaw):
 
     def get_jaw_with_delaunay(self):
         return self.volume + self.gt_delaunay if self.gt_delaunay.any() else None
+
+    def compute_tilted_side_volume(self, spline: Spline):
+        if spline is None:
+            return
+        n, h, w = self.side_volume.shape
+        tilted = np.zeros((n, int(h / self.side_volume_scale), int(w / self.side_volume_scale)))
+        p, start, end = spline.get_poly_spline()
+        derivative = np.polyder(p, 1)
+        # m = -1 / derivative
+
+        for x in range(0, n, 10):
+            if x in range(int(start), int(end)):
+                side_coord = self.side_coords[x]
+                plane = Plane(self.Z, len(side_coord))
+                plane.from_line(side_coord)
+                angle = -np.degrees(np.arctan(derivative(x)))
+                plane.tilt_z(angle, p(x))
+                cut = self.plane_slice(plane)
+                print("cutting x:{}".format(x))
+                tilted[x] = cut
+
+        width = int(tilted.shape[2] * self.side_volume_scale)
+        height = int(tilted.shape[1] * self.side_volume_scale)
+        scaled_tilted = np.ndarray(shape=(tilted.shape[0], height, width))
+
+        for i in range(tilted.shape[0]):
+            scaled_tilted[i] = cv2.resize(tilted[i, :, :], (width, height), interpolation=cv2.INTER_AREA)
+
+        # padding the side volume and rescaling
+        scaled_tilted = cv2.normalize(scaled_tilted, scaled_tilted, 0, 1, cv2.NORM_MINMAX)
+        self.t_side_volume = scaled_tilted

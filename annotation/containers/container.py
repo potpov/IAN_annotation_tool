@@ -3,6 +3,7 @@ from pyface.qt import QtGui
 
 from annotation.components.Dialog import question, information
 from annotation.containers.annotationcontainer import AnnotationContainerWidget
+from annotation.containers.tiltannotationcontainer import TiltAnnotationContainerWidget
 from annotation.containers.archpanorexcontainer import ArchPanorexContainerWidget
 from annotation.containers.dialog3Dplot import Dialog3DPlot
 from annotation.widgets.sliceselection import SliceSelectionWidget
@@ -97,7 +98,8 @@ class Container(QtGui.QWidget):
         self.arch_handler.compute_offsetted_arch(pano_offset=0)
         self.arch_handler.compute_panorexes()
         self.arch_handler.compute_side_volume_dialog(self.arch_handler.SIDE_VOLUME_SCALE)
-        self.annotation = AnnotationContainerWidget(self)
+        # self.annotation = AnnotationContainerWidget(self)
+        self.annotation = TiltAnnotationContainerWidget(self)
         self.annotation.set_arch_handler(self.arch_handler)
         self.annotation.initialize()
         self.annotation.show_img()

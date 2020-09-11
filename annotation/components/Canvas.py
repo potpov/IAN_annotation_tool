@@ -1,7 +1,7 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
 from abc import ABCMeta, abstractmethod
-
+import numpy as np
 from annotation import WIDGET_MARGIN
 
 
@@ -57,6 +57,25 @@ class SplineCanvas(Canvas, metaclass=CanvasMeta):
     @abstractmethod
     def mouseMoveEvent(self, QMouseEvent):
         pass
+
+    def draw_poly_approx(self, painter, p, start, end, color, offsetXY=WIDGET_MARGIN):
+        if start is None or end is None:
+            return
+        x_set = list(range(int(start), int(end)))
+        y_set = [p(x) for x in x_set]
+        points = [(x, y) for x, y in zip(x_set, y_set)]
+        self.draw_points(painter, points, color, offsetXY)
+
+    def draw_line_between_points(self, painter, p1, p2, color, offsetXY=WIDGET_MARGIN):
+        def get_equidist_points(p1, p2, parts):
+            return zip(np.linspace(p1[0], p2[0], parts + 1),
+                       np.linspace(p1[1], p2[1], parts + 1))
+
+        P1 = np.array(p1)
+        P2 = np.array(p2)
+        dist = np.linalg.norm(P2 - P1)
+        points = get_equidist_points(P1, P2, int(dist))
+        self.draw_points(painter, points, color, offsetXY)
 
     def draw_points(self, painter, points, color, offsetXY=WIDGET_MARGIN):
         """
