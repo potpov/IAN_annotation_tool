@@ -16,6 +16,13 @@ class Canvas(QtGui.QWidget, metaclass=CanvasMeta):
         self.container = parent
         self.img = None
         self.pixmap = None
+        self._can_draw = True
+
+    def set_can_draw(self, can_draw=None):
+        if can_draw is None:
+            self._can_draw = not self._can_draw  # changing current state to the opposite
+        else:
+            self._can_draw = can_draw  # explicitly assign True or False
 
     def paintEvent(self, e):
         qp = QtGui.QPainter()

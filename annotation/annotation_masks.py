@@ -68,7 +68,7 @@ class AnnotationMasks():
         self.masks[idx] = spline
         return spline
 
-    def get_mask_spline(self, idx, from_snake=False):
+    def get_mask_spline(self, idx, from_snake=False, tilted=False):
         if self.masks[idx] is None and from_snake is True:
             from_idx = idx - 1
             init = self.masks[from_idx]
@@ -81,7 +81,9 @@ class AnnotationMasks():
                 # spline = np.array(init.get_spline())
                 # snake = active_contour(self.arch_handler.side_volume[idx], spline, max_iterations=100)
                 ####
-                snake = active_contour_balloon(self.arch_handler.side_volume[idx], init, debug=False)
+                snake = active_contour_balloon(
+                    self.arch_handler.side_volume[idx] if not tilted else self.arch_handler.t_side_volume[idx],
+                    init, debug=False)
                 if snake is None:
                     return None
                 self.arch_handler.history.add(SideVolumeSplineExtractedAction(idx, from_idx), debug=True)

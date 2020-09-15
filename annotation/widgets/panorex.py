@@ -36,6 +36,24 @@ class CanvasPanorexWidgetTilt(SplineCanvas):
         self.draw(qp)
         qp.end()
 
+    def draw_tilted_plane_line(self, painter, spline):
+        if spline is None:
+            return
+
+        p, start, end = spline.get_poly_spline()
+        self.draw_poly_approx(painter, p, start, end, col.PANO_OFF_SPLINE)
+        x = self.current_pos
+
+        if start is not None and end is not None and x in range(int(start), int(end)):
+            derivative = np.polyder(p, 1)
+            m = -1 / derivative(x)
+            y = p(x)
+            q = y - m * x
+            f = np.poly1d([m, q])
+            off = 50
+            self.draw_line_between_points(painter, (x - off, f(x - off)),
+                                          (x + off, f(x + off)), col.POS)
+
     def draw(self, painter):
         if self.arch_handler is None:
             return
@@ -51,20 +69,8 @@ class CanvasPanorexWidgetTilt(SplineCanvas):
                          WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN + self.img.shape[0] - 1)
 
         # draw plane line
-        spline = self.arch_handler.L_canal_spline
-        p, start, end = spline.get_poly_spline()
-        self.draw_poly_approx(painter, p, start, end, col.PANO_OFF_SPLINE)
-        x = self.current_pos
-
-        if start is not None and end is not None and x in range(int(start), int(end)):
-            derivative = np.polyder(p, 1)
-            m = -1 / derivative(x)
-            y = p(x)
-            q = y - m * x
-            f = np.poly1d([m, q])
-            off = 50
-            self.draw_line_between_points(painter, (x - off, f(x - off)),
-                                          (x + off, f(x + off)), col.POS)
+        self.draw_tilted_plane_line(painter, self.arch_handler.L_canal_spline)
+        self.draw_tilted_plane_line(painter, self.arch_handler.R_canal_spline)
 
     def check_cp_movement(self, spline, LR, mouse_x, mouse_y):
         for cp_index, (point_x, point_y) in enumerate(spline.cp):
@@ -105,7 +111,9 @@ class CanvasPanorexWidgetTilt(SplineCanvas):
                 self.arch_handler.history.add(RightCanalCpAddedAction((mouse_x, mouse_y), idx))
 
     def mousePressEvent(self, QMouseEvent):
-        """ Internal mouse-press handler """
+        if not self._can_draw:
+            return
+
         self.drag_point = None
         self.action = None
         mouse_pos = QMouseEvent.pos()
@@ -119,7 +127,9 @@ class CanvasPanorexWidgetTilt(SplineCanvas):
             self.handle_right_click(mouse_x, mouse_y)
 
     def mouseReleaseEvent(self, QMouseEvent):
-        """ Internal mouse-release handler """
+        if not self._can_draw:
+            return
+
         self.drag_point = None
         if self.action is not None:
             self.spline_changed.emit()
@@ -128,7 +138,9 @@ class CanvasPanorexWidgetTilt(SplineCanvas):
         self.update()
 
     def mouseMoveEvent(self, QMouseEvent):
-        """ Internal mouse-move handler """
+        if not self._can_draw:
+            return
+
         if self.drag_point is not None:
             self.spline_changed.emit()
 

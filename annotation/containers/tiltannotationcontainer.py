@@ -24,19 +24,18 @@ class TiltAnnotationContainerWidget(QtGui.QWidget):
 
         # panorex
         self.panorex = CanvasPanorexWidgetTilt(self)
+        self.panorex.set_can_draw(False)
         self.panorex.spline_changed.connect(self.sidevolume_show)
         self.layout.addWidget(self.panorex, 0, 0)
 
         # side volume
         self.sidevolume = CanvasSideVolume(self)
+        self.sidevolume.set_can_draw(False)
         self.layout.addWidget(self.sidevolume, 0, 1)
-        self.t_side_volume = QtWidgets.QLabel(self)
-        self.layout.addWidget(self.t_side_volume, 0, 2)
 
-        # update tilted side volume
-        self.button = QtGui.QPushButton("update tilted")
-        self.button.clicked.connect(self.update_tilted_side_volume)
-        self.layout.addWidget(self.button, 1, 2)
+        # tilted side volume
+        self.t_sidevolume = CanvasSideVolume(self, tilted=True)
+        self.layout.addWidget(self.t_sidevolume, 0, 2)
 
         # control panel
         self.panel = AnnotationControlPanelWidget()
@@ -54,9 +53,6 @@ class TiltAnnotationContainerWidget(QtGui.QWidget):
     def initialize(self):
         self.panorex.set_img()
         self.sidevolume.set_img()
-
-    def update_tilted_side_volume(self):
-        self.arch_handler.compute_tilted_side_volume(self.arch_handler.L_canal_spline)
 
     def pos_changed_handler(self):
         self.current_pos = self.panel.getPosValue()
@@ -88,16 +84,20 @@ class TiltAnnotationContainerWidget(QtGui.QWidget):
     def sidevolume_show(self):
         self.sidevolume.show_(pos=self.current_pos,
                               show_dot=self.panel.show_dot.isChecked(),
-                              show_hint=self.panel.show_hint.isChecked(),
-                              auto_propagate=self.panel.auto_acquire_annotation.isChecked(),
-                              show_mask_spline=self.panel.show_mask_spline.isChecked()
+                              show_hint=False,
+                              auto_propagate=False,
+                              show_mask_spline=False
                               )
-        if self.arch_handler.t_side_volume is not None:
-            self.t_side_volume.setPixmap(numpy2pixmap(self.arch_handler.t_side_volume[self.current_pos]))
-            self.t_side_volume.update()
+        self.t_sidevolume.show_(pos=self.current_pos,
+                                show_dot=self.panel.show_dot.isChecked(),
+                                show_hint=self.panel.show_hint.isChecked(),
+                                auto_propagate=self.panel.auto_acquire_annotation.isChecked(),
+                                show_mask_spline=self.panel.show_mask_spline.isChecked()
+                                )
 
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler
         self.toolbar.arch_handler = arch_handler
         self.panorex.arch_handler = arch_handler
         self.sidevolume.arch_handler = arch_handler
+        self.t_sidevolume.arch_handler = arch_handler

@@ -3,6 +3,7 @@ from pyface.qt import QtGui
 
 from annotation.components.Dialog import question, information
 from annotation.containers.annotationcontainer import AnnotationContainerWidget
+from annotation.containers.panorexsplinecontainer import PanorexSplineContainerWidget
 from annotation.containers.tiltannotationcontainer import TiltAnnotationContainerWidget
 from annotation.containers.archpanorexcontainer import ArchPanorexContainerWidget
 from annotation.containers.dialog3Dplot import Dialog3DPlot
@@ -82,7 +83,7 @@ class Container(QtGui.QWidget):
 
     def add_ArchPanorexContainerWidget(self):
         self.apc = ArchPanorexContainerWidget(self)
-        self.apc.spline_selected.connect(self.show_annotation_widget)
+        self.apc.spline_selected.connect(self.show_panorex_spline_widget)
         self.apc.set_arch_handler(self.arch_handler)
         self.apc.initialize()
         self.apc.show_img()
@@ -94,10 +95,27 @@ class Container(QtGui.QWidget):
             self.apc.deleteLater()
             self.apc = None
 
+    def add_PanorexSplineContainerWidget(self):
+        self.arch_handler.compute_offsetted_arch(pano_offset=0)
+        self.arch_handler.compute_panorexes()
+        self.psc = PanorexSplineContainerWidget(self)
+        self.psc.panorex_spline_selected.connect(self.show_annotation_widget)
+        self.psc.set_arch_handler(self.arch_handler)
+        self.psc.initialize()
+        self.psc.show_img()
+        self.layout.addWidget(self.psc, 0, 0)
+
+    def remove_PanorexSplineContainerWidget(self):
+        if self.psc is not None:
+            self.layout.removeWidget(self.psc)
+            self.psc.deleteLater()
+            self.psc = None
+
     def add_AnnotationContainerWidget(self):
         self.arch_handler.compute_offsetted_arch(pano_offset=0)
         self.arch_handler.compute_panorexes()
         self.arch_handler.compute_side_volume_dialog(self.arch_handler.SIDE_VOLUME_SCALE)
+        self.arch_handler.compute_tilted_side_volume()
         # self.annotation = AnnotationContainerWidget(self)
         self.annotation = TiltAnnotationContainerWidget(self)
         self.annotation.set_arch_handler(self.arch_handler)
@@ -138,6 +156,11 @@ class Container(QtGui.QWidget):
         self.arch_handler.compute_initial_state_dialog(slice)
         self.add_ArchPanorexContainerWidget()
 
-    def show_annotation_widget(self):
+    def show_panorex_spline_widget(self):
         self.remove_ArchPanorexContainerWidget()
+        self.add_PanorexSplineContainerWidget()
+
+    def show_annotation_widget(self):
+        # self.remove_ArchPanorexContainerWidget()
+        self.remove_PanorexSplineContainerWidget()
         self.add_AnnotationContainerWidget()

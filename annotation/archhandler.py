@@ -368,33 +368,43 @@ class ArchHandler(Jaw):
     def get_jaw_with_delaunay(self):
         return self.volume + self.gt_delaunay if self.gt_delaunay.any() else None
 
-    def compute_tilted_side_volume(self, spline: Spline):
-        if spline is None:
-            return
+    def compute_tilted_side_volume(self):
+        def compute_on_spline(self, spline):
+            if spline is None:
+                return
+            p, start, end = spline.get_poly_spline()
+            derivative = np.polyder(p, 1)
+            # m = -1 / derivative
+
+            for x in range(0, n, 10):
+                if x in range(int(start), int(end)):
+                    side_coord = self.side_coords[x]
+                    plane = Plane(self.Z, len(side_coord))
+                    plane.from_line(side_coord)
+                    angle = -np.degrees(np.arctan(derivative(x)))
+                    plane.tilt_z(angle, p(x))
+                    cut = self.plane_slice(plane)
+                    print("cutting x:{}".format(x))
+                    self.t_side_volume[x] = cut
+
+        # create_tilted_side_volume
         n, h, w = self.side_volume.shape
-        tilted = np.zeros((n, int(h / self.side_volume_scale), int(w / self.side_volume_scale)))
-        p, start, end = spline.get_poly_spline()
-        derivative = np.polyder(p, 1)
-        # m = -1 / derivative
+        self.t_side_volume = np.zeros((n, int(h / self.side_volume_scale), int(w / self.side_volume_scale)))
+        LoadingDialog(lambda: compute_on_spline(self, self.L_canal_spline), "Tilting on left spline").exec_()
+        LoadingDialog(lambda: compute_on_spline(self, self.R_canal_spline), "Tilting on right spline").exec_()
 
-        for x in range(0, n, 10):
-            if x in range(int(start), int(end)):
-                side_coord = self.side_coords[x]
-                plane = Plane(self.Z, len(side_coord))
-                plane.from_line(side_coord)
-                angle = -np.degrees(np.arctan(derivative(x)))
-                plane.tilt_z(angle, p(x))
-                cut = self.plane_slice(plane)
-                print("cutting x:{}".format(x))
-                tilted[x] = cut
+        width = int(self.t_side_volume.shape[2] * self.side_volume_scale)
+        height = int(self.t_side_volume.shape[1] * self.side_volume_scale)
+        scaled_tilted = np.ndarray(shape=(self.t_side_volume.shape[0], height, width))
 
-        width = int(tilted.shape[2] * self.side_volume_scale)
-        height = int(tilted.shape[1] * self.side_volume_scale)
-        scaled_tilted = np.ndarray(shape=(tilted.shape[0], height, width))
-
-        for i in range(tilted.shape[0]):
-            scaled_tilted[i] = cv2.resize(tilted[i, :, :], (width, height), interpolation=cv2.INTER_AREA)
+        for i in range(self.t_side_volume.shape[0]):
+            scaled_tilted[i] = cv2.resize(self.t_side_volume[i, :, :], (width, height), interpolation=cv2.INTER_AREA)
 
         # padding the side volume and rescaling
         scaled_tilted = cv2.normalize(scaled_tilted, scaled_tilted, 0, 1, cv2.NORM_MINMAX)
         self.t_side_volume = scaled_tilted
+
+    def get_side_volume_slice(self, pos, tilted=False):
+        if tilted and self.t_side_volume is not None:
+            return self.t_side_volume[pos]
+        return self.side_volume[pos]
