@@ -5,6 +5,7 @@ from pydicom.pixel_data_handlers.numpy_handler import pack_bits
 import os
 from pathlib import Path
 from Plane import Plane
+import processing
 
 OVERLAY_ADDR = 0x6004
 MIN_QUANTILE = 0.02
@@ -206,11 +207,13 @@ class Jaw:
                 cut[row, col] = interp_fn(plane[2, row, col], plane[0, row, col], plane[1, row, col])  # z, x, y
         return cut
 
-    def create_panorex(self, coords):
+    def create_panorex(self, coords, include_annotations=False):
         """
         Create a 2D panorex image from a set of coordinates on the dental arch
         Args:
             coords (float numpy array): set of coordinates for the cut
+            include_annotations (Bool): if this flag is set, the panorex image is returned as an RGB
+            image where the labels are marked in red
         Returns:
             panorex (numpy array)
         """
@@ -220,6 +223,25 @@ class Jaw:
                 panorex[:, idx] = self.bilinear_interpolation(x, y)
             except:
                 continue
+
+        if include_annotations:
+            panorex_gt = np.zeros((self.Z, len(coords)), np.float32)
+            for idx, (x, y) in enumerate(coords):
+                try:
+                    panorex_gt[:, idx] = np.max(
+                        self.gt_volume[
+                            :,
+                            int(np.floor(y)):int(np.floor(y) + 1) + 1,
+                            int(np.floor(x)):int(np.floor(x) + 1) + 1
+                        ],
+                        axis=(1, 2)
+                    )
+                except:
+                    continue
+            panorex = processing.grey_to_rgb(panorex)
+            idx = np.argwhere(panorex_gt)
+            panorex[idx[:, 0], idx[:, 1]] = (1, 0, 0)
+
         return panorex
 
     ###################
