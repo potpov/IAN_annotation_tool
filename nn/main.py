@@ -40,9 +40,19 @@ def predict(input_cuts, model, device, writer):
             outputs = model(images)
 
             outputs = outputs.data.cpu().numpy()
+            images = images.cpu().numpy()
             outputs[outputs >= 0.5] = 1
             outputs[outputs < 0.5] = 0
-            utils.dump_results(images, np.zeros_like(outputs), outputs, args, i, writer)
+
+            annotated = utils.write_annotations(images, outputs)
+            utils.tensorboard_save_images(
+                [images, annotated, np.zeros((63, 1, 50, 150))],
+                writer,
+                title=args.experiment_name,
+                iteration=i,
+                disk_save_dir=os.path.join(args.experiments_dir, args.experiment_name, 'picdump'),
+                reshape_method='scale'
+            )
             res.append(outputs)
 
     res = np.squeeze(np.concatenate(res))
@@ -81,7 +91,7 @@ args = arg_parser.parse_args()
 utils.set_logger()
 
 # create folder for results
-Path(os.path.join(args.experiments_dir, args.experiment_name)).mkdir(parents=True, exist_ok=True)
+Path(os.path.join(args.experiments_dir, args.experiment_name, 'picdump')).mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == '__main__':
@@ -96,6 +106,7 @@ if __name__ == '__main__':
         logging.info("This model will run on CPU")
 
     writer = SummaryWriter(log_dir=os.path.join(args.tb_dir, args.experiment_name), purge_step=0)
+
     model = SegNet().to(device)
     try:
         logging.info(f"Loading checkpoint '{args.checkpoint_file}'")
@@ -144,7 +155,7 @@ if __name__ == '__main__':
         plane.tilt_z(-args.angles_num)
         for i in tqdm(range(0, 1 + args.angles_num * 2), total=1 + args.angles_num * 2):
             cut = jaw.plane_slice(plane)
-            cuts.append(f(cut))  # TODO: provare senza increase contrast
+            cuts.append(f(cut))
             plane.tilt_z(1)
 
     cuts = np.stack(cuts)  # put slices and angles together

@@ -2,6 +2,7 @@ import logging
 import os
 from matplotlib import pyplot as plt
 import numpy as np
+import cv2
 
 
 def set_logger(log_path=None):
@@ -25,56 +26,133 @@ def set_logger(log_path=None):
         logger.addHandler(stream_handler)
 
 
-def dump_results(images, labels, predictions, args, batch_id, writer):
+def fix_shape(img, B, H, W, method='fit'):
     """
-    create a set of images with the network results compared with the original images and masks
-    :param images: batch of original images
-    :param labels: batch of ground truth segmentation mask
-    :param predictions: batch of segmentation from the network
-    :param args: args
-    :param batch_id: id of the batch to use as filename
-    :param  writer: tensorboard writer
-    :return: pass
+    resize the image so that it has shape (B, H, W, 3)
+    Args:
+        img (Numpy array):
+        B (Int): batch size of the input image
+        H (Int): target height
+        W (Int): target width
+        method (String): type of resizing, check out the wiki of tensorboard_save_images
+        for further details
+    Returns:
+        resized nd numpy array
+    """
+    # input has always shape B, H, W, 3
+    res = np.zeros((B, H, W, 3))
+    if method == 'fit':
+        if H < img.shape[1] or W < img.shape[0]:
+            raise Exception("rescale method \"fit\" can't handle images larger than the destination size")
+        res[:, :img.shape[1], :img.shape[2], :] = img
+    elif method == 'scale':
+        for idx in range(0, B):
+            res[idx] = cv2.resize(img[idx], (W, H), interpolation=cv2.INTER_AREA)
+    else:
+        raise Exception("please specify a valid reshape method")
+
+    return res
+
+
+def tensorboard_save_images(image_list, writer, title, iteration, shape=None, reshape_method='fit', disk_save_dir=None):
+    """
+    take a list of numpy array, resize them to a given shape (or the largest in the list) and print them well aligned in bulks.
+    print is done on tensorboard and optionally on disk.
+    Args:
+        image_list (List): list of numpy array like  [img_1, img_2, ..., img_n]
+        possible input shapes are:
+                1 B H W
+                3 B H W
+                1 H W
+                3 H W
+        writer: tensorboard writer
+        title (String): title of this plot
+        iteration (Iteration for this plot):
+        shape (Tuple): tuple of int with the target final shape. all the images will be resized to (H, W)
+        reshape_method (String): if this is set to 'fit' each image will be placed into a numpy array with size (H, W)
+        with overflow set to 0. (if the image to resize is larger than the target shape this method generates an error).
+        if this is set to 'scale' each image is resized to the target image according to cv2.INTER_AREA.
+        disk_save_dir (String): path where image are going to be saved or None if dump is made only on tensorboard
+    Returns:
+        None
     """
 
-    # converting to RGB
-    images = images.cpu().numpy()
-    if images.shape[1] == 1:
-        images = np.tile(images, (1, 3, 1, 1))  # B, 3, H, W
-    images = np.moveaxis(images, 1, -1)  # B, H, W, 3
+    # input possibili:
+    # 1 B H W
+    # 3 B H W
+    # 1 H W
+    # 3 H W
 
-    B, H, W, _ = images.shape
+    if not isinstance(image_list, list):
+        raise Exception("please provide with a list of images like [img_1, img_2, img_n]")
 
-    # unrolling the batch
-    images = np.reshape(images, (B * H, W, 3))
-    labels = np.reshape(labels, (B * H, W))
-    predictions = np.reshape(predictions, (B * H, W))
+    if shape is not None:
+        target_H, target_W = shape
+    else:
+        target_H, target_W  = tuple(np.array([(im.shape[-2], im.shape[-1]) for im in image_list]).max(axis=0))
 
-    # coordinates of the ground truth, prediction and intersect
-    gt_coords = np.argwhere(labels == 1)
-    net_coords = np.argwhere(predictions == 1)
-    intersect_coords = np.argwhere((labels.astype(int) & predictions.astype(int)) == 1)
+    for id, image in enumerate(image_list):
 
-    # drawing
-    gt = images.copy()
-    gt[gt_coords[:, 0], gt_coords[:, 1]] = (1, 0, 0)
-    result = images.copy()
-    pred = images.copy()
-    pred[net_coords[:, 0], net_coords[:, 1]] = (0, 0, 1)
-    result[gt_coords[:, 0], gt_coords[:, 1]] = (1, 0, 0)
-    result[net_coords[:, 0], net_coords[:, 1]] = (0, 0, 1)
-    result[intersect_coords[:, 0], intersect_coords[:, 1]] = (0, 1, 0)
+        # shapes
+        if len(image.shape) != 4:
+            image = np.expand_dims(image, axis=0)  # creating a one dimensional batch
+        B, C, H, W = image.shape
 
-    final = np.concatenate(
-        (
-            images,
-            np.zeros(shape=(B * H, 5, 3)),
-            gt,
-            np.zeros(shape=(B * H, 5, 3)),
-            pred,
-            np.zeros(shape=(B * H, 5, 3)),
-            result,
-        ), axis=1
+        # creating the RGB version
+        if C == 1:
+            image = np.tile(image, (1, 3, 1, 1))  # B, 3, H, W
+        image = np.moveaxis(image, 1, -1)  # B, H, W, 3
+
+        # resizing
+        image = fix_shape(image, B, target_H, target_W, reshape_method)
+
+        # merging batch if present
+        image = np.reshape(image, (B * target_H, target_W, 3))
+        image_list[id] = image
+
+    result = np.concatenate(
+        image_list,
+        axis=1
     )
 
-    writer.add_image('{}/results'.format(args.experiment_name), np.moveaxis(final, 2, 0), int(batch_id))
+    B = result.shape[0] // target_H
+    step = 10 if B > 10 else B
+    for i in range(B // step):
+        piece = result[i * (B // 10) * target_H:(i + 1) * (B // 10) * target_H]
+        writer.add_image('{}_iter{}/results'.format(title, iteration), np.moveaxis(result, 2, 0), int(i))
+
+        if disk_save_dir is not None:
+            piece = cv2.normalize(piece, piece, 0, 255, cv2.NORM_MINMAX)
+            cv2.imwrite(
+                os.path.join(disk_save_dir, '{}_B{}_I{}.png'.format(title, iteration, i)),
+                piece[:, :, ::-1]  # BGR to RGB
+            )
+
+
+def write_annotations(images, annotations):
+    """
+    create a RGB version of the input image marking with red pixels where labels are found from the input array
+    Args:
+        images (Numpy array): input image with shape  B, 1, H, W
+        annotations (Numpy array): binary numpy array with label, same shape as images
+
+    Returns:
+        numpy array with shape B, 3, H, W
+    """
+    if images.shape != annotations.shape:
+        raise Exception("annotations and source images have not the same shape!")
+    if len(images.shape) != 4:
+        images = np.expand_dims(images, axis=0)  # creating a one dimensional batch
+        annotations = np.expand_dims(annotations, axis=0)
+
+    B, C, H, W = images.shape
+    # creating the RGB version
+    if C == 1:
+        images = np.tile(images, (1, 3, 1, 1))  # B, 3, H, W
+
+    gt_coords = np.argwhere(annotations == 1)
+
+    if np.max(images) > 1:
+        images = images.astype(np.float32) / images.max()
+    images[gt_coords[:, 0], :, gt_coords[:, 2], gt_coords[:, 3]] = (1, 0, 0)
+    return images
