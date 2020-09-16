@@ -72,6 +72,7 @@ class ArchHandler(Jaw):
         self.canal = None
         self.gt_delaunay = np.zeros_like(self.gt_volume)
         self.t_side_volume = None
+        self.t_planes = None
 
     def is_there_data_to_load(self):
         path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
@@ -325,15 +326,18 @@ class ArchHandler(Jaw):
 
         return arch_rgb
 
-    def extract_annotations(self):
+    def extract_annotations(self, tilted=False):
         """
         Method that wraps some steps in order to extract an annotated volume, starting from AnnotationMasks splines.
         """
-        LoadingDialog(self.annotation_masks.compute_mask_volume, "Computing 3D canal").exec_()
-        self.canal = self.annotation_masks.mask_volume
-        if self.canal is None or not self.canal.any():
-            return
-        LoadingDialog(self.compute_gt_volume, "Computing ground truth volume").exec_()
+        if not tilted:
+            LoadingDialog(self.annotation_masks.compute_mask_volume, "Computing 3D canal").exec_()
+            self.canal = self.annotation_masks.mask_volume
+            if self.canal is None or not self.canal.any():
+                return
+            LoadingDialog(self.compute_gt_volume, "Computing ground truth volume").exec_()
+        else:
+            LoadingDialog(self.annotation_masks.compute_mask_volume_tilted, "Computing ground truth volume").exec_()
         LoadingDialog(self.save_annotations_dicom, "Saving new DICOMs").exec_()
         LoadingDialog(self.compute_gt_volume_delaunay, "Applying delaunay").exec_()
 
@@ -376,7 +380,7 @@ class ArchHandler(Jaw):
             derivative = np.polyder(p, 1)
             # m = -1 / derivative
 
-            for x in range(0, n, 10):
+            for x in range(n):
                 if x in range(int(start), int(end)):
                     side_coord = self.side_coords[x]
                     plane = Plane(self.Z, len(side_coord))
@@ -384,11 +388,13 @@ class ArchHandler(Jaw):
                     angle = -np.degrees(np.arctan(derivative(x)))
                     plane.tilt_z(angle, p(x))
                     cut = self.plane_slice(plane)
-                    print("cutting x:{}".format(x))
+                    print("cutting x: {}".format(x))
+                    self.t_planes[x] = plane
                     self.t_side_volume[x] = cut
 
         # create_tilted_side_volume
         n, h, w = self.side_volume.shape
+        self.t_planes = [None] * n
         self.t_side_volume = np.zeros((n, int(h / self.side_volume_scale), int(w / self.side_volume_scale)))
         LoadingDialog(lambda: compute_on_spline(self, self.L_canal_spline), "Tilting on left spline").exec_()
         LoadingDialog(lambda: compute_on_spline(self, self.R_canal_spline), "Tilting on right spline").exec_()

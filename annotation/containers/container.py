@@ -112,12 +112,19 @@ class Container(QtGui.QWidget):
             self.psc = None
 
     def add_AnnotationContainerWidget(self):
+        def yes(self):
+            self.arch_handler.compute_tilted_side_volume()
+            self.annotation = TiltAnnotationContainerWidget(self)
+
+        def no(self):
+            self.annotation = AnnotationContainerWidget(self)
+
         self.arch_handler.compute_offsetted_arch(pano_offset=0)
         self.arch_handler.compute_panorexes()
         self.arch_handler.compute_side_volume_dialog(self.arch_handler.SIDE_VOLUME_SCALE)
-        self.arch_handler.compute_tilted_side_volume()
-        # self.annotation = AnnotationContainerWidget(self)
-        self.annotation = TiltAnnotationContainerWidget(self)
+        question(self, "Tilted planes",
+                 "Would you like to use planes orthogonal to the IAN canal as base for the annotations?",
+                 yes_callback=lambda: yes(self), no_callback=lambda: no(self))
         self.annotation.set_arch_handler(self.arch_handler)
         self.annotation.initialize()
         self.annotation.show_img()

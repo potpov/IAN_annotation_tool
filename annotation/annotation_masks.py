@@ -6,7 +6,7 @@ from datetime import datetime
 from annotation.actions.Action import SideVolumeSplineExtractedAction
 from annotation.components.Dialog import show_message_box, LoadingDialog
 from annotation.spline.spline import ClosedSpline
-from annotation.utils import export_img, active_contour_balloon
+from annotation.utils import export_img, active_contour_balloon, clip_range
 
 
 class AnnotationMasks():
@@ -61,6 +61,25 @@ class AnnotationMasks():
             mask_img[mask_img > 0] = 1
             mask_img = mask_img.astype(np.bool_)
             self.mask_volume[i, mask_img] = 1
+
+    def compute_mask_volume_tilted(self):
+        scaled_h = int(self.h / self.arch_handler.side_volume_scale)
+        scaled_w = int(self.w / self.arch_handler.side_volume_scale)
+        shape = (self.n, scaled_h, scaled_w)
+        self.mask_volume = np.zeros(shape, dtype=np.uint8)
+        self.arch_handler.gt_volume = np.zeros_like(self.arch_handler.volume)
+        for mask, plane in zip(self.masks, self.arch_handler.t_planes):
+            mask_img = self.compute_mask_image(mask, (self.h, self.w), resize_shape=shape[1:])
+            mask_img[mask_img < 40] = 0
+            mask_img[mask_img > 0] = 1
+            if plane is None:
+                continue
+            X, Y, Z = plane.plane
+            for m, x, y, z in np.nditer([mask_img, X, Y, Z]):
+                x = int(clip_range(x, 0, self.arch_handler.W - 1))
+                y = int(clip_range(y, 0, self.arch_handler.H - 1))
+                z = int(clip_range(z, 0, self.arch_handler.Z - 1))
+                self.arch_handler.gt_volume[z, y, x] = m
 
     def set_mask_spline(self, idx, spline, from_snake=False):
         self.edited = True
