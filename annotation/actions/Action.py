@@ -14,6 +14,8 @@ SIDE_VOLUME_CP_REMOVED = "SIDE_VOLUME_CP_REMOVED"
 SIDE_VOLUME_CP_CHANGED = "SIDE_VOLUME_CP_CHANGED"
 SIDE_VOLUME_SPLINE_EXTRACTED = "SIDE_VOLUME_SPLINE_EXTRACTED"
 SIDE_VOLUME_SPLINE_RESET = "SIDE_VOLUME_SPLINE_RESET"
+TILTED_PLANES_ANNOTATION = "TILTED_PLANES_ANNOTATION"
+DEFAULT_PLANES_ANNOTATION = "DEFAULT_PLANES_ANNOTATION"
 
 
 def create_action(**args):
@@ -46,6 +48,10 @@ def create_action(**args):
         return SideVolumeSplineExtractedAction(args['pos'], args['from_pos'])
     elif kind == SIDE_VOLUME_SPLINE_RESET:
         return SideVolumeSplineResetAction(args['pos'])
+    elif kind == TILTED_PLANES_ANNOTATION:
+        return TiltedPlanesAnnotationAction()
+    elif kind == DEFAULT_PLANES_ANNOTATION:
+        return DefaultPlanesAnnotationAction()
     else:
         raise ValueError("kind not recognized")
 
@@ -165,3 +171,13 @@ class SideVolumeSplineResetAction(Action):
     def __init__(self, pos):
         self.kind = SIDE_VOLUME_SPLINE_RESET
         self.pos = pos
+
+
+class TiltedPlanesAnnotationAction(Action):
+    def __init__(self):
+        self.kind = TILTED_PLANES_ANNOTATION
+
+
+class DefaultPlanesAnnotationAction(Action):
+    def __init__(self):
+        self.kind = DEFAULT_PLANES_ANNOTATION

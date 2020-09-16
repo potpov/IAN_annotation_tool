@@ -1,6 +1,7 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
 
+from annotation.actions.Action import TiltedPlanesAnnotationAction, DefaultPlanesAnnotationAction
 from annotation.components.Dialog import question, information
 from annotation.containers.annotationcontainer import AnnotationContainerWidget
 from annotation.containers.panorexsplinecontainer import PanorexSplineContainerWidget
@@ -113,10 +114,12 @@ class Container(QtGui.QWidget):
 
     def add_AnnotationContainerWidget(self):
         def yes(self):
+            self.arch_handler.history.add(TiltedPlanesAnnotationAction())
             self.arch_handler.compute_tilted_side_volume()
             self.annotation = TiltAnnotationContainerWidget(self)
 
         def no(self):
+            self.arch_handler.history.add(DefaultPlanesAnnotationAction())
             self.annotation = AnnotationContainerWidget(self)
 
         self.arch_handler.compute_offsetted_arch(pano_offset=0)
