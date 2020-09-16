@@ -7,6 +7,7 @@ import json
 import processing
 import viewer
 from Jaw import Jaw
+from Plane import Plane
 from annotation.actions.Action import SliceChangedAction
 from annotation.actions.History import History
 from annotation.annotation_masks import AnnotationMasks
@@ -70,6 +71,8 @@ class ArchHandler(Jaw):
         self.annotation_masks = None
         self.canal = None
         self.gt_delaunay = np.zeros_like(self.gt_volume)
+        self.t_side_volume = None
+        self.t_planes = None
 
     def is_there_data_to_load(self):
         path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
@@ -323,15 +326,18 @@ class ArchHandler(Jaw):
 
         return arch_rgb
 
-    def extract_annotations(self):
+    def extract_annotations(self, tilted=False):
         """
         Method that wraps some steps in order to extract an annotated volume, starting from AnnotationMasks splines.
         """
-        LoadingDialog(self.annotation_masks.compute_mask_volume, "Computing 3D canal").exec_()
-        self.canal = self.annotation_masks.mask_volume
-        if self.canal is None or not self.canal.any():
-            return
-        LoadingDialog(self.compute_gt_volume, "Computing ground truth volume").exec_()
+        if not tilted:
+            LoadingDialog(self.annotation_masks.compute_mask_volume, "Computing 3D canal").exec_()
+            self.canal = self.annotation_masks.mask_volume
+            if self.canal is None or not self.canal.any():
+                return
+            LoadingDialog(self.compute_gt_volume, "Computing ground truth volume").exec_()
+        else:
+            LoadingDialog(self.annotation_masks.compute_mask_volume_tilted, "Computing ground truth volume").exec_()
         LoadingDialog(self.save_annotations_dicom, "Saving new DICOMs").exec_()
         LoadingDialog(self.compute_gt_volume_delaunay, "Applying delaunay").exec_()
 
@@ -365,3 +371,46 @@ class ArchHandler(Jaw):
 
     def get_jaw_with_delaunay(self):
         return self.volume + self.gt_delaunay if self.gt_delaunay.any() else None
+
+    def compute_tilted_side_volume(self):
+        def compute_on_spline(self, spline):
+            if spline is None:
+                return
+            p, start, end = spline.get_poly_spline()
+            derivative = np.polyder(p, 1)
+            # m = -1 / derivative
+
+            for x in range(n):
+                if x in range(int(start), int(end)):
+                    side_coord = self.side_coords[x]
+                    plane = Plane(self.Z, len(side_coord))
+                    plane.from_line(side_coord)
+                    angle = -np.degrees(np.arctan(derivative(x)))
+                    plane.tilt_z(angle, p(x))
+                    cut = self.plane_slice(plane)
+                    print("cutting x: {}".format(x))
+                    self.t_planes[x] = plane
+                    self.t_side_volume[x] = cut
+
+        # create_tilted_side_volume
+        n, h, w = self.side_volume.shape
+        self.t_planes = [None] * n
+        self.t_side_volume = np.zeros((n, int(h / self.side_volume_scale), int(w / self.side_volume_scale)))
+        LoadingDialog(lambda: compute_on_spline(self, self.L_canal_spline), "Tilting on left spline").exec_()
+        LoadingDialog(lambda: compute_on_spline(self, self.R_canal_spline), "Tilting on right spline").exec_()
+
+        width = int(self.t_side_volume.shape[2] * self.side_volume_scale)
+        height = int(self.t_side_volume.shape[1] * self.side_volume_scale)
+        scaled_tilted = np.ndarray(shape=(self.t_side_volume.shape[0], height, width))
+
+        for i in range(self.t_side_volume.shape[0]):
+            scaled_tilted[i] = cv2.resize(self.t_side_volume[i, :, :], (width, height), interpolation=cv2.INTER_AREA)
+
+        # padding the side volume and rescaling
+        scaled_tilted = cv2.normalize(scaled_tilted, scaled_tilted, 0, 1, cv2.NORM_MINMAX)
+        self.t_side_volume = scaled_tilted
+
+    def get_side_volume_slice(self, pos, tilted=False):
+        if tilted and self.t_side_volume is not None:
+            return self.t_side_volume[pos]
+        return self.side_volume[pos]
