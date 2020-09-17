@@ -2,14 +2,12 @@ from pyface.qt import QtGui
 
 from annotation.actions.Action import TiltedPlanesAnnotationAction, DefaultPlanesAnnotationAction
 from annotation.components.Dialog import question, information
-from annotation.containers import (
-    AnnotationContainer,
-    PanorexSplineContainer,
-    TiltAnnotationContainer,
-    ArchSplineContainer,
-    SliceSelectionContainer
-)
+from annotation.containers.AnnotationContainer import AnnotationContainer
+from annotation.containers.ArchSplineContainer import ArchSplineContainer
+from annotation.containers.PanorexSplineContainer import PanorexSplineContainer
+from annotation.containers.SliceSelectionContainer import SliceSelectionContainer
 from annotation.components.Dialog3DPlot import Dialog3DPlot
+from annotation.containers.TiltAnnotationContainer import TiltAnnotationContainer
 from annotation.core.ArchHandler import ArchHandler
 
 

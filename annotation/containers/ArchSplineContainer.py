@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtWidgets
 from pyface.qt import QtGui
-from annotation.controlpanels import ArchSplineControlPanel
+from annotation.controlpanels.ArchSplineControlPanel import ArchSplineControlPanel
 from annotation.visualization.archview import SplineArchView
 from annotation.visualization.panorex import PanorexWidget
 from annotation.visualization.sidevolume import SideVolume

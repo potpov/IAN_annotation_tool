@@ -2,7 +2,7 @@ from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
 from annotation.visualization.panorex import CanvasPanorexWidget
-from annotation.controlpanels import PanorexSplineControlPanel
+from annotation.controlpanels.PanorexSplineControlPanel import PanorexSplineControlPanel
 from annotation.components.Toolbar import Toolbar
 
 

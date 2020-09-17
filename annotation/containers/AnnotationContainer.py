@@ -3,7 +3,7 @@ from pyface.qt import QtGui
 from annotation.actions.Action import SideVolumeSplineResetAction
 from annotation.components.Dialog import LoadingDialog
 from annotation.components.Dialog3DPlot import Dialog3DPlot
-from annotation.controlpanels import AnnotationControlPanel
+from annotation.controlpanels.AnnotationControlPanel import AnnotationControlPanel
 from annotation.visualization.panorex import CanvasPanorexWidget
 from annotation.visualization.sidevolume import CanvasSideVolume
 from annotation.components.Toolbar import Toolbar

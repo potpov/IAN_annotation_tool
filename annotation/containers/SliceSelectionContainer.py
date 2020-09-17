@@ -2,7 +2,6 @@ from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
 from annotation.components.Slider import Slider
-from annotation.utils.qt import numpy2pixmap
 from annotation.utils.math import clip_range
 from annotation.visualization.archview import ArchView
 

@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
 from pyface.qt import QtGui
-from annotation.containers import Container
+from annotation.containers.MainContainer import Container
 
 
 class Window(QtGui.QMainWindow):
