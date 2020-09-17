@@ -10,10 +10,10 @@ from Jaw import Jaw
 from Plane import Plane
 from annotation.actions.Action import SliceChangedAction
 from annotation.actions.History import History
-from annotation.annotation_masks import AnnotationMasks
+from annotation.core.AnnotationMasks import AnnotationMasks
 from annotation.components.Dialog import LoadingDialog
-from annotation.spline.spline import Spline
-from annotation.utils import apply_offset_to_arch
+from annotation.spline.Spline import Spline
+from annotation.utils.math import apply_offset_to_arch
 
 
 class ArchHandler(Jaw):
@@ -48,7 +48,7 @@ class ArchHandler(Jaw):
             R_canal_spline (Spline): object that models the right canal in the panorex with a Catmull-Rom spline
             annotation_masks (AnnotationMasks): object that manages the annotations onto side_volume images
             canal (numpy.ndarray): same as side_volume, but has just the canal (obtained from masks) and it is scaled to original volume dimensions
-            gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with delaunay algorithm
+            gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with Delaunay algorithm
         """
         sup = super()
         LoadingDialog(func=lambda: sup.__init__(dicomdir_path), message="Loading DICOM").exec_()
@@ -275,57 +275,6 @@ class ArchHandler(Jaw):
     def compute_side_volume_dialog(self, scale=None):
         LoadingDialog(func=lambda: self.compute_side_volume(scale=scale), message="Computing side volume").exec_()
 
-    def get_section(self, slice, arch=False, offsets=False, pos=None):
-        """
-        Returns the slice of the volume with additional drawings:
-            - current arch
-            - current lower and higher arches
-            - position on the arch
-
-        Args:
-            slice (int): index where to slice the volume
-            arch (bool): display current arch
-            offsets (bool): display current lower and higher arches
-            pos (int): position on the arch
-
-        Returns:
-            numpy.ndarray: slice of the jaw volume
-        """
-        section = self.volume[slice]
-
-        if not arch:
-            return section
-
-        p, start, end = self.get_arch_detection(slice)
-        arch_rgb = np.tile(section, (3, 1, 1))
-        arch_rgb = np.moveaxis(arch_rgb, 0, -1)
-
-        if offsets:  # show arch and coords arches
-            l_offset, coords, h_offset, _ = self.coords
-            if self.offsetted_arch:
-                coords = self.offsetted_arch
-            for i in range(len(coords)):
-                arch_rgb[int(coords[i][1]), int(coords[i][0])] = (1, 0, 0)
-                try:
-                    arch_rgb[int(h_offset[i][1]), int(h_offset[i][0])] = (0, 1, 0)
-                    arch_rgb[int(l_offset[i][1]), int(l_offset[i][0])] = (0, 1, 0)
-                except:
-                    continue
-            # draw blue line
-            if pos is not None:
-                if self.side_coords is None:
-                    self.compute_side_coords()
-                points = self.side_coords[pos]
-                for x, y in points:
-                    if section.shape[1] > x > 0 and section.shape[0] > y > 0:
-                        arch_rgb[int(y), int(x)] = (0, 0, 1)
-        else:  # just show the arch
-            for sample in range(int(start), int(end)):
-                y_sample = np.clip(p(sample), 0, arch_rgb.shape[0] - 1)
-                arch_rgb[int(y_sample), sample, :] = (1, 0, 0)
-
-        return arch_rgb
-
     def extract_annotations(self, tilted=False):
         """
         Method that wraps some steps in order to extract an annotated volume, starting from AnnotationMasks splines.
@@ -339,7 +288,7 @@ class ArchHandler(Jaw):
         else:
             LoadingDialog(self.annotation_masks.compute_mask_volume_tilted, "Computing ground truth volume").exec_()
         LoadingDialog(self.save_annotations_dicom, "Saving new DICOMs").exec_()
-        LoadingDialog(self.compute_gt_volume_delaunay, "Applying delaunay").exec_()
+        LoadingDialog(self.compute_gt_volume_delaunay, "Applying Delaunay").exec_()
 
     def compute_gt_volume(self):
         """

@@ -2,16 +2,16 @@ from pyface.qt import QtGui
 
 from annotation.actions.Action import SideVolumeSplineResetAction
 from annotation.components.Dialog import LoadingDialog
-from annotation.containers.dialog3Dplot import Dialog3DPlot
-from annotation.widgets.annotationcontrolpanel import AnnotationControlPanelWidget
-from annotation.widgets.panorex import CanvasPanorexWidget
-from annotation.widgets.sidevolume import CanvasSideVolume
-from annotation.widgets.toolbar import Toolbar
+from annotation.components.Dialog3DPlot import Dialog3DPlot
+from annotation.controlpanels import AnnotationControlPanel
+from annotation.visualization.panorex import CanvasPanorexWidget
+from annotation.visualization.sidevolume import CanvasSideVolume
+from annotation.components.Toolbar import Toolbar
 
 
-class AnnotationContainerWidget(QtGui.QWidget):
+class AnnotationContainer(QtGui.QWidget):
     def __init__(self, parent):
-        super(AnnotationContainerWidget, self).__init__()
+        super(AnnotationContainer, self).__init__()
         self.container = parent
         self.layout = QtGui.QGridLayout(self)
 
@@ -30,7 +30,7 @@ class AnnotationContainerWidget(QtGui.QWidget):
         self.layout.addWidget(self.sidevolume, 0, 1)
 
         # control panel
-        self.panel = AnnotationControlPanelWidget()
+        self.panel = AnnotationControlPanel()
         self.panel.pos_changed.connect(self.pos_changed_handler)
         self.panel.flags_changed.connect(self.sidevolume_show)
         self.panel.reset_annotation_clicked.connect(self.reset_annotation_clicked_handler)
@@ -76,7 +76,6 @@ class AnnotationContainerWidget(QtGui.QWidget):
     def sidevolume_show(self):
         self.sidevolume.show_(pos=self.current_pos,
                               show_dot=self.panel.show_dot.isChecked(),
-                              show_hint=self.panel.show_hint.isChecked(),
                               auto_propagate=self.panel.auto_acquire_annotation.isChecked(),
                               show_mask_spline=self.panel.show_mask_spline.isChecked()
                               )

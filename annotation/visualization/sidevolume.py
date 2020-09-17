@@ -1,12 +1,13 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
-from annotation import WIDGET_MARGIN, colors as col
+from annotation.utils.margin import WIDGET_MARGIN
+import annotation.utils.colors as col
 from annotation.actions.Action import SideVolumeCpRemovedAction, SideVolumeCpAddedAction, SideVolumeCpChangedAction
 from annotation.components.Canvas import SplineCanvas
-from annotation.spline.spline import ClosedSpline
-from annotation.tests.opencv_tests.test_image_processing import extimate_canal
-from annotation.utils import numpy2pixmap, clip_range
+from annotation.spline.Spline import ClosedSpline
+from annotation.utils.math import clip_range
+from annotation.utils.qt import numpy2pixmap
 
 
 class CanvasSideVolume(SplineCanvas):
@@ -20,7 +21,6 @@ class CanvasSideVolume(SplineCanvas):
 
         # flags
         self.show_dot = False
-        self.show_hint = False
         self.auto_propagate = False
         self.show_mask_spline = False
 
@@ -30,7 +30,7 @@ class CanvasSideVolume(SplineCanvas):
     def set_img(self):
         self.img = self.arch_handler.get_side_volume_slice(self.current_pos, self._tilted)
         self.pixmap = numpy2pixmap(self.img)
-        self.setFixedSize(self.img.shape[1] + 50, self.img.shape[0] + 50)
+        self.adjust_size()
 
     def paintEvent(self, e):
         qp = QtGui.QPainter()
@@ -60,19 +60,6 @@ class CanvasSideVolume(SplineCanvas):
 
         return x, z, LR
 
-    def draw_hint(self, painter, x, z):
-        if z is None:
-            return
-        img_canal, hull, mask = extimate_canal(self.img.copy(), (x - WIDGET_MARGIN, z - WIDGET_MARGIN))
-        painter.setPen(col.ANNOTATION_HINT_SPLINE)
-        brush = QtGui.QColor(col.ANNOTATION_HINT_SPLINE)
-        brush.setAlpha(120)
-        painter.setBrush(brush)
-        if hull is not None:
-            for point in hull:
-                hx, hy = point[0]
-                painter.drawEllipse(QtCore.QPoint(WIDGET_MARGIN + hx, WIDGET_MARGIN + hy), self.r, self.r)
-
     def draw_dot(self, painter, x, z, LR):
         if z is None:
             return
@@ -98,13 +85,10 @@ class CanvasSideVolume(SplineCanvas):
             spline = self.arch_handler.annotation_masks.get_mask_spline(self.current_pos,
                                                                         from_snake=self.auto_propagate,
                                                                         tilted=self._tilted)
-            self.draw_spline(painter, spline, col.ANNOTATION_SPLINE)
+            self.draw_spline(painter, spline, col.ANN_SPLINE)
 
         if self.show_dot:
             self.draw_dot(painter, x, z, LR)
-
-        if self.show_hint:
-            self.draw_hint(painter, x, z)
 
     def cp_clicked(self, spline, mouse_x, mouse_y):
         for cp_index, (point_x, point_y) in enumerate(spline.cp):
@@ -129,7 +113,7 @@ class CanvasSideVolume(SplineCanvas):
         self.arch_handler.annotation_masks.set_mask_spline(self.current_pos, spline)
 
     def mousePressEvent(self, QMouseEvent):
-        if not self._can_draw:
+        if not self._can_edit_spline:
             return
 
         # if we don't show the spline, then we don't react to clicks
@@ -157,7 +141,7 @@ class CanvasSideVolume(SplineCanvas):
             self.handle_right_click(mouse_x, mouse_y)
 
     def mouseReleaseEvent(self, QMouseEvent):
-        if not self._can_draw:
+        if not self._can_edit_spline:
             return
 
         self.drag_point = None
@@ -167,7 +151,7 @@ class CanvasSideVolume(SplineCanvas):
         self.update()
 
     def mouseMoveEvent(self, QMouseEvent):
-        if not self._can_draw:
+        if not self._can_edit_spline:
             return
 
         spline = self.arch_handler.annotation_masks.get_mask_spline(self.current_pos)
@@ -191,11 +175,9 @@ class CanvasSideVolume(SplineCanvas):
             # Redraw curve
             self.update()
 
-    def show_(self, pos=0, show_dot=False, show_hint=False,
-              auto_propagate=False, show_mask_spline=False):
+    def show_(self, pos=0, show_dot=False, auto_propagate=False, show_mask_spline=False):
         self.current_pos = pos
         self.show_dot = show_dot
-        self.show_hint = show_hint
         self.auto_propagate = auto_propagate
         self.show_mask_spline = show_mask_spline
         self.set_img()

@@ -5,8 +5,9 @@ from datetime import datetime
 
 from annotation.actions.Action import SideVolumeSplineExtractedAction
 from annotation.components.Dialog import show_message_box, LoadingDialog
-from annotation.spline.spline import ClosedSpline
-from annotation.utils import export_img, active_contour_balloon, clip_range
+from annotation.spline.Spline import ClosedSpline
+from annotation.utils.image import export_img, active_contour_balloon
+from annotation.utils.math import clip_range
 
 
 class AnnotationMasks():

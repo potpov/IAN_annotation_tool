@@ -5,14 +5,14 @@ from annotation.components.PrevNextButtons import PrevNextButtons
 from annotation.components.Slider import Slider
 
 
-class ArchPanoControlPanelWidget(QtGui.QWidget):
+class ArchSplineControlPanel(QtGui.QWidget):
     pos_changed = QtCore.pyqtSignal()
     arch_changed = QtCore.pyqtSignal()
     pano_offset_changed = QtCore.pyqtSignal()
     update_side_volume = QtCore.pyqtSignal()
 
     def __init__(self):
-        super(ArchPanoControlPanelWidget, self).__init__()
+        super(ArchSplineControlPanel, self).__init__()
         self.layout = QtGui.QFormLayout(self)
 
         self.pos_slider = Slider(QtCore.Qt.Horizontal)

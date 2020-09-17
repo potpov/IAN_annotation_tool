@@ -1,5 +1,5 @@
 import numpy as np
-from annotation.utils import enhance_contrast
+from annotation.utils.image import enhance_contrast
 import viewer
 import cv2
 

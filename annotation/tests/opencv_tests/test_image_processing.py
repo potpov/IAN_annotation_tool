@@ -1,7 +1,7 @@
 import cv2
 
-from annotation.canal_processing import extimate_canal
-from annotation.utils import plot
+from annotation.tests.canal_processing import extimate_canal
+from annotation.utils.image import plot
 
 
 def f(img_id, point, debug=False, draw_point=False):

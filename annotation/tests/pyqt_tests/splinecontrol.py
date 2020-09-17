@@ -3,8 +3,8 @@ import PyQt5.QtCore as QtCore
 from pyface.qt import QtGui
 import processing
 from Jaw import Jaw
-from annotation.spline.spline import Spline
-from annotation.utils import numpy2pixmap
+from annotation.spline.Spline import Spline
+from annotation.utils.qt import numpy2pixmap
 
 
 class SplineControlWidget(QtGui.QWidget):

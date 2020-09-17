@@ -2,7 +2,8 @@ from PyQt5 import QtCore
 from pyface.qt import QtGui
 from abc import ABCMeta, abstractmethod
 import numpy as np
-from annotation import WIDGET_MARGIN
+from annotation.utils.margin import WIDGET_MARGIN
+import annotation.utils.colors as col
 
 
 class CanvasMeta(type(QtCore.QObject), ABCMeta):
@@ -10,19 +11,20 @@ class CanvasMeta(type(QtCore.QObject), ABCMeta):
 
 
 class Canvas(QtGui.QWidget, metaclass=CanvasMeta):
+    MARGIN = 50
+
     def __init__(self, parent):
         super(Canvas, self).__init__()
         self.layout = QtGui.QHBoxLayout(self)
         self.container = parent
         self.img = None
         self.pixmap = None
-        self._can_draw = True
 
-    def set_can_draw(self, can_draw=None):
-        if can_draw is None:
-            self._can_draw = not self._can_draw  # changing current state to the opposite
-        else:
-            self._can_draw = can_draw  # explicitly assign True or False
+    def adjust_size(self):
+        if self.img is None:
+            return
+        self.setFixedSize(self.img.shape[1] + self.MARGIN,
+                          self.img.shape[0] + self.MARGIN)
 
     def paintEvent(self, e):
         qp = QtGui.QPainter()
@@ -34,39 +36,8 @@ class Canvas(QtGui.QWidget, metaclass=CanvasMeta):
         if self.pixmap is not None:
             painter.drawPixmap(QtCore.QRect(offsetXY, offsetXY, self.pixmap.width(), self.pixmap.height()), self.pixmap)
 
-    @abstractmethod
-    def set_img(self):
-        pass
-
-    @abstractmethod
-    def draw(self, painter):
-        pass
-
-    @abstractmethod
-    def show_(self):
-        pass
-
-
-class SplineCanvas(Canvas, metaclass=CanvasMeta):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.l = 8  # size of the side of the square for the control points
-        self.drag_point = None
-
-    @abstractmethod
-    def mousePressEvent(self, QMouseEvent):
-        pass
-
-    @abstractmethod
-    def mouseReleaseEvent(self, QMouseEvent):
-        pass
-
-    @abstractmethod
-    def mouseMoveEvent(self, QMouseEvent):
-        pass
-
     def draw_poly_approx(self, painter, p, start, end, color, offsetXY=WIDGET_MARGIN):
-        if start is None or end is None:
+        if p is None or start is None or end is None:
             return
         x_set = list(range(int(start), int(end)))
         y_set = [p(x) for x in x_set]
@@ -100,13 +71,51 @@ class SplineCanvas(Canvas, metaclass=CanvasMeta):
             y += offsetXY
             painter.drawPoint(int(x), int(y))
 
+    @abstractmethod
+    def set_img(self):
+        pass
+
+    @abstractmethod
+    def draw(self, painter):
+        pass
+
+    @abstractmethod
+    def show_(self):
+        pass
+
+
+class SplineCanvas(Canvas, metaclass=CanvasMeta):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.l = 8  # size of the side of the square for the control points
+        self.drag_point = None
+        self._can_edit_spline = True
+
+    def set_can_edit_spline(self, can_edit_spline=None):
+        if can_edit_spline is None:
+            self._can_edit_spline = not self._can_edit_spline  # changing current state to the opposite
+        else:
+            self._can_edit_spline = can_edit_spline  # explicitly assign True or False
+
+    @abstractmethod
+    def mousePressEvent(self, QMouseEvent):
+        pass
+
+    @abstractmethod
+    def mouseReleaseEvent(self, QMouseEvent):
+        pass
+
+    @abstractmethod
+    def mouseMoveEvent(self, QMouseEvent):
+        pass
+
     def draw_spline(self, painter, spline, spline_color, cp_box_color=None, show_cp_idx=False, offsetXY=WIDGET_MARGIN):
         """
         Paints a spline onto a QPainter.
 
         Args:
             painter (QtGui.QPainter): where to draw the spline
-            spline (annotation.spline.spline.Spline): spline to draw
+            spline (annotation.spline.Spline.Spline): spline to draw
             spline_color (QtGui.QColor): color of the spline
             cp_box_color (QtGui.QColor): color of the control points
             show_cp_idx (bool): draw control point index number
@@ -126,3 +135,21 @@ class SplineCanvas(Canvas, metaclass=CanvasMeta):
             rect_y = int((y + offsetXY) - (self.l // 2))
             painter.drawRect(rect_x, rect_y, self.l, self.l)
             show_cp_idx and painter.drawText(rect_x, rect_y, str(idx))
+
+    def draw_tilted_plane_line(self, painter, spline):
+        if spline is None:
+            return
+
+        p, start, end = spline.get_poly_spline()
+        self.draw_poly_approx(painter, p, start, end, col.PANO_OFF_SPLINE)
+        x = self.current_pos
+
+        if start is not None and end is not None and x in range(int(start), int(end)):
+            derivative = np.polyder(p, 1)
+            m = -1 / derivative(x)
+            y = p(x)
+            q = y - m * x
+            f = np.poly1d([m, q])
+            off = 50
+            self.draw_line_between_points(painter, (x - off, f(x - off)),
+                                          (x + off, f(x + off)), col.POS)

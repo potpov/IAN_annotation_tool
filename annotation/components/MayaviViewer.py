@@ -11,10 +11,7 @@ from pyface.qt import QtGui, QtCore
 
 from traits.api import HasTraits, Instance, on_trait_change
 from traitsui.api import View, Item
-from mayavi.core.ui.api import MayaviScene, MlabSceneModel, \
-    SceneEditor
-
-import numpy as np
+from mayavi.core.ui.api import MayaviScene, MlabSceneModel, SceneEditor
 
 
 ################################################################################
@@ -44,9 +41,7 @@ class Visualization(HasTraits):
 
 ################################################################################
 # The QWidget containing the visualization, this is pure PyQt4 code.
-class MayaviQWidget(QtGui.QWidget):
-    dicomdir_changed = QtCore.pyqtSignal(str)
-
+class MayaviViewer(QtGui.QWidget):
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self, parent)
         self.container = parent

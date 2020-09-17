@@ -1,12 +1,12 @@
 from PyQt5 import QtWidgets
 from pyface.qt import QtGui
-from annotation.containers.container import Container
+from annotation.containers import Container
 
 
 class Window(QtGui.QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
-        self.setWindowTitle("DICOM IAN annotation tool")
+        self.setWindowTitle("IAN Annotation Tool")
         self.menubar = self.menuBar()
         file_menu = self.menubar.addMenu("&File")
         open_action = QtGui.QAction("&Open", self)
@@ -21,4 +21,4 @@ class Window(QtGui.QMainWindow):
         dialog = QtWidgets.QFileDialog()
         file_path = dialog.getOpenFileName(None, "Select DICOMDIR file", filter="DICOMDIR")
         if file_path[0]:
-            self.container.dicomdir_changed.emit(file_path[0])
+            self.container.dicomdir_changed(file_path[0])

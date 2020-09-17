@@ -2,7 +2,7 @@ from PyQt5 import QtCore
 from pyface.qt import QtGui
 
 from annotation.components.Dialog import LoadingDialog
-from annotation.widgets.mayavi_qt import MayaviQWidget
+from annotation.components.MayaviViewer import MayaviViewer
 
 
 class Dialog3DPlot(QtGui.QDialog):
@@ -11,7 +11,7 @@ class Dialog3DPlot(QtGui.QDialog):
         self.setWindowTitle(title)
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
         self.layout = QtGui.QHBoxLayout(self)
-        self.mayavi = MayaviQWidget(self)
+        self.mayavi = MayaviViewer(self)
         self.layout.addWidget(self.mayavi)
 
     def show(self, volume=None):

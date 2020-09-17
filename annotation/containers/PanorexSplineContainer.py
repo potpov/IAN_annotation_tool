@@ -1,16 +1,16 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
-from annotation.widgets.panorex import CanvasPanorexWidget
-from annotation.widgets.panorexsplinecontrolpanel import PanorexSplineControlPanelWidget
-from annotation.widgets.toolbar import Toolbar
+from annotation.visualization.panorex import CanvasPanorexWidget
+from annotation.controlpanels import PanorexSplineControlPanel
+from annotation.components.Toolbar import Toolbar
 
 
-class PanorexSplineContainerWidget(QtGui.QWidget):
+class PanorexSplineContainer(QtGui.QWidget):
     panorex_spline_selected = QtCore.pyqtSignal()
 
     def __init__(self, parent):
-        super(PanorexSplineContainerWidget, self).__init__()
+        super(PanorexSplineContainer, self).__init__()
         self.container = parent
         self.layout = QtGui.QGridLayout(self)
 
@@ -25,7 +25,7 @@ class PanorexSplineContainerWidget(QtGui.QWidget):
         self.layout.addWidget(self.panorex, 0, 0)
 
         # control panel
-        self.panel = PanorexSplineControlPanelWidget()
+        self.panel = PanorexSplineControlPanel()
         self.panel.pos_changed.connect(self.pos_changed_handler)
         self.layout.addWidget(self.panel, 1, 0)
 

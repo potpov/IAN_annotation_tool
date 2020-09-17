@@ -1,7 +1,8 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
-from annotation import WIDGET_MARGIN, colors as col
+from annotation.utils.margin import WIDGET_MARGIN
+import annotation.utils.colors as col
 from annotation.actions.Action import (
     LeftCanalCpAddedAction,
     RightCanalCpAddedAction,
@@ -11,16 +12,17 @@ from annotation.actions.Action import (
     RightCanalCpRemovedAction
 )
 from annotation.components.Canvas import SplineCanvas
-from annotation.utils import draw_blue_vertical_line
-from annotation.utils import numpy2pixmap, clip_range
-import numpy as np
+from annotation.utils.image import draw_blue_vertical_line
+from annotation.utils.qt import numpy2pixmap
+from annotation.utils.math import clip_range
 
 
-class CanvasPanorexWidgetTilt(SplineCanvas):
+class CanvasPanorexWidget(SplineCanvas):
     spline_changed = QtCore.pyqtSignal()
 
-    def __init__(self, parent):
+    def __init__(self, parent, tilted=False):
         super().__init__(parent)
+        self._tilted = tilted
         self.current_pos = 0
         self.arch_handler = None
         self.action = None
@@ -28,31 +30,13 @@ class CanvasPanorexWidgetTilt(SplineCanvas):
     def set_img(self):
         self.img = self.arch_handler.panorex
         self.pixmap = numpy2pixmap(self.img)
-        self.setFixedSize(self.img.shape[1] + 50, self.img.shape[0] + 50)
+        self.adjust_size()
 
     def paintEvent(self, e):
         qp = QtGui.QPainter()
         qp.begin(self)
         self.draw(qp)
         qp.end()
-
-    def draw_tilted_plane_line(self, painter, spline):
-        if spline is None:
-            return
-
-        p, start, end = spline.get_poly_spline()
-        self.draw_poly_approx(painter, p, start, end, col.PANO_OFF_SPLINE)
-        x = self.current_pos
-
-        if start is not None and end is not None and x in range(int(start), int(end)):
-            derivative = np.polyder(p, 1)
-            m = -1 / derivative(x)
-            y = p(x)
-            q = y - m * x
-            f = np.poly1d([m, q])
-            off = 50
-            self.draw_line_between_points(painter, (x - off, f(x - off)),
-                                          (x + off, f(x + off)), col.POS)
 
     def draw(self, painter):
         if self.arch_handler is None:
@@ -69,8 +53,9 @@ class CanvasPanorexWidgetTilt(SplineCanvas):
                          WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN + self.img.shape[0] - 1)
 
         # draw plane line
-        self.draw_tilted_plane_line(painter, self.arch_handler.L_canal_spline)
-        self.draw_tilted_plane_line(painter, self.arch_handler.R_canal_spline)
+        if self._tilted:
+            self.draw_tilted_plane_line(painter, self.arch_handler.L_canal_spline)
+            self.draw_tilted_plane_line(painter, self.arch_handler.R_canal_spline)
 
     def check_cp_movement(self, spline, LR, mouse_x, mouse_y):
         for cp_index, (point_x, point_y) in enumerate(spline.cp):
@@ -111,7 +96,7 @@ class CanvasPanorexWidgetTilt(SplineCanvas):
                 self.arch_handler.history.add(RightCanalCpAddedAction((mouse_x, mouse_y), idx))
 
     def mousePressEvent(self, QMouseEvent):
-        if not self._can_draw:
+        if not self._can_edit_spline:
             return
 
         self.drag_point = None
@@ -127,7 +112,7 @@ class CanvasPanorexWidgetTilt(SplineCanvas):
             self.handle_right_click(mouse_x, mouse_y)
 
     def mouseReleaseEvent(self, QMouseEvent):
-        if not self._can_draw:
+        if not self._can_edit_spline:
             return
 
         self.drag_point = None
@@ -138,137 +123,9 @@ class CanvasPanorexWidgetTilt(SplineCanvas):
         self.update()
 
     def mouseMoveEvent(self, QMouseEvent):
-        if not self._can_draw:
+        if not self._can_edit_spline:
             return
 
-        if self.drag_point is not None:
-            self.spline_changed.emit()
-
-            cp_index, LR, (offset_x, offset_y) = self.drag_point
-            new_x = QMouseEvent.pos().x() - WIDGET_MARGIN + offset_x
-            new_y = QMouseEvent.pos().y() - WIDGET_MARGIN + offset_y
-
-            new_x = clip_range(new_x, 0, self.pixmap.width() - 1)
-            new_y = clip_range(new_y, 0, self.pixmap.height() - 1)
-
-            if LR == "L":
-                self.action = LeftCanalCpChangedAction((new_x, new_y), self.action.prev, cp_index)
-                spline = self.arch_handler.L_canal_spline
-            elif LR == "R":
-                self.action = RightCanalCpChangedAction((new_x, new_y), self.action.prev, cp_index)
-                spline = self.arch_handler.R_canal_spline
-            else:
-                raise ValueError("Expected spline LR to be either L or R")
-            # Set new point data
-            new_idx = spline.update_cp(cp_index, new_x, new_y)
-            self.drag_point = (new_idx, LR, self.drag_point[2])
-
-            # Redraw curve
-            self.update()
-
-    def show_(self, pos=None):
-        self.current_pos = pos
-        self.set_img()
-        self.update()
-
-
-class CanvasPanorexWidget(SplineCanvas):
-    spline_changed = QtCore.pyqtSignal()
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.current_pos = 0
-        self.arch_handler = None
-        self.action = None
-
-    def set_img(self):
-        self.img = self.arch_handler.panorex
-        self.pixmap = numpy2pixmap(self.img)
-        self.setFixedSize(self.img.shape[1] + 50, self.img.shape[0] + 50)
-
-    def paintEvent(self, e):
-        qp = QtGui.QPainter()
-        qp.begin(self)
-        self.draw(qp)
-        qp.end()
-
-    def draw(self, painter):
-        if self.arch_handler is None:
-            return
-        if self.arch_handler.coords is None:
-            return
-
-        self.draw_background(painter)
-        self.draw_spline(painter, self.arch_handler.L_canal_spline, col.L_CANAL_SPLINE)
-        self.draw_spline(painter, self.arch_handler.R_canal_spline, col.R_CANAL_SPLINE)
-
-        painter.setPen(col.POS)
-        painter.drawLine(WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN,
-                         WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN + self.img.shape[0] - 1)
-
-    def check_cp_movement(self, spline, LR, mouse_x, mouse_y):
-        for cp_index, (point_x, point_y) in enumerate(spline.cp):
-            if abs(point_x - mouse_x) < self.l // 2 and abs(point_y - mouse_y) < self.l // 2:
-                drag_x_offset = point_x - mouse_x
-                drag_y_offset = point_y - mouse_y
-                self.drag_point = (cp_index, LR, (drag_x_offset, drag_y_offset))
-                if LR == "L":
-                    self.action = LeftCanalCpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
-                elif LR == "R":
-                    self.action = RightCanalCpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
-                else:
-                    raise ValueError("Expected spline LR to be either L or R")
-                break
-
-    def cp_clicked(self, spline, mouse_x, mouse_y):
-        for cp_index, (point_x, point_y) in enumerate(spline.cp):
-            if abs(point_x - mouse_x) < self.l // 2 and abs(point_y - mouse_y) < self.l // 2:
-                return cp_index
-        return None
-
-    def handle_right_click(self, mouse_x, mouse_y):
-        remove_L = self.cp_clicked(self.arch_handler.L_canal_spline, mouse_x, mouse_y)
-        remove_R = self.cp_clicked(self.arch_handler.R_canal_spline, mouse_x, mouse_y)
-        if remove_L is not None:
-            self.arch_handler.L_canal_spline.remove_cp(remove_L)
-            self.arch_handler.history.add(LeftCanalCpRemovedAction(remove_L))
-        elif remove_R is not None:
-            self.arch_handler.R_canal_spline.remove_cp(remove_R)
-            self.arch_handler.history.add(RightCanalCpRemovedAction(remove_R))
-
-        else:
-            if mouse_x < self.img.shape[1] // 2:
-                idx = self.arch_handler.L_canal_spline.add_cp(mouse_x, mouse_y)
-                self.arch_handler.history.add(LeftCanalCpAddedAction((mouse_x, mouse_y), idx))
-            else:
-                idx = self.arch_handler.R_canal_spline.add_cp(mouse_x, mouse_y)
-                self.arch_handler.history.add(RightCanalCpAddedAction((mouse_x, mouse_y), idx))
-
-    def mousePressEvent(self, QMouseEvent):
-        """ Internal mouse-press handler """
-        self.drag_point = None
-        self.action = None
-        mouse_pos = QMouseEvent.pos()
-        mouse_x = mouse_pos.x() - WIDGET_MARGIN
-        mouse_y = mouse_pos.y() - WIDGET_MARGIN
-        if QMouseEvent.button() == QtCore.Qt.LeftButton:
-            self.check_cp_movement(self.arch_handler.L_canal_spline, "L", mouse_x, mouse_y)
-            self.check_cp_movement(self.arch_handler.R_canal_spline, "R", mouse_x, mouse_y)
-        elif QMouseEvent.button() == QtCore.Qt.RightButton:
-            self.spline_changed.emit()
-            self.handle_right_click(mouse_x, mouse_y)
-
-    def mouseReleaseEvent(self, QMouseEvent):
-        """ Internal mouse-release handler """
-        self.drag_point = None
-        if self.action is not None:
-            self.spline_changed.emit()
-            self.arch_handler.history.add(self.action)
-            self.action = None
-        self.update()
-
-    def mouseMoveEvent(self, QMouseEvent):
-        """ Internal mouse-move handler """
         if self.drag_point is not None:
             self.spline_changed.emit()
 

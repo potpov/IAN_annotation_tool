@@ -1,18 +1,17 @@
 from PyQt5 import QtCore, QtWidgets
 from pyface.qt import QtGui
-import qtawesome as qta
-from annotation.widgets.archpanocontrolpanel import ArchPanoControlPanelWidget
-from annotation.widgets.archview import SplineArchWidget
-from annotation.widgets.panorex import PanorexWidget
-from annotation.widgets.sidevolume import SideVolume
-from annotation.widgets.toolbar import Toolbar
+from annotation.controlpanels import ArchSplineControlPanel
+from annotation.visualization.archview import SplineArchView
+from annotation.visualization.panorex import PanorexWidget
+from annotation.visualization.sidevolume import SideVolume
+from annotation.components.Toolbar import Toolbar
 
 
-class ArchPanorexContainerWidget(QtGui.QWidget):
+class ArchSplineContainer(QtGui.QWidget):
     spline_selected = QtCore.pyqtSignal(int)
 
     def __init__(self, parent):
-        super(ArchPanorexContainerWidget, self).__init__()
+        super(ArchSplineContainer, self).__init__()
         self.parent = parent
         self.layout = QtGui.QGridLayout(self)
 
@@ -22,7 +21,7 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         self.layout.setMenuBar(self.toolbar.bar)
 
         # arch view
-        self.archview = SplineArchWidget(self)
+        self.archview = SplineArchView(self)
         self.archview.spline_changed.connect(self.spline_changed)
         self.layout.addWidget(self.archview, 0, 0)
 
@@ -35,7 +34,7 @@ class ArchPanorexContainerWidget(QtGui.QWidget):
         self.layout.addWidget(self.sidevolume, 0, 2)
 
         # control panel
-        self.panel = ArchPanoControlPanelWidget()
+        self.panel = ArchSplineControlPanel()
         self.panel.pos_changed.connect(self.pos_changed_handler)
         self.panel.arch_changed.connect(self.arch_changed_handler)
         self.panel.pano_offset_changed.connect(self.pano_offset_changed_handler)

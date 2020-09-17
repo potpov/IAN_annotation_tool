@@ -2,14 +2,16 @@ from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
 
 from annotation.components.Slider import Slider
-from annotation.utils import numpy2pixmap
+from annotation.utils.qt import numpy2pixmap
+from annotation.utils.math import clip_range
+from annotation.visualization.archview import ArchView
 
 
-class SliceSelectionWidget(QtGui.QWidget):
+class SliceSelectionContainer(QtGui.QWidget):
     slice_selected = QtCore.pyqtSignal(int)
 
     def __init__(self, parent):
-        super(SliceSelectionWidget, self).__init__()
+        super(SliceSelectionContainer, self).__init__()
         self.container = parent
         self.arch_handler = None
 
@@ -23,19 +25,17 @@ class SliceSelectionWidget(QtGui.QWidget):
         self.slider.setDefaultValue(0)
         self.slider.setTickPosition(QtWidgets.QSlider.TicksRight)
         self.slider.setTickInterval(10)
-        self.slider.valueChanged.connect(self.slider_value_changed)
+        self.slider.valueChanged.connect(self.show_img)
         self.slider.setMaximumWidth(100)
         self.layout.addWidget(self.slider, 0, 1)
 
-        # label setup
-        self.label_img = QtWidgets.QLabel(self)
-        self.label_img.setAlignment(QtCore.Qt.AlignCenter)
-        self.layout.addWidget(self.label_img, 0, 0)
+        self.archview = ArchView(self)
+        self.layout.addWidget(self.archview, 0, 0)
 
         # arch checkbox setup
         self.arch_line = QtWidgets.QCheckBox("Arch")
         self.arch_line.setChecked(True)
-        self.arch_line.toggled.connect(self.toggle_arch_line)
+        self.arch_line.toggled.connect(self.show_img)
         self.layout.addWidget(self.arch_line, 1, 0)
 
         # confirm slice button
@@ -44,22 +44,16 @@ class SliceSelectionWidget(QtGui.QWidget):
         self.confirm_button.clicked.connect(lambda x: self.slice_selected.emit(self.slider.value()))
         self.layout.addWidget(self.confirm_button, 1, 1)
 
-    def slider_value_changed(self):
-        val = self.slider.value()
-        slice = self.arch_handler.get_section(val, arch=self.arch_line.isChecked(), offsets=False)
-        self.set_img(slice)
+    def initialize(self):
+        self.archview.set_img()
 
-    def set_img(self, img):
+    def set_arch_handler(self, arch_handler):
+        self.arch_handler = arch_handler
+        self.archview.arch_handler = arch_handler
         if self.slider.maximum() == 0:
-            max = self.arch_handler.Z
-            self.slider.setMaximum(max - 1)
-            self.slider.setValue(96)
+            max = self.arch_handler.Z - 1
+            self.slider.setMaximum(max)
+            self.slider.setValue(clip_range(96, 0, max))
 
-        pixmap = numpy2pixmap(img)
-        self.label_img.setPixmap(pixmap)
-        self.label_img.update()
-
-    def toggle_arch_line(self):
-        val = self.slider.value()
-        slice = self.arch_handler.get_section(val, arch=self.arch_line.isChecked())
-        self.set_img(slice)
+    def show_img(self):
+        self.archview.show_(slice_idx=self.slider.value(), show_arch=self.arch_line.isChecked())

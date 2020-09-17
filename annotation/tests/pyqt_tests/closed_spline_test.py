@@ -4,9 +4,11 @@ import numpy as np
 import PyQt5.QtCore as QtCore
 from pyface.qt import QtGui
 from Jaw import Jaw
-from annotation.spline.catmullrom import CHORDAL, UNIFORM, CENTRIPETAL
-from annotation.spline.spline import ClosedSpline
-from annotation.utils import numpy2pixmap, clip_range, plot, export_img, active_contour_balloon
+from annotation.spline.CatmullRom import CHORDAL, UNIFORM, CENTRIPETAL
+from annotation.spline.Spline import ClosedSpline
+from annotation.utils.qt import numpy2pixmap
+from annotation.utils.math import clip_range
+from annotation.utils.image import plot, export_img, active_contour_balloon
 from annotation.components.Canvas import SplineCanvas
 
 WIDGET_MARGIN = 11
@@ -18,7 +20,7 @@ class SplineWidget(SplineCanvas):
         self.spline = ClosedSpline([])
         self.img = img
         self.pixmap = numpy2pixmap(img)
-        self.setFixedSize(self.img.shape[1] + 50, self.img.shape[0] + 50)
+        self.adjust_size()
         self.snake = None
 
     def snake_button_clicked(self):

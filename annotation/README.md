@@ -1,6 +1,9 @@
 # IAN Annotation Tool
 
 ## Python environment
-The best way to get the things start is to use an Anaconda environment.
-In order to get all the packages installed, it's better to create a conda virtual environment, because otherwise opencv will not install (actually I don't know why).
-Without the Anaconda environment I struggled and failed to install mayavi with pip.
+Create virtual environment and install requirements via pip. It's important to use pip instead of conda packages in order to package the application into an executable.
+```bash
+python -m virtualenv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```

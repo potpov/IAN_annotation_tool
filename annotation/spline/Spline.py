@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-from annotation.spline.catmullrom import CatmullRomChain, CatmullRomSpline, CENTRIPETAL
-from annotation.utils import get_poly_approx
+from annotation.spline.CatmullRom import CatmullRomChain, CatmullRomSpline, CENTRIPETAL
+from annotation.utils.math import get_poly_approx
 from functools import reduce
 import operator
 import math

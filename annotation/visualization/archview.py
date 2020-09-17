@@ -1,37 +1,37 @@
-from PyQt5 import QtWidgets, QtCore
-from pyface.qt import QtGui
+from PyQt5 import QtCore
 
-from annotation import WIDGET_MARGIN, colors as col
-from annotation.components.Canvas import SplineCanvas
-from annotation.utils import numpy2pixmap, clip_range
+from annotation.utils.margin import WIDGET_MARGIN
+import annotation.utils.colors as col
+from annotation.components.Canvas import SplineCanvas, Canvas
+from annotation.utils.qt import numpy2pixmap
+from annotation.utils.math import clip_range
 from annotation.actions.Action import ArchCpChangedAction
 
 
-class SimpleArchWidget(QtGui.QWidget):
-
+class ArchView(Canvas):
     def __init__(self, parent):
-        super(SimpleArchWidget, self).__init__()
-        self.parent = parent
-        self.layout = QtGui.QHBoxLayout(self)
-
+        super(ArchView, self).__init__(parent)
         self.arch_handler = None
+        self.slice_idx = 0
 
-        # arch view
-        self.label = QtWidgets.QLabel(self)
-        self.label.setAlignment(QtCore.Qt.AlignCenter)
-        self.layout.addWidget(self.label)
+    def set_img(self):
+        self.img = self.arch_handler.volume[self.slice_idx]
+        self.pixmap = numpy2pixmap(self.img)
+        self.adjust_size()
 
-    def show_arch(self, arch=True, offsets=True, pos=None):
-        pixmap = numpy2pixmap(
-            self.arch_handler.get_section(self.arch_handler.selected_slice,
-                                          arch=arch,
-                                          offsets=offsets,
-                                          pos=pos))
-        self.label.setPixmap(pixmap)
-        self.label.update()
+    def draw(self, painter):
+        p, start, end = self.arch_handler.get_arch_detection(self.slice_idx)
+        self.draw_background(painter)
+        self.draw_poly_approx(painter, p, start, end, col.ARCH_SPLINE)
+
+    def show_(self, slice_idx=0, show_arch=True):
+        self.slice_idx = slice_idx
+        self.show_arch = show_arch
+        self.set_img()
+        self.update()
 
 
-class SplineArchWidget(SplineCanvas):
+class SplineArchView(SplineCanvas):
     spline_changed = QtCore.pyqtSignal()
 
     def __init__(self, parent):
@@ -43,9 +43,9 @@ class SplineArchWidget(SplineCanvas):
 
     def set_img(self):
         self.selected_slice = self.arch_handler.selected_slice
-        self.img = self.arch_handler.get_section(self.selected_slice)
+        self.img = self.arch_handler.volume[self.selected_slice]
         self.pixmap = numpy2pixmap(self.img)
-        self.setFixedSize(self.img.shape[1] + 50, self.img.shape[0] + 50)
+        self.adjust_size()
 
     def draw(self, painter):
         # when the widget is deleted, the painter may be updated anyway, even after the arch_handler reset

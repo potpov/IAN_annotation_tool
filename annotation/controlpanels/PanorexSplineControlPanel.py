@@ -5,14 +5,14 @@ from annotation.components.PrevNextButtons import PrevNextButtons
 from annotation.components.Slider import Slider
 
 
-class PanorexSplineControlPanelWidget(QtGui.QWidget):
+class PanorexSplineControlPanel(QtGui.QWidget):
     pos_changed = QtCore.pyqtSignal()
     arch_changed = QtCore.pyqtSignal()
     pano_offset_changed = QtCore.pyqtSignal()
     update_side_volume = QtCore.pyqtSignal()
 
     def __init__(self):
-        super(PanorexSplineControlPanelWidget, self).__init__()
+        super(PanorexSplineControlPanel, self).__init__()
         self.layout = QtGui.QFormLayout(self)
 
         self.pos_slider = Slider(QtCore.Qt.Horizontal)

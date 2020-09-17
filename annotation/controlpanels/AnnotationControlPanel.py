@@ -5,7 +5,7 @@ from annotation.components.PrevNextButtons import PrevNextButtons
 from annotation.components.Slider import Slider
 
 
-class AnnotationControlPanelWidget(QtGui.QWidget):
+class AnnotationControlPanel(QtGui.QWidget):
     pos_changed = QtCore.pyqtSignal()
     flags_changed = QtCore.pyqtSignal()
     acquire_annotation_clicked = QtCore.pyqtSignal()
@@ -14,7 +14,7 @@ class AnnotationControlPanelWidget(QtGui.QWidget):
     export_mask_imgs_clicked = QtCore.pyqtSignal()
 
     def __init__(self):
-        super(AnnotationControlPanelWidget, self).__init__()
+        super(AnnotationControlPanel, self).__init__()
         self.layout = QtGui.QFormLayout(self)
 
         self.pos_slider = Slider(QtCore.Qt.Horizontal)
@@ -38,12 +38,6 @@ class AnnotationControlPanelWidget(QtGui.QWidget):
         self.show_dot.setShortcut("D")
         self.show_dot.clicked.connect(self.flags_changed.emit)
         self.layout.addRow(QtWidgets.QLabel(""), self.show_dot)
-
-        self.show_hint = QtWidgets.QCheckBox("Show hint (H)")
-        self.show_hint.setChecked(False)
-        self.show_hint.setShortcut("H")
-        self.show_hint.clicked.connect(self.flags_changed.emit)
-        self.layout.addRow(QtWidgets.QLabel(""), self.show_hint)
 
         self.show_mask_spline = QtWidgets.QCheckBox("Show mask spline (S)")
         self.show_mask_spline.setChecked(True)

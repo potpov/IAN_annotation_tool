@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from annotation.utils import plot, show_red_mask
+from annotation.utils.image import plot, show_red_mask
 
 
 def extimate_canal(src, point, debug=False, draw_point=False):
