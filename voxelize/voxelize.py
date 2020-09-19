@@ -21,10 +21,10 @@ class BoundaryBox(object):
     def get_center(self):
         assert self.minimum, "BoundaryBox not initialized"
         return [
-            int((self.maximum[0] + self.minimum[0])/2.0),
-            int((self.maximum[1] + self.minimum[1])/2.0),
-            int((self.maximum[2] + self.minimum[2])/2.0)
-            ]
+            int((self.maximum[0] + self.minimum[0]) / 2.0),
+            int((self.maximum[1] + self.minimum[1]) / 2.0),
+            int((self.maximum[2] + self.minimum[2]) / 2.0)
+        ]
 
     def from_triangle(self, triangle):
         """
@@ -164,7 +164,7 @@ def voxelize(list_of_triangles):
     voxels = set()
     bounding_box = BoundaryBox()
 
-    for (vertex_1, vertex_2, vertex_3) in tqdm(list_of_triangles):
+    for (vertex_1, vertex_2, vertex_3) in list_of_triangles:
         bounding_box.from_vertexes(vertex_1, vertex_2, vertex_3)
         voxels.update(get_intersecting_voxels_depth_first(vertex_1, vertex_2, vertex_3))
     center = bounding_box.get_center()
