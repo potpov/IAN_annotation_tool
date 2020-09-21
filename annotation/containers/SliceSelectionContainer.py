@@ -24,7 +24,7 @@ class SliceSelectionContainer(QtGui.QWidget):
         self.slider.setDefaultValue(0)
         self.slider.setTickPosition(QtWidgets.QSlider.TicksRight)
         self.slider.setTickInterval(10)
-        self.slider.valueChanged.connect(self.show_img)
+        self.slider.valueChanged.connect(self.show_)
         self.slider.setMaximumWidth(100)
         self.layout.addWidget(self.slider, 0, 1)
 
@@ -34,7 +34,7 @@ class SliceSelectionContainer(QtGui.QWidget):
         # arch checkbox setup
         self.arch_line = QtWidgets.QCheckBox("Arch")
         self.arch_line.setChecked(True)
-        self.arch_line.toggled.connect(self.show_img)
+        self.arch_line.toggled.connect(self.show_)
         self.layout.addWidget(self.arch_line, 1, 0)
 
         # confirm slice button
@@ -54,5 +54,5 @@ class SliceSelectionContainer(QtGui.QWidget):
             self.slider.setMaximum(max)
             self.slider.setValue(clip_range(96, 0, max))
 
-    def show_img(self):
+    def show_(self):
         self.archview.show_(slice_idx=self.slider.value(), show_arch=self.arch_line.isChecked())

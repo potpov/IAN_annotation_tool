@@ -25,6 +25,7 @@ class LoadingDialog(QtWidgets.QDialog):
         self.thread = WorkerThread(self.func)
         self.thread.finished.connect(self.close)
         self.thread.start()
+        self.exec_()
 
 
 class MessageDialog(QtWidgets.QDialog):

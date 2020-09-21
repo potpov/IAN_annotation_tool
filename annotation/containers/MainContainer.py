@@ -1,7 +1,7 @@
 from pyface.qt import QtGui
 
 from annotation.actions.Action import TiltedPlanesAnnotationAction, DefaultPlanesAnnotationAction
-from annotation.components.Dialog import question, information
+from annotation.components.Dialog import question, information, LoadingDialog
 from annotation.containers.AnnotationContainer import AnnotationContainer
 from annotation.containers.ArchSplineContainer import ArchSplineContainer
 from annotation.containers.PanorexSplineContainer import PanorexSplineContainer
@@ -23,6 +23,7 @@ class Container(QtGui.QWidget):
         # widgets
         self.slice_selection = None
         self.asc = None
+        self.psc = None
         self.annotation = None
 
         # data
@@ -77,7 +78,7 @@ class Container(QtGui.QWidget):
         self.slice_selection.slice_selected.connect(self.show_ArchSplineContainer)
         self.slice_selection.set_arch_handler(self.arch_handler)
         self.slice_selection.initialize()
-        self.slice_selection.show_img()
+        self.slice_selection.show_()
         self.layout.addWidget(self.slice_selection, 0, 0)
 
     def remove_SliceSelectionContainer(self):
@@ -91,7 +92,7 @@ class Container(QtGui.QWidget):
         self.asc.spline_selected.connect(self.show_PanorexSplineContainer)
         self.asc.set_arch_handler(self.arch_handler)
         self.asc.initialize()
-        self.asc.show_img()
+        self.asc.show_()
         self.layout.addWidget(self.asc, 0, 0)
 
     def remove_ArchSplineContainer(self):
@@ -101,13 +102,12 @@ class Container(QtGui.QWidget):
             self.asc = None
 
     def add_PanorexSplineContainer(self):
-        self.arch_handler.compute_offsetted_arch(pano_offset=0)
-        self.arch_handler.compute_panorexes()
+        self.arch_handler.offset_arch(pano_offset=0)
         self.psc = PanorexSplineContainer(self)
         self.psc.panorex_spline_selected.connect(self.show_AnnotationContainer)
         self.psc.set_arch_handler(self.arch_handler)
         self.psc.initialize()
-        self.psc.show_img()
+        self.psc.show_()
         self.layout.addWidget(self.psc, 0, 0)
 
     def remove_PanorexSplineContainer(self):
@@ -119,22 +119,21 @@ class Container(QtGui.QWidget):
     def add_AnnotationContainer(self):
         def yes(self):
             self.arch_handler.history.add(TiltedPlanesAnnotationAction())
-            self.arch_handler.compute_tilted_side_volume()
+            self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE, tilted=True)
             self.annotation = TiltAnnotationContainer(self)
 
         def no(self):
             self.arch_handler.history.add(DefaultPlanesAnnotationAction())
+            self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE)
             self.annotation = AnnotationContainer(self)
 
-        self.arch_handler.compute_offsetted_arch(pano_offset=0)
-        self.arch_handler.compute_panorexes()
-        self.arch_handler.compute_side_volume_dialog(self.arch_handler.SIDE_VOLUME_SCALE)
+        self.arch_handler.offset_arch(pano_offset=0)
         question(self, "Tilted planes",
                  "Would you like to use planes orthogonal to the IAN canal as base for the annotations?",
                  yes_callback=lambda: yes(self), no_callback=lambda: no(self))
         self.annotation.set_arch_handler(self.arch_handler)
         self.annotation.initialize()
-        self.annotation.show_img()
+        self.annotation.show_()
         self.layout.addWidget(self.annotation, 0, 0)
 
     def remove_AnnotationContainer(self):
@@ -144,37 +143,42 @@ class Container(QtGui.QWidget):
             self.annotation = None
 
     def dicomdir_changed(self, dicomdir_path):
-        def yes_callback(self):
+        def yes(self):
             self.arch_handler.initalize_attributes(0)
             self.arch_handler.load_state()
             self.add_ArchSplineContainer()
+
+        def no(self):
+            self.add_SliceSelectionContainer()
 
         if self.arch_handler is not None:
             self.arch_handler.__init__(dicomdir_path)
         else:
             self.arch_handler = ArchHandler(dicomdir_path)
-
+            
+        self.clear()
         self.add_view_menu()
-        self.remove_SliceSelectionContainer()
-        self.remove_ArchSplineContainer()
-        self.remove_AnnotationContainer()
         if self.arch_handler.is_there_data_to_load():
             question(self, "Load data?", "A save file was found. Do you want to load it?",
-                     yes_callback=lambda: yes_callback(self), no_callback=self.add_SliceSelectionContainer)
+                     yes_callback=lambda: yes(self), no_callback=lambda: no(self))
         else:
-            # if there is no data to load, then we start from the first screen
-            self.add_SliceSelectionContainer()
+            no(self)
 
     def show_ArchSplineContainer(self, slice):
-        self.remove_SliceSelectionContainer()
-        self.arch_handler.compute_initial_state_dialog(slice)
+        self.clear()
+        LoadingDialog(func=lambda: self.arch_handler.compute_initial_state(slice), message="Computing initial state")
         self.add_ArchSplineContainer()
 
     def show_PanorexSplineContainer(self):
-        self.remove_ArchSplineContainer()
+        self.clear()
         self.add_PanorexSplineContainer()
 
     def show_AnnotationContainer(self):
-        # self.remove_ArchSplineContainer()
-        self.remove_PanorexSplineContainer()
+        self.clear()
         self.add_AnnotationContainer()
+
+    def clear(self):
+        self.remove_SliceSelectionContainer()
+        self.remove_ArchSplineContainer()
+        self.remove_PanorexSplineContainer()
+        self.remove_AnnotationContainer()

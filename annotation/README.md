@@ -1,6 +1,13 @@
 # IAN Annotation Tool
 
-## Python environment
+This tool is designed to help in the annotation of the inferior alveolar nerve (IAN) canal in cone beam TAC.
+It is developed using:
+- `PyQt5` (GUI)
+- `mayavi` (3D visualization)
+- `opencv`, `scikit` (Image processing)
+
+
+## Run with Python interpreter
 Create virtual environment and install requirements via pip. It's important to use pip instead of conda packages in order to package the application into an executable.
 ```bash
 python -m virtualenv venv
@@ -8,8 +15,15 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### On Linux
+It is required to install PyQt5 on the system.
+```bash
+sudo apt-get install python3-pyqt5
+```
+
 ## Build executable
-### Versions
+What follows is the configuration used to freeze the application into an executable.
+
 |             | **Version**                     |
 |-------------|---------------------------------|
 | OS          | Windows 10 2004 build 19041.508 |

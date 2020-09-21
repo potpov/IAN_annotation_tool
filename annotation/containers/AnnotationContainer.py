@@ -17,7 +17,7 @@ class AnnotationContainer(QtGui.QWidget):
 
         # toolbar
         self.toolbar = Toolbar()
-        self.toolbar.toolbar_load.connect(self.show_img)
+        self.toolbar.toolbar_load.connect(self.show_)
         self.layout.setMenuBar(self.toolbar.bar)
 
         # panorex
@@ -48,7 +48,7 @@ class AnnotationContainer(QtGui.QWidget):
 
     def pos_changed_handler(self):
         self.current_pos = self.panel.getPosValue()
-        self.show_img()
+        self.show_()
 
     def reset_annotation_clicked_handler(self):
         self.panel.auto_acquire_annotation.setChecked(False)
@@ -61,15 +61,15 @@ class AnnotationContainer(QtGui.QWidget):
         self.sidevolume_show()
 
     def show_result_clicked_handler(self):
-        self.arch_handler.extract_annotations()
+        self.arch_handler.extract_3D_annotations()
         dialog = Dialog3DPlot(self, "Volume with annotations")
         dialog.show(self.arch_handler.get_jaw_with_delaunay())
 
     def export_mask_imgs_clicked_handler(self):
-        LoadingDialog(self.arch_handler.annotation_masks.export_mask_imgs, "Exporting mask images").exec_()
+        LoadingDialog(self.arch_handler.annotation_masks.export_mask_imgs, "Exporting mask images")
 
-    def show_img(self):
-        self.panel.setPosSliderMaximum(len(self.arch_handler.offsetted_arch) - 1)
+    def show_(self):
+        self.panel.setPosSliderMaximum(len(self.arch_handler.arch.get_arch()) - 1)
         self.panorex.show_(pos=self.current_pos)
         self.sidevolume_show()
 

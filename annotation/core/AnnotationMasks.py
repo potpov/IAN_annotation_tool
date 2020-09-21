@@ -101,9 +101,9 @@ class AnnotationMasks():
                 # spline = np.array(init.get_spline())
                 # snake = active_contour(self.arch_handler.side_volume[idx], spline, max_iterations=100)
                 ####
-                snake = active_contour_balloon(
-                    self.arch_handler.side_volume[idx] if not tilted else self.arch_handler.t_side_volume[idx],
-                    init, debug=False)
+                img = self.arch_handler.side_volume.get_slice(idx) if not tilted \
+                    else self.arch_handler.t_side_volume.get_slice(idx)
+                snake = active_contour_balloon(img, init, debug=False)
                 if snake is None:
                     return None
                 self.arch_handler.history.add(SideVolumeSplineExtractedAction(idx, from_idx), debug=True)
@@ -169,7 +169,7 @@ class AnnotationMasks():
         if self.scaling != self.arch_handler.side_volume_scale:
             show_message_box("warning", "Scaling mismatch",
                              "The size scale of the volume from which the annotations were taken does not match the current scale. The annotations will be resized and may lose consistency.")
-            LoadingDialog(self.rescale_annotations, "Rescaling splines").exec_()
+            LoadingDialog(self.rescale_annotations, "Rescaling splines")
 
     def rescale_annotations(self):
         new_masks = []

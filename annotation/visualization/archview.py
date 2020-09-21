@@ -20,7 +20,7 @@ class ArchView(Canvas):
         self.adjust_size()
 
     def draw(self, painter):
-        p, start, end = self.arch_handler.get_arch_detection(self.slice_idx)
+        p, start, end = self.arch_handler.arch_detections.get(self.slice_idx)
         self.draw_background(painter)
         self.draw_poly_approx(painter, p, start, end, col.ARCH_SPLINE)
 
@@ -58,12 +58,12 @@ class SplineArchView(SplineCanvas):
         self.draw_background(painter)
 
         l_offset, coords, h_offset, derivative = self.arch_handler.coords
-        l_pano, h_pano = self.arch_handler.LHoffsetted_arches
+        l_pano, h_pano = self.arch_handler.LH_pano_arches
 
         # draw arches
-        self.draw_points(painter, self.arch_handler.offsetted_arch, col.PANO_SPLINE)
-        self.draw_points(painter, l_pano, col.PANO_OFF_SPLINE)
-        self.draw_points(painter, h_pano, col.PANO_OFF_SPLINE)
+        self.draw_arch(painter, self.arch_handler.arch, col.PANO_SPLINE)
+        self.draw_arch(painter, l_pano, col.PANO_OFF_SPLINE)
+        self.draw_arch(painter, h_pano, col.PANO_OFF_SPLINE)
         self.draw_points(painter, l_offset, col.ARCH_OFF_SPLINE)
         self.draw_points(painter, h_offset, col.ARCH_OFF_SPLINE)
 

@@ -28,7 +28,7 @@ class CanvasPanorexWidget(SplineCanvas):
         self.action = None
 
     def set_img(self):
-        self.img = self.arch_handler.panorex
+        self.img = self.arch_handler.get_panorex()
         self.pixmap = numpy2pixmap(self.img)
         self.adjust_size()
 
@@ -173,7 +173,7 @@ class SinglePanorexWidget(QtGui.QWidget):
 
     def show_(self, panorex=None, pos=None):
         if panorex is None:
-            panorex = self.arch_handler.panorex
+            panorex = self.arch_handler.get_panorex()
 
         if pos is not None:
             panorex = draw_blue_vertical_line(panorex, pos)
@@ -205,10 +205,9 @@ class PanorexWidget(QtGui.QWidget):
         self.layout.addWidget(self.l_pano)
 
     def show_(self, pos=None):
-        panorex = self.arch_handler.panorex
-        l_panorex, h_panorex = self.arch_handler.LHpanorexes
+        panorex = self.arch_handler.get_panorex()
+        l_panorex, h_panorex = self.arch_handler.get_LH_panorexes()
 
         self.h_pano.show_(h_panorex, pos)
         self.m_pano.show_(panorex, pos)
-        # cv2.imwrite(r"C:\Users\crime\Desktop\alveolar_nerve\dataset\panorex.jpg", panorex * 255)
         self.l_pano.show_(l_panorex, pos)

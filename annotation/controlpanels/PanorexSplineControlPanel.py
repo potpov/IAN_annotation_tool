@@ -7,7 +7,7 @@ from annotation.components.Slider import Slider
 
 class PanorexSplineControlPanel(QtGui.QWidget):
     pos_changed = QtCore.pyqtSignal()
-    arch_changed = QtCore.pyqtSignal()
+    arch_offset_changed = QtCore.pyqtSignal()
     pano_offset_changed = QtCore.pyqtSignal()
     update_side_volume = QtCore.pyqtSignal()
 

@@ -71,6 +71,18 @@ class Canvas(QtGui.QWidget, metaclass=CanvasMeta):
             y += offsetXY
             painter.drawPoint(int(x), int(y))
 
+    def draw_arch(self, painter, arch, color, offsetXY=WIDGET_MARGIN):
+        """
+        Paints an Arch object onto a QPainter.
+
+        Args:
+            painter (QtGui.QPainter): where to draw the points
+            arch (annotation.core.Arch): Arch object to draw
+            color (QtGui.QColor): color of the points
+            offsetXY (int): offset to apply to each (x, y)
+        """
+        self.draw_points(painter, arch.get_arch(), color, offsetXY)
+
     @abstractmethod
     def set_img(self):
         pass

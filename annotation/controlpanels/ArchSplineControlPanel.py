@@ -7,7 +7,7 @@ from annotation.components.Slider import Slider
 
 class ArchSplineControlPanel(QtGui.QWidget):
     pos_changed = QtCore.pyqtSignal()
-    arch_changed = QtCore.pyqtSignal()
+    arch_offset_changed = QtCore.pyqtSignal()
     pano_offset_changed = QtCore.pyqtSignal()
     update_side_volume = QtCore.pyqtSignal()
 
@@ -41,7 +41,7 @@ class ArchSplineControlPanel(QtGui.QWidget):
         self.arch_slider.setDefaultValue(0)
         self.arch_slider.setTickPosition(QtWidgets.QSlider.TicksAbove)
         self.arch_slider.setTickInterval(10)
-        self.arch_slider.valueChanged.connect(self.arch_changed.emit)
+        self.arch_slider.valueChanged.connect(self.arch_offset_changed.emit)
         self.layout.addRow(QtWidgets.QLabel("Arch"), self.arch_slider)
 
         self.pano_offset_slider = Slider(QtCore.Qt.Horizontal)

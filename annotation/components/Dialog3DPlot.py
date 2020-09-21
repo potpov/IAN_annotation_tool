@@ -17,5 +17,5 @@ class Dialog3DPlot(QtGui.QDialog):
     def show(self, volume=None):
         if volume is None or not volume.any():
             return
-        LoadingDialog(lambda: self.mayavi.visualization.plot_volume(volume), "Plotting").exec_()
+        LoadingDialog(lambda: self.mayavi.visualization.plot_volume(volume), "Plotting")
         super().show()

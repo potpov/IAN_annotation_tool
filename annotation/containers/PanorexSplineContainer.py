@@ -16,7 +16,7 @@ class PanorexSplineContainer(QtGui.QWidget):
 
         # toolbar
         self.toolbar = Toolbar()
-        self.toolbar.toolbar_load.connect(self.show_img)
+        self.toolbar.toolbar_load.connect(self.show_)
         self.layout.setMenuBar(self.toolbar.bar)
 
         # panorex
@@ -43,10 +43,10 @@ class PanorexSplineContainer(QtGui.QWidget):
 
     def pos_changed_handler(self):
         self.current_pos = self.panel.getPosValue()
-        self.show_img()
+        self.show_()
 
-    def show_img(self):
-        self.panel.setPosSliderMaximum(len(self.arch_handler.offsetted_arch) - 1)
+    def show_(self):
+        self.panel.setPosSliderMaximum(len(self.arch_handler.arch.get_arch()) - 1)
         self.panorex.show_(pos=self.current_pos)
 
     def set_arch_handler(self, arch_handler):
