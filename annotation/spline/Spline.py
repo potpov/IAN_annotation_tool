@@ -8,7 +8,7 @@ import math
 
 
 class Spline():
-    def __init__(self, coords, num_cp=0, kind=CENTRIPETAL):
+    def __init__(self, *args, **kwargs):
         """
         Class that manages a spline produced with the Catmull-Rom algorithm.
 
@@ -19,14 +19,19 @@ class Spline():
             coords (list of (float, float)): initial set of coordinates
             num_cp (int): initial desired amount of control points
             kind (float): value between 0 and 1. Common values are UNIFORM (0.0), CENTRIPETAL (0.5) and CHORDAL (1.0)
+            load_from (dict): json dump of a spline
         """
-        self.curves = None  # list of curves that form the spline
-        self.coords = coords  # curve to start
-        self.cp = []  # control points
-        self.num_cp = num_cp  # desired amount of control points
-        self.kind = kind
-        self.compute_cp()
-        self.build_spline()
+        self.kind = kwargs.get('kind', CENTRIPETAL)
+        self.load_from = kwargs.get('load_from', None)
+        if self.load_from is not None:
+            self.read_json(self.load_from)
+        else:
+            self.curves = None  # list of curves that form the spline
+            self.coords = kwargs.get('coords', [])  # curve to start
+            self.cp = []  # control points
+            self.num_cp = kwargs.get('num_cp', 0)  # desired amount of control points
+            self.compute_cp()
+            self.build_spline()
 
     def update_cp(self, idx, x, y):
         """
@@ -213,18 +218,11 @@ class Spline():
 
 
 class ClosedSpline(Spline):
-    def __init__(self, coords, num_cp=0, kind=CENTRIPETAL):
-        """
-        Class that manages a closed spline produced with the Catmull-Rom algorithm.
+    """
+    Class that manages a closed spline produced with the Catmull-Rom algorithm.
 
-        The spline uses a set of control poins in counterclockwise order to make the spline as short as possibile.
-
-        Args:
-            coords (list of (float, float)): initial set of coordinates
-            num_cp (int): initial desired amount of control points
-            kind (float): value between 0 and 1. Common values are UNIFORM (0.0), CENTRIPETAL (0.5) and CHORDAL (1.0)
-        """
-        super().__init__(coords, num_cp, kind)
+    The spline uses a set of control poins in counterclockwise order to make the spline as short as possibile.
+    """
 
     def compute_cp(self):
         """

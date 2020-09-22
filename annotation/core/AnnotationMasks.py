@@ -106,8 +106,9 @@ class AnnotationMasks():
                 snake = active_contour_balloon(img, init, debug=False)
                 if snake is None:
                     return None
-                self.arch_handler.history.add(SideVolumeSplineExtractedAction(idx, from_idx), debug=True)
-                self.set_mask_spline(idx, ClosedSpline(snake, len(snake) // self.NUM_CP_LOSS), from_snake)
+                self.arch_handler.history.add(SideVolumeSplineExtractedAction(idx, from_idx))
+                self.set_mask_spline(idx, ClosedSpline(coords=snake, num_cp=(len(snake) // self.NUM_CP_LOSS)),
+                                     from_snake)
 
         return self.masks[idx]
 
@@ -149,20 +150,19 @@ class AnnotationMasks():
 
         with open(path, "r") as infile:
             data = json.load(infile)
-            self.n = data['n']
-            self.h = data['h']
-            self.w = data['w']
-            self.scaling = data['scaling']
-            self.masks = []
-            for spline_dump in data['masks']:
-                if spline_dump is None:
-                    spline = None
-                else:
-                    spline = ClosedSpline([])
-                    spline.read_json(spline_dump)
-                self.masks.append(spline)
-            self.handle_scaling_mismatch()
-
+        self.n = data['n']
+        self.h = data['h']
+        self.w = data['w']
+        self.scaling = data['scaling']
+        self.masks = []
+        for spline_dump in data['masks']:
+            if spline_dump is None:
+                spline = None
+            else:
+                spline = ClosedSpline(load_from=spline_dump)
+            self.masks.append(spline)
+        self.handle_scaling_mismatch()
+        self.check_shape(self.arch_handler.side_volume.get().shape)
         print('Mask splines loaded!')
 
     def handle_scaling_mismatch(self):
@@ -177,7 +177,7 @@ class AnnotationMasks():
         for spline in self.masks:
             if spline is not None:
                 coords = [tuple(map(lambda x: int(x * rescale_factor), point)) for point in spline.get_spline()]
-                new_spline = ClosedSpline(coords, len(coords) // int(self.NUM_CP_LOSS * rescale_factor))
+                new_spline = ClosedSpline(coords=coords, num_cp=(len(coords) // int(self.NUM_CP_LOSS * rescale_factor)))
                 new_masks.append(new_spline)
             else:
                 new_masks.append(None)

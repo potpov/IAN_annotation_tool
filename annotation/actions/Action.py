@@ -1,6 +1,8 @@
 import json
 
 SLICE_CHANGED = "SLICE_CHANGED"
+ARCH_CP_ADDED = "ARCH_CP_ADDED"
+ARCH_CP_REMOVED = "ARCH_CP_REMOVED"
 ARCH_CP_CHANGED = "ARCH_CP_CHANGED"
 LEFT_CANAL_CP_ADDED = "LEFT_CANAL_CP_ADDED"
 LEFT_CANAL_CP_CHANGED = "LEFT_CANAL_CP_CHANGED"
@@ -22,10 +24,16 @@ def create_action(**args):
     kind = args['kind']
     if kind == NO_ACTION:
         return Action()
-    elif kind == ARCH_CP_CHANGED:
-        return ArchCpChangedAction(args['curr'], args['prev'], args['index'])
     elif kind == SLICE_CHANGED:
         return SliceChangedAction(args['val'])
+
+    elif kind == ARCH_CP_CHANGED:
+        return ArchCpChangedAction(args['curr'], args['prev'], args['index'])
+    elif kind == ARCH_CP_ADDED:
+        return ArchCpAddedAction(args['cp'], args['index'])
+    elif kind == ARCH_CP_REMOVED:
+        return ArchCpRemovedAction(args['index'])
+
     elif kind == LEFT_CANAL_CP_CHANGED:
         return LeftCanalCpChangedAction(args['curr'], args['prev'], args['index'])
     elif kind == RIGHT_CANAL_CP_CHANGED:
@@ -38,6 +46,7 @@ def create_action(**args):
         return LeftCanalCpRemovedAction(args['index'])
     elif kind == RIGHT_CANAL_CP_REMOVED:
         return RightCanalCpRemovedAction(args['index'])
+
     elif kind == SIDE_VOLUME_CP_ADDED:
         return SideVolumeCpAddedAction(args['cp'], args['index'], args['pos'])
     elif kind == SIDE_VOLUME_CP_REMOVED:
@@ -48,10 +57,12 @@ def create_action(**args):
         return SideVolumeSplineExtractedAction(args['pos'], args['from_pos'])
     elif kind == SIDE_VOLUME_SPLINE_RESET:
         return SideVolumeSplineResetAction(args['pos'])
+
     elif kind == TILTED_PLANES_ANNOTATION:
         return TiltedPlanesAnnotationAction()
     elif kind == DEFAULT_PLANES_ANNOTATION:
         return DefaultPlanesAnnotationAction()
+
     else:
         raise ValueError("kind not recognized")
 
@@ -104,6 +115,12 @@ class CpAddedAction(Action):
         self.index = int(index)
 
 
+class ArchCpAddedAction(CpAddedAction):
+    def __init__(self, cp, index):
+        super().__init__(cp, index)
+        self.kind = ARCH_CP_ADDED
+
+
 class LeftCanalCpAddedAction(CpAddedAction):
     def __init__(self, cp, index):
         super().__init__(cp, index)
@@ -119,6 +136,12 @@ class RightCanalCpAddedAction(CpAddedAction):
 class CpRemovedAction(Action):
     def __init__(self, index):
         self.index = int(index)
+
+
+class ArchCpRemovedAction(CpRemovedAction):
+    def __init__(self, index):
+        super().__init__(index)
+        self.kind = ARCH_CP_REMOVED
 
 
 class LeftCanalCpRemovedAction(CpRemovedAction):

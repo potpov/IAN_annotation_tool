@@ -4,10 +4,15 @@ from annotation.actions.Action import create_action
 class History:
     SAVE_NAME = "history.json"
 
-    def __init__(self):
+    def __init__(self, save_func):
         self.h = []
+        self.autosave = False
+        self.save_func = save_func
         self.curr = -1
         self.last = -1
+
+    def set_autosave(self, autosave):
+        self.autosave = autosave
 
     def add(self, action, debug=False):
         if self.curr == self.last:
@@ -21,8 +26,8 @@ class History:
             raise ValueError("In History Class, it can't happen that self.curr > self.last, but it did...")
         self.h.append(action)
         if debug:
-            # print(self.h)
             print(action.get_data())
+        self.autosave and self.save_func()
 
     def back(self):
         """DO NOT CALL"""

@@ -4,7 +4,6 @@ from annotation.controlpanels.ArchSplineControlPanel import ArchSplineControlPan
 from annotation.visualization.archview import SplineArchView
 from annotation.visualization.panorex import PanorexWidget
 from annotation.visualization.sidevolume import SideVolume
-from annotation.components.Toolbar import Toolbar
 
 
 class ArchSplineContainer(QtGui.QWidget):
@@ -12,13 +11,9 @@ class ArchSplineContainer(QtGui.QWidget):
 
     def __init__(self, parent):
         super(ArchSplineContainer, self).__init__()
-        self.parent = parent
+        self.container = parent
         self.layout = QtGui.QGridLayout(self)
-
-        # toolbar
-        self.toolbar = Toolbar()
-        self.toolbar.toolbar_load.connect(self.spline_changed)
-        self.layout.setMenuBar(self.toolbar.bar)
+        self.container.loaded.connect(self.spline_changed)
 
         # arch view
         self.archview = SplineArchView(self)
@@ -73,7 +68,6 @@ class ArchSplineContainer(QtGui.QWidget):
 
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler
-        self.toolbar.arch_handler = arch_handler
         self.archview.arch_handler = arch_handler
         self.panorex.arch_handler = arch_handler
         self.sidevolume.arch_handler = arch_handler

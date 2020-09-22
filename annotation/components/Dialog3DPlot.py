@@ -6,7 +6,7 @@ from annotation.components.MayaviViewer import MayaviViewer
 
 
 class Dialog3DPlot(QtGui.QDialog):
-    def __init__(self, parent, title="Volume plot"):
+    def __init__(self, parent, title="Plot"):
         super(Dialog3DPlot, self).__init__(parent)
         self.setWindowTitle(title)
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)

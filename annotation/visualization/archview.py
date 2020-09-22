@@ -5,7 +5,7 @@ import annotation.utils.colors as col
 from annotation.components.Canvas import SplineCanvas, Canvas
 from annotation.utils.qt import numpy2pixmap
 from annotation.utils.math import clip_range
-from annotation.actions.Action import ArchCpChangedAction
+from annotation.actions.Action import ArchCpChangedAction, ArchCpRemovedAction, ArchCpAddedAction
 
 
 class ArchView(Canvas):
@@ -75,6 +75,19 @@ class SplineArchView(SplineCanvas):
             self.current_pos = len(self.arch_handler.side_coords) - 1
         self.draw_points(painter, self.arch_handler.side_coords[self.current_pos], col.POS)
 
+    def handle_right_click(self, mouse_x, mouse_y):
+        idx_to_remove = None
+        for cp_index, (point_x, point_y) in enumerate(self.arch_handler.spline.cp):
+            if abs(point_x - mouse_x) < self.l // 2 and abs(point_y - mouse_y) < self.l // 2:
+                idx_to_remove = cp_index
+                break
+        if idx_to_remove is not None:
+            self.arch_handler.history.add(ArchCpRemovedAction(idx_to_remove))
+            self.arch_handler.spline.remove_cp(idx_to_remove)
+        else:
+            added_cp_idx = self.arch_handler.spline.add_cp(mouse_x, mouse_y)
+            self.arch_handler.history.add(ArchCpAddedAction((mouse_x, mouse_y), added_cp_idx))
+
     def mousePressEvent(self, QMouseEvent):
         """ Internal mouse-press handler """
         self.drag_point = None
@@ -83,13 +96,16 @@ class SplineArchView(SplineCanvas):
         mouse_x = mouse_pos.x() - WIDGET_MARGIN
         mouse_y = mouse_pos.y() - WIDGET_MARGIN
 
-        for cp_index, (point_x, point_y) in enumerate(self.arch_handler.spline.cp):
-            if abs(point_x - mouse_x) < self.l // 2 and abs(point_y - mouse_y) < self.l // 2:
-                drag_x_offset = point_x - mouse_x
-                drag_y_offset = point_y - mouse_y
-                self.drag_point = (cp_index, (drag_x_offset, drag_y_offset))
-                self.action = ArchCpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
-                break
+        if QMouseEvent.button() == QtCore.Qt.LeftButton:
+            for cp_index, (point_x, point_y) in enumerate(self.arch_handler.spline.cp):
+                if abs(point_x - mouse_x) < self.l // 2 and abs(point_y - mouse_y) < self.l // 2:
+                    drag_x_offset = point_x - mouse_x
+                    drag_y_offset = point_y - mouse_y
+                    self.drag_point = (cp_index, (drag_x_offset, drag_y_offset))
+                    self.action = ArchCpChangedAction((point_x, point_y), (point_x, point_y), cp_index)
+                    break
+        elif QMouseEvent.button() == QtCore.Qt.RightButton:
+            self.handle_right_click(mouse_x, mouse_y)
 
     def mouseReleaseEvent(self, QMouseEvent):
         """ Internal mouse-release handler """

@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-import cv2
 import json
 
 import processing
@@ -41,6 +40,7 @@ class ArchHandler(Jaw):
             arch (Arch): object that stores the coordinates of the arch offsetted while using the application
             LH_pano_arches ((Arch, Arch)): objects that store the coordinates of two arches slightly distant from the arch
             side_coords (list): coordinates of the points that define "side_volume" perimeter
+            old_side_coords (list): side_coords of the current SideVolume, used in order not to recompute SideVolume if there are no changes
             side_volume (list): volume of the side views of the jaw volume through the two coords arches
             side_volume_scale (int): multiplier for side_volume images dimensions
             L_canal_spline (Spline): object that models the left canal in the panorex with a Catmull-Rom spline
@@ -50,11 +50,12 @@ class ArchHandler(Jaw):
             gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with Delaunay algorithm
             t_side_volume (numpy.ndarray): same as side_volume, but contains the tilted planes
             t_planes (list of Plane): list of planes that create to t_side_volume cuts
+            autosave (bool): whether to save on Actions or not
         """
         sup = super()
         LoadingDialog(func=lambda: sup.__init__(dicomdir_path), message="Loading DICOM")
         self.dicomdir_path = dicomdir_path
-        self.history = History()
+        self.history = History(save_func=self.save_state)
         self.selected_slice = None
         self.arch_detections = ArchDetections(self)
         self.coords = None
@@ -62,6 +63,7 @@ class ArchHandler(Jaw):
         self.arch = None
         self.LH_pano_arches = None
         self.side_coords = None
+        self.old_side_coords = None
         self.side_volume = None
         self.side_volume_scale = self.SIDE_VOLUME_SCALE
         self.L_canal_spline = None
@@ -71,6 +73,11 @@ class ArchHandler(Jaw):
         self.gt_delaunay = np.zeros_like(self.gt_volume)
         self.t_side_volume = None
         self.t_planes = None
+        self.autosave = False
+
+    def set_autosave(self, autosave):
+        self.autosave = autosave
+        self.history.set_autosave(autosave)
 
     def is_there_data_to_load(self):
         path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
@@ -88,7 +95,7 @@ class ArchHandler(Jaw):
             json.dump(data, outfile)
         if self.annotation_masks is not None:
             self.annotation_masks.export_mask_splines()
-        print("saved")
+        print("Saved")
 
     def load_state(self):
         path_ok, path = self.is_there_data_to_load()
@@ -96,49 +103,44 @@ class ArchHandler(Jaw):
             print("Nothing to load")
             return
 
-        old_spline_cp = self.spline.cp
-
         with open(path, "r") as infile:
             data = json.load(infile)
 
-        self.initalize_attributes(data['selected_slice'])
-        self.spline.read_json(data['spline'], build_spline=True)
-        self.L_canal_spline.read_json(data['L_canal_spline'], build_spline=True)
-        self.R_canal_spline.read_json(data['R_canal_spline'], build_spline=True)
-        self.history.load(data['history'])
-
-        self.arch = Arch(self, self.spline.get_spline())
-        self.update_coords()
-        self.offset_arch(pano_offset=0)
-        self.compute_side_coords()
-
-        if old_spline_cp != self.spline.cp:
-            self.compute_side_volume(self.SIDE_VOLUME_SCALE)
-
+        self.compute_initial_state(0, data)
         self.annotation_masks.load_mask_splines()
-        print("loaded")
+        print("Loaded")
 
-    def initalize_attributes(self, selected_slice):
+    def _initalize_attributes(self, selected_slice=0, data=None):
         """
         Sets class attributes after the selection of the slice.
+
+        It can also initialize attributes from data dump during loading.
 
         Args:
             selected_slice (int): index of the selected slice in the jaw volume
         """
-        self.selected_slice = selected_slice
-        self.history.add(SliceChangedAction(selected_slice))
-        p, start, end = self.arch_detections.get(selected_slice)
-        l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
-        self.spline = Spline(coords, 10)
-        self.L_canal_spline = Spline([], 0)
-        self.R_canal_spline = Spline([], 0)
+        if data is not None:
+            self.selected_slice = data['selected_slice']
+            self.history.load(data['history'])
+            self.spline = Spline(load_from=data['spline'])
+            self.L_canal_spline = Spline(load_from=data['L_canal_spline'])
+            self.R_canal_spline = Spline(load_from=data['R_canal_spline'])
+        else:
+            self.selected_slice = selected_slice
+            self.history.add(SliceChangedAction(selected_slice))
+            p, start, end = self.arch_detections.get(selected_slice)
+            l_offset, coords, h_offset, derivative = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
+            self.spline = Spline(coords=coords, num_cp=10)
+            self.L_canal_spline = Spline()
+            self.R_canal_spline = Spline()
+
         self.update_coords()
         self.arch = Arch(self, self.coords[1])
         h_arch = self.arch.get_offsetted(-1)
         l_arch = self.arch.get_offsetted(1)
         self.LH_pano_arches = (l_arch, h_arch)
 
-    def compute_initial_state(self, selected_slice):
+    def compute_initial_state(self, selected_slice=0, data=None):
         """
         Sets class attributes after the selection of the slice.
         Then computes panorexes and side volume.
@@ -146,9 +148,9 @@ class ArchHandler(Jaw):
         Args:
             selected_slice (int): index of the selected slice in the jaw volume
         """
-        self.initalize_attributes(selected_slice)
+        self._initalize_attributes(selected_slice, data)
         self.compute_side_coords()
-        self.compute_side_volume(self.SIDE_VOLUME_SCALE)
+        self.compute_side_volume(self.side_volume_scale)
 
     def update_coords(self):
         """
@@ -212,9 +214,14 @@ class ArchHandler(Jaw):
         """
 
         self.side_volume_scale = self.SIDE_VOLUME_SCALE if scale is None else scale
-        self.side_volume = SideVolume(self, self.side_volume_scale)
         if tilted:
             self.t_side_volume = TiltedSideVolume(self, self.side_volume_scale)
+
+        # check if needed to recompute side_volume
+        if self.old_side_coords is not None and np.array_equal(self.side_coords, self.old_side_coords):
+            return
+        self.old_side_coords = self.side_coords
+        self.side_volume = SideVolume(self, self.side_volume_scale)
 
         # configuring annotations_masks
         shape = self.side_volume.get().shape

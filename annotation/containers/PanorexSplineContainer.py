@@ -3,7 +3,6 @@ from pyface.qt import QtGui
 
 from annotation.visualization.panorex import CanvasPanorexWidget
 from annotation.controlpanels.PanorexSplineControlPanel import PanorexSplineControlPanel
-from annotation.components.Toolbar import Toolbar
 
 
 class PanorexSplineContainer(QtGui.QWidget):
@@ -13,15 +12,10 @@ class PanorexSplineContainer(QtGui.QWidget):
         super(PanorexSplineContainer, self).__init__()
         self.container = parent
         self.layout = QtGui.QGridLayout(self)
-
-        # toolbar
-        self.toolbar = Toolbar()
-        self.toolbar.toolbar_load.connect(self.show_)
-        self.layout.setMenuBar(self.toolbar.bar)
+        self.container.loaded.connect(self.show_)
 
         # panorex
         self.panorex = CanvasPanorexWidget(self)
-        # self.panorex.spline_changed.connect(None)
         self.layout.addWidget(self.panorex, 0, 0)
 
         # control panel
@@ -51,5 +45,4 @@ class PanorexSplineContainer(QtGui.QWidget):
 
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler
-        self.toolbar.arch_handler = arch_handler
         self.panorex.arch_handler = arch_handler

@@ -15,7 +15,7 @@ class SplineControlWidget(QtGui.QWidget):
         self.pixmap = pixmap
         self.num_cp = 20
         self.l = 8  # size of the side of the square for the control points
-        self.curve = Spline(self.coords, self.num_cp)
+        self.curve = Spline(coords=self.coords, num_cp=self.num_cp)
         self.setGeometry(0, 0, self.pixmap.width(), self.pixmap.height())
 
     def paintEvent(self, e):

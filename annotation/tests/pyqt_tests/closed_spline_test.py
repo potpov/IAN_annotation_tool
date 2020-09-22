@@ -17,7 +17,7 @@ WIDGET_MARGIN = 11
 class SplineWidget(SplineCanvas):
     def __init__(self, parent, img):
         super().__init__(parent)
-        self.spline = ClosedSpline([])
+        self.spline = ClosedSpline()
         self.img = img
         self.pixmap = numpy2pixmap(img)
         self.adjust_size()
@@ -30,7 +30,7 @@ class SplineWidget(SplineCanvas):
         init = np.array(spline)
         # self.snake = active_contour(self.img, init, max_iterations=100)
         self.snake = active_contour_balloon(self.img, self.spline, debug=True, threshold=10)
-        self.spline = ClosedSpline(self.snake, self.spline.num_cp)
+        self.spline = ClosedSpline(coords=self.snake, num_cp=self.spline.num_cp)
         self.update()
 
     def set_img(self):

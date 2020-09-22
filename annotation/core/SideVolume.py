@@ -1,6 +1,5 @@
 from Plane import Plane
 from annotation.components.Dialog import LoadingDialog
-from annotation.core.AnnotationMasks import AnnotationMasks
 import numpy as np
 import cv2
 
@@ -39,6 +38,15 @@ class SideVolume():
         LoadingDialog(self.update_, "Computing side volume")
 
     def get_slice(self, pos):
+        """
+        Returns a slice of side volume at position pos
+
+        Args:
+            pos (int): position
+
+        Returns:
+            (numpy.ndarray): slice of side volume
+        """
         if self.data is None:
             return None
         return self.data[pos]

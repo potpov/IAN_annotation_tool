@@ -6,7 +6,6 @@ from annotation.components.Dialog3DPlot import Dialog3DPlot
 from annotation.controlpanels.AnnotationControlPanel import AnnotationControlPanel
 from annotation.visualization.panorex import CanvasPanorexWidget
 from annotation.visualization.sidevolume import CanvasSideVolume
-from annotation.components.Toolbar import Toolbar
 
 
 class TiltAnnotationContainer(QtGui.QWidget):
@@ -14,11 +13,7 @@ class TiltAnnotationContainer(QtGui.QWidget):
         super(TiltAnnotationContainer, self).__init__()
         self.container = parent
         self.layout = QtGui.QGridLayout(self)
-
-        # toolbar
-        self.toolbar = Toolbar()
-        self.toolbar.toolbar_load.connect(self.show_)
-        self.layout.setMenuBar(self.toolbar.bar)
+        self.container.loaded.connect(self.show_)
 
         # panorex
         self.panorex = CanvasPanorexWidget(self, tilted=True)
@@ -59,7 +54,7 @@ class TiltAnnotationContainer(QtGui.QWidget):
     def reset_annotation_clicked_handler(self):
         self.panel.auto_acquire_annotation.setChecked(False)
         self.arch_handler.annotation_masks.set_mask_spline(self.current_pos, None)
-        self.arch_handler.history.add(SideVolumeSplineResetAction(self.current_pos), debug=True)
+        self.arch_handler.history.add(SideVolumeSplineResetAction(self.current_pos))
         self.sidevolume_show()
 
     def acquire_annotation_clicked_handler(self):
@@ -93,7 +88,6 @@ class TiltAnnotationContainer(QtGui.QWidget):
 
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler
-        self.toolbar.arch_handler = arch_handler
         self.panorex.arch_handler = arch_handler
         self.sidevolume.arch_handler = arch_handler
         self.t_sidevolume.arch_handler = arch_handler
