@@ -94,8 +94,8 @@ def tensorboard_save_images(image_list, writer, title, iteration, shape=None, re
     for id, image in enumerate(image_list):
 
         # shapes
-        if len(image.shape) != 4:
-            image = np.expand_dims(image, axis=0)  # creating a one dimensional batch
+        while len(image.shape) != 4:
+            image = np.expand_dims(image, axis=0)  # creating a one dimensional batch and/or channel
         B, C, H, W = image.shape
 
         # creating the RGB version
@@ -118,13 +118,13 @@ def tensorboard_save_images(image_list, writer, title, iteration, shape=None, re
     B = result.shape[0] // target_H
     step = 10 if B > 10 else B
     for i in range(B // step):
-        piece = result[i * (B // 10) * target_H:(i + 1) * (B // 10) * target_H]
-        writer.add_image('{}_iter{}/results'.format(title, iteration), np.moveaxis(result, 2, 0), int(i))
+        piece = result[i * (B // 10) * target_H:(i + 1) * (B // step) * target_H]
+        writer.add_image('{}/results'.format(title), np.moveaxis(piece, 2, 0), int(iteration*(B // step)+i))
 
         if disk_save_dir is not None:
             piece = cv2.normalize(piece, piece, 0, 255, cv2.NORM_MINMAX)
             cv2.imwrite(
-                os.path.join(disk_save_dir, '{}_B{}_I{}.png'.format(title, iteration, i)),
+                os.path.join(disk_save_dir, '{}_I{}.png'.format(title, iteration*(B // step)+i)),
                 piece[:, :, ::-1]  # BGR to RGB
             )
 
