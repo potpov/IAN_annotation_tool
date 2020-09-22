@@ -46,7 +46,7 @@ def predict(input_cuts, model, device, writer):
 
             annotated = utils.write_annotations(images, outputs)
             utils.tensorboard_save_images(
-                [images, annotated, np.zeros((63, 1, 50, 150))],
+                [images, annotated],
                 writer,
                 title=args.experiment_name,
                 iteration=i,
@@ -92,6 +92,7 @@ utils.set_logger()
 
 # create folder for results
 Path(os.path.join(args.experiments_dir, args.experiment_name, 'picdump')).mkdir(parents=True, exist_ok=True)
+Path(os.path.join(args.experiments_dir, args.experiment_name, 'comparison')).mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == '__main__':
@@ -185,7 +186,14 @@ if __name__ == '__main__':
         pred[pred > 0.5] = 1
         pred[pred <= 0.5] = 0
         jaw.merge_predictions(plane, pred)
-
+        utils.tensorboard_save_images(
+            [pred, result_slice[z_angle_index]],
+            writer,
+            title=args.experiment_name,
+            iteration=slice_num,
+            disk_save_dir=os.path.join(args.experiments_dir, args.experiment_name, 'comparison'),
+            reshape_method='fit'
+        )
     logging.info('process completed. results are going to be saved in {}'.format(str(os.path.join(args.experiments_dir, args.experiment_name))))
 
     np.save(os.path.join(args.experiments_dir, args.experiment_name, 'tiltx.npy'), jaw.get_gt_volume())  # save volume
