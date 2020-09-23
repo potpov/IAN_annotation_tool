@@ -48,15 +48,15 @@ class Container(QtGui.QWidget):
             lambda: self.show_Dialog3DPlot(self.arch_handler.gt_volume, "Ground truth"))
 
         self.main_window.menubar.add_action_field_view(
-            "&GT volume (&Delaunay)",
+            "GT volume (&Delaunay)",
             lambda: self.show_Dialog3DPlot(self.arch_handler.gt_delaunay, "Ground truth with Delaunay smoothing"))
 
         self.main_window.menubar.add_action_field_view(
-            "Volume with canal",
+            "Volume with &canal",
             lambda: self.show_Dialog3DPlot(self.arch_handler.get_jaw_with_gt(), "Volume + Ground truth"))
 
         self.main_window.menubar.add_action_field_view(
-            "Volume with canal (Delaunay)",
+            "Volume with canal (D&elaunay)",
             lambda: self.show_Dialog3DPlot(self.arch_handler.get_jaw_with_delaunay(),
                                            "Volume + Ground truth with Delaunay smoothing"))
 
@@ -86,6 +86,8 @@ class Container(QtGui.QWidget):
             question(self, "Load",
                      "Save data was found. Are you sure you want to discard current changes and load from disk?",
                      yes_callback=lambda: yes(self))
+        else:
+            information(self, "Load", "Nothing to load.")
 
     def show_Dialog3DPlot(self, volume, title):
         if volume is None or not volume.any():

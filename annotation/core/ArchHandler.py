@@ -81,7 +81,7 @@ class ArchHandler(Jaw):
 
     def is_there_data_to_load(self):
         path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
-        return os.path.isfile(path), path
+        return os.path.isfile(path)
 
     def save_state(self):
         data = {}
@@ -98,11 +98,7 @@ class ArchHandler(Jaw):
         print("Saved")
 
     def load_state(self):
-        path_ok, path = self.is_there_data_to_load()
-        if not path_ok:
-            print("Nothing to load")
-            return
-
+        path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
         with open(path, "r") as infile:
             data = json.load(infile)
 
@@ -159,7 +155,8 @@ class ArchHandler(Jaw):
         """
         p, start, end = self.spline.get_poly_spline()
         self.arch_detections.set(self.selected_slice, (p, start, end))
-        self.coords = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
+        if p is not None:
+            self.coords = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
 
     def compute_side_coords(self):
         """

@@ -13,6 +13,7 @@ class ArchView(Canvas):
         super(ArchView, self).__init__(parent)
         self.arch_handler = None
         self.slice_idx = 0
+        self.show_arch = True
 
     def set_img(self):
         self.img = self.arch_handler.volume[self.slice_idx]
@@ -22,7 +23,8 @@ class ArchView(Canvas):
     def draw(self, painter):
         p, start, end = self.arch_handler.arch_detections.get(self.slice_idx)
         self.draw_background(painter)
-        self.draw_poly_approx(painter, p, start, end, col.ARCH_SPLINE)
+        if self.show_arch:
+            self.draw_poly_approx(painter, p, start, end, col.ARCH_SPLINE)
 
     def show_(self, slice_idx=0, show_arch=True):
         self.slice_idx = slice_idx
