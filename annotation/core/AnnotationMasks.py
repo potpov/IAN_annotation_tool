@@ -51,25 +51,27 @@ class AnnotationMasks():
         else:
             return np.zeros(resize_shape or shape, dtype=np.uint8)
 
-    def compute_mask_volume(self):
+    def compute_mask_volume(self, step_fn=None):
         scaled_h = int(self.h / self.arch_handler.side_volume_scale)
         scaled_w = int(self.w / self.arch_handler.side_volume_scale)
         shape = (self.n, scaled_h, scaled_w)
         self.mask_volume = np.zeros(shape, dtype=np.uint8)
         for i, mask in enumerate(self.masks):
+            step_fn is not None and step_fn(i, len(self.masks))
             mask_img = self.compute_mask_image(mask, (self.h, self.w), resize_shape=shape[1:])
             mask_img[mask_img < 40] = 0
             mask_img[mask_img > 0] = 1
             mask_img = mask_img.astype(np.bool_)
             self.mask_volume[i, mask_img] = 1
 
-    def compute_mask_volume_tilted(self):
+    def compute_mask_volume_tilted(self, step_fn=None):
         scaled_h = int(self.h / self.arch_handler.side_volume_scale)
         scaled_w = int(self.w / self.arch_handler.side_volume_scale)
         shape = (self.n, scaled_h, scaled_w)
         self.mask_volume = np.zeros(shape, dtype=np.uint8)
         self.arch_handler.gt_volume = np.zeros_like(self.arch_handler.volume)
-        for mask, plane in zip(self.masks, self.arch_handler.t_planes):
+        for i, (mask, plane) in enumerate(zip(self.masks, self.arch_handler.t_side_volume.planes)):
+            step_fn is not None and step_fn(i, len(self.masks))
             mask_img = self.compute_mask_image(mask, (self.h, self.w), resize_shape=shape[1:])
             mask_img[mask_img < 40] = 0
             mask_img[mask_img > 0] = 1

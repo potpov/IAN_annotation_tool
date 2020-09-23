@@ -6,11 +6,10 @@ import json
 import processing
 import viewer
 from Jaw import Jaw
-from Plane import Plane
 from annotation.actions.Action import SliceChangedAction
 from annotation.actions.History import History
 from annotation.core.AnnotationMasks import AnnotationMasks
-from annotation.components.Dialog import LoadingDialog
+from annotation.components.Dialog import LoadingDialog, ProgressLoadingDialog
 from annotation.core.Arch import Arch
 from annotation.core.ArchDetections import ArchDetections
 from annotation.core.SideVolume import SideVolume, TiltedSideVolume
@@ -49,7 +48,6 @@ class ArchHandler(Jaw):
             canal (numpy.ndarray): same as side_volume, but has just the canal (obtained from masks) and it is scaled to original volume dimensions
             gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with Delaunay algorithm
             t_side_volume (numpy.ndarray): same as side_volume, but contains the tilted planes
-            t_planes (list of Plane): list of planes that create to t_side_volume cuts
             autosave (bool): whether to save on Actions or not
         """
         sup = super()
@@ -72,7 +70,6 @@ class ArchHandler(Jaw):
         self.canal = None
         self.gt_delaunay = np.zeros_like(self.gt_volume)
         self.t_side_volume = None
-        self.t_planes = None
         self.autosave = False
 
     def set_autosave(self, autosave):
@@ -235,13 +232,17 @@ class ArchHandler(Jaw):
             tilted (bool): whether to use tilted planes or not
         """
         if not tilted:
-            LoadingDialog(self.annotation_masks.compute_mask_volume, "Computing 3D canal")
+            pld = ProgressLoadingDialog("Computing 3D canal")
+            pld.set_function(lambda: self.annotation_masks.compute_mask_volume(step_fn=pld.get_signal()))
+            pld.start()
             self.canal = self.annotation_masks.mask_volume
             if self.canal is None or not self.canal.any():
                 return
             LoadingDialog(self.compute_gt_volume, "Computing ground truth volume")
         else:
-            LoadingDialog(self.annotation_masks.compute_mask_volume_tilted, "Computing ground truth volume")
+            pld = ProgressLoadingDialog("Computing ground truth volume")
+            pld.set_function(lambda: self.annotation_masks.compute_mask_volume_tilted(step_fn=pld.get_signal()))
+            pld.start()
         LoadingDialog(self.export_annotations_as_dicom, "Saving new DICOMs")
         LoadingDialog(self.compute_gt_volume_delaunay, "Applying Delaunay")
 

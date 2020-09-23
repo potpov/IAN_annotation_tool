@@ -33,6 +33,9 @@ class Spline():
             self.compute_cp()
             self.build_spline()
 
+    def is_empty(self):
+        return len(self.cp) == 0
+
     def update_cp(self, idx, x, y):
         """
         Changes the value of a control point given its index and new (x, y) coordinates.

@@ -28,30 +28,70 @@ class LoadingDialog(QtWidgets.QDialog):
         self.exec_()
 
 
-class MessageDialog(QtWidgets.QDialog):
-    """TEST CLASS"""
+class ProgressIterator(QtWidgets.QWidget):
+    progress_step = QtCore.pyqtSignal(int)
 
-    def __init__(self, title, message, parent=None):
-        super(MessageDialog, self).__init__(parent)
+    def __init__(self):
+        super(ProgressIterator, self).__init__()
+        self.max = 0
+        self.val = -1
+        self.progress = QtWidgets.QProgressBar()
 
-        self.title = title
-        self.message = message
+    def set_max(self, max):
+        self.max = max
+        self.progress.setMinimum(0)
+        self.progress.setMaximum(max)
 
-        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
-        self.setWindowTitle(title)
+    def __iter__(self):
+        return self
 
-        self.label = QtWidgets.QLabel(message)
-        self.ok = QtWidgets.QPushButton("Ok")
-        self.ok.clicked.connect(self.close)
+    def __next__(self):
+        self.val += 1
+        if self.val < self.max:
+            self.progress_step.emit(self.val)
+            return self.val
+        raise StopIteration
 
-        self.setMinimumSize(300, 200)
+
+class ProgressLoadingDialog(QtWidgets.QDialog):
+    progress_s = QtCore.pyqtSignal(int, int)
+
+    def __init__(self, message="Loading", parent=None):
+        super(ProgressLoadingDialog, self).__init__(parent)
+        self.setWindowTitle(message)
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowTitleHint | QtCore.Qt.CustomizeWindowHint)
         self.layout = QtGui.QVBoxLayout(self)
-        self.layout.addWidget(self.label)
-        self.layout.addWidget(self.ok)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.iterator = ProgressIterator()
+        self.iterator.progress_step.connect(self.set_value)
+        self.progress = self.iterator.progress
+        self.layout.addWidget(self.progress)
+        self.progress_s.connect(self.handle_progress_signal)
 
-        self.thread = WorkerThread()
+    def get_iterator(self, max):
+        if self.iterator.max != max:
+            self.iterator.set_max(max)
+        return self.iterator
+
+    def set_value(self, value):
+        self.progress.setValue(value)
+
+    def get_signal(self):
+        return lambda val, max: self.progress_s.emit(val, max)
+
+    def handle_progress_signal(self, val, max):
+        if self.iterator.max != max:
+            self.iterator.set_max(max)
+        self.set_value(val)
+
+    def set_function(self, func):
+        self.func = func
+
+    def start(self):
+        self.thread = WorkerThread(self.func)
         self.thread.finished.connect(self.close)
         self.thread.start()
+        self.exec_()
 
 
 def question(parent, title, message, yes_callback=lambda: None, no_callback=lambda: None):

@@ -1,5 +1,5 @@
 from Plane import Plane
-from annotation.components.Dialog import LoadingDialog
+from annotation.components.Dialog import ProgressLoadingDialog
 import numpy as np
 import cv2
 
@@ -24,18 +24,20 @@ class SideVolume():
         scaled_side_volume = cv2.normalize(scaled_side_volume, scaled_side_volume, 0, 1, cv2.NORM_MINMAX)
         self.data = scaled_side_volume
 
-    def update_(self):
+    def __update(self, cycle_fn=range):
         """
         Computes and updates the side volume.
 
         Args:
             scale (float): scale of side volume w.r.t. volume dimensions
         """
-        self.data = self.ah.line_slice(self.ah.side_coords)
+        self.data = self.ah.line_slice(self.ah.side_coords, cycle_fn=cycle_fn)
         self._postprocess_data()
 
     def update(self):
-        LoadingDialog(self.update_, "Computing side volume")
+        pld = ProgressLoadingDialog("Computing side volume")
+        pld.set_function(lambda: self.__update(cycle_fn=pld.get_iterator))
+        pld.start()
 
     def get_slice(self, pos):
         """
@@ -66,12 +68,12 @@ class TiltedSideVolume(SideVolume):
         self.planes = [None] * len(arch_handler.side_coords)
         super().__init__(arch_handler, scale)
 
-    def _compute_on_spline(self, spline):
+    def _compute_on_spline(self, spline, cycle_fn=range):
         if spline is None:
             return
         p, start, end = spline.get_poly_spline()
         derivative = np.polyder(p, 1)
-        for x in range(self.data.shape[0]):
+        for x in cycle_fn(self.data.shape[0]):
             if x in range(int(start), int(end)):
                 side_coord = self.ah.side_coords[x]
                 plane = Plane(self.ah.Z, len(side_coord))
@@ -83,11 +85,15 @@ class TiltedSideVolume(SideVolume):
                 self.planes[x] = plane
                 self.data[x] = cut
 
-    def update_(self):
+    def update(self):
         n = len(self.ah.side_coords)
         h = self.ah.Z
         w = max([len(points) for points in self.ah.side_coords])
         self.data = np.zeros((n, h, w))
-        self._compute_on_spline(self.ah.L_canal_spline)
-        self._compute_on_spline(self.ah.R_canal_spline)
+        pld = ProgressLoadingDialog("Computing on left canal spline")
+        pld.set_function(lambda: self._compute_on_spline(self.ah.L_canal_spline, cycle_fn=pld.get_iterator))
+        pld.start()
+        pld = ProgressLoadingDialog("Computing on right canal spline")
+        pld.set_function(lambda: self._compute_on_spline(self.ah.R_canal_spline, cycle_fn=pld.get_iterator))
+        pld.start()
         self._postprocess_data()

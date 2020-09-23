@@ -136,7 +136,7 @@ class Jaw:
         else:
             return np.squeeze(self.volume[:, y_val, :])
 
-    def line_slice(self, xy_set, cut_gt=False, interp_fn='bilinear_interpolation'):
+    def line_slice(self, xy_set, cut_gt=False, interp_fn='bilinear_interpolation', cycle_fn=range):
         """
         make a slice using a set of xy coordinates.
         if cut_gt is true the cut is performed on the annotated binary volume and the nearest neighbour interpolation
@@ -166,7 +166,7 @@ class Jaw:
         num_cuts = xy_set.shape[0]
 
         cut = np.zeros((num_cuts, h, w), np.float32)  # result image
-        for num_cut in range(num_cuts):
+        for num_cut in cycle_fn(num_cuts):
             for w_id, (x, y) in enumerate(xy_set[num_cut]):
                 if (x - 2) < 0 or (y - 2) < 0 or (x + 2) >= self.W or (y + 2) >= self.H:
                     cut[num_cut, :, w_id] = np.zeros(shape=self.Z)  # fill the array with zeros if overflowing
@@ -230,9 +230,9 @@ class Jaw:
                 try:
                     panorex_gt[:, idx] = np.max(
                         self.gt_volume[
-                            :,
-                            int(np.floor(y)):int(np.floor(y) + 1) + 1,
-                            int(np.floor(x)):int(np.floor(x) + 1) + 1
+                        :,
+                        int(np.floor(y)):int(np.floor(y) + 1) + 1,
+                        int(np.floor(x)):int(np.floor(x) + 1) + 1
                         ],
                         axis=(1, 2)
                     )

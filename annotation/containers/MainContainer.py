@@ -154,9 +154,14 @@ class Container(QtGui.QWidget):
 
         self.enable_save_load(True)
         self.arch_handler.offset_arch(pano_offset=0)
-        question(self, "Tilted planes",
-                 "Would you like to use planes orthogonal to the IAN canal as base for the annotations?",
-                 yes_callback=lambda: yes(self), no_callback=lambda: no(self))
+        if not self.arch_handler.L_canal_spline.is_empty() or not self.arch_handler.R_canal_spline.is_empty():
+            question(self, "Tilted planes",
+                     "Would you like to use planes orthogonal to the IAN canal as base for the annotations?",
+                     yes_callback=lambda: yes(self), no_callback=lambda: no(self))
+        else:
+            information(self, "Tilted planes",
+                        "You will annotate on vertical slices because there are no canal splines.")
+            no(self)
         self.annotation.set_arch_handler(self.arch_handler)
         self.annotation.initialize()
         self.annotation.show_()
@@ -191,7 +196,7 @@ class Container(QtGui.QWidget):
 
     def show_ArchSplineContainer(self, slice):
         self.clear()
-        LoadingDialog(func=lambda: self.arch_handler.compute_initial_state(slice), message="Computing initial state")
+        self.arch_handler.compute_initial_state(slice)
         self.add_ArchSplineContainer()
 
     def show_PanorexSplineContainer(self):
