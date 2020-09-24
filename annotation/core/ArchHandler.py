@@ -47,6 +47,7 @@ class ArchHandler(Jaw):
             annotation_masks (AnnotationMasks): object that manages the annotations onto side_volume images
             canal (numpy.ndarray): same as side_volume, but has just the canal (obtained from masks) and it is scaled to original volume dimensions
             gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with Delaunay algorithm
+            tilted (bool): whether to use t_side_volume or not
             t_side_volume (numpy.ndarray): same as side_volume, but contains the tilted planes
             autosave (bool): whether to save on Actions or not
         """
@@ -69,6 +70,7 @@ class ArchHandler(Jaw):
         self.annotation_masks = None
         self.canal = None
         self.gt_delaunay = np.zeros_like(self.gt_volume)
+        self.tilted = False
         self.t_side_volume = None
         self.autosave = False
 
@@ -209,6 +211,7 @@ class ArchHandler(Jaw):
 
         self.side_volume_scale = self.SIDE_VOLUME_SCALE if scale is None else scale
         if tilted:
+            self.tilted = tilted
             self.t_side_volume = TiltedSideVolume(self, self.side_volume_scale)
 
         # check if needed to recompute side_volume
@@ -224,14 +227,11 @@ class ArchHandler(Jaw):
         else:
             self.annotation_masks.check_shape(shape)
 
-    def extract_3D_annotations(self, tilted=False):
+    def extract_3D_annotations(self):
         """
         Method that wraps some steps in order to extract an annotated volume, starting from AnnotationMasks splines.
-
-        Args:
-            tilted (bool): whether to use tilted planes or not
         """
-        if not tilted:
+        if not self.tilted:
             pld = ProgressLoadingDialog("Computing 3D canal")
             pld.set_function(lambda: self.annotation_masks.compute_mask_volume(step_fn=pld.get_signal()))
             pld.start()

@@ -8,11 +8,13 @@ class SideVolume():
     def __init__(self, arch_handler, scale):
         self.ah = arch_handler
         self.scale = scale
+        self.original = None
         self.data = None
         self.update()
 
     def _postprocess_data(self):
         # rescaling the projection volume properly
+        self.original = self.data
         width = int(self.data.shape[2] * self.scale)
         height = int(self.data.shape[1] * self.scale)
         scaled_side_volume = np.ndarray(shape=(self.data.shape[0], height, width))
@@ -22,21 +24,22 @@ class SideVolume():
 
         # padding the side volume and rescaling
         scaled_side_volume = cv2.normalize(scaled_side_volume, scaled_side_volume, 0, 1, cv2.NORM_MINMAX)
+        self.original = cv2.normalize(self.original, self.original, 0, 1, cv2.NORM_MINMAX)
         self.data = scaled_side_volume
 
-    def __update(self, cycle_fn=range):
+    def __update(self, step_fn=None):
         """
         Computes and updates the side volume.
 
         Args:
             scale (float): scale of side volume w.r.t. volume dimensions
         """
-        self.data = self.ah.line_slice(self.ah.side_coords, cycle_fn=cycle_fn)
+        self.data = self.ah.line_slice(self.ah.side_coords, step_fn=step_fn)
         self._postprocess_data()
 
     def update(self):
         pld = ProgressLoadingDialog("Computing side volume")
-        pld.set_function(lambda: self.__update(cycle_fn=pld.get_iterator))
+        pld.set_function(lambda: self.__update(step_fn=pld.get_signal()))
         pld.start()
 
     def get_slice(self, pos):

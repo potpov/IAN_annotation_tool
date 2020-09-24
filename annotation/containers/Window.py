@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets
 from pyface.qt import QtGui
 
+from annotation.components.Dialog import question
 from annotation.components.Menu import Menu
 from annotation.containers.MainContainer import Container
 
@@ -26,3 +27,8 @@ class Window(QtGui.QMainWindow):
         if path:
             self.setWindowTitle("{} - [{}]".format(self.WINDOW_TITLE, path))
             self.container.dicomdir_changed(path)
+
+    def closeEvent(self, event):
+        title = "Are you sure you want to quit?"
+        message = "Unsaved changes will be lost."
+        question(self, title, message, event.accept, event.ignore)

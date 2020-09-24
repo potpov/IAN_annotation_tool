@@ -62,7 +62,7 @@ class TiltAnnotationContainer(QtGui.QWidget):
         self.sidevolume_show()
 
     def show_result_clicked_handler(self):
-        self.arch_handler.extract_3D_annotations(tilted=True)
+        self.arch_handler.extract_3D_annotations()
         dialog = Dialog3DPlot(self, "Volume with annotations")
         dialog.show(self.arch_handler.get_jaw_with_delaunay())
 

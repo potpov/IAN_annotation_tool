@@ -12,16 +12,17 @@ from annotation.utils.math import clip_range
 
 class AnnotationMasks():
     MASK_DIR = 'masks'
-    EXPORT_IMGS_PATH = ""
-    EXPORT_IMGS_FILENAME = "_mask.jpg"
-    DUMP_MASKS_SPLINES_FILENAME = "masks_splines_dump.json"
+    EXPORT_PATH = ""
+    EXPORT_MASK_FILENAME = "_mask.jpg"
+    EXPORT_IMG_FILENAME = "_img.jpg"
+    MASKS_SPLINES_DUMP_FILENAME = "masks_splines_dump.json"
     NUM_CP_LOSS = 10  # higher values mean less control points and implies a loss in the spline's precision
 
     def __init__(self, shape, arch_handler):
         self.n, self.h, self.w = shape
         self.scaling = 1
         self.arch_handler = arch_handler
-        self.EXPORT_IMGS_PATH = os.path.join(os.path.dirname(self.arch_handler.dicomdir_path), self.MASK_DIR)
+        self.EXPORT_PATH = os.path.join(os.path.dirname(self.arch_handler.dicomdir_path), self.MASK_DIR)
         self.masks = [None] * self.n
         self.created_from_snake = [False] * self.n
         self.mask_volume = None
@@ -117,17 +118,33 @@ class AnnotationMasks():
     def export_mask_imgs(self):
         if self.mask_volume is None or self.edited:
             self.compute_mask_volume()
+
         now = datetime.now()
-        directory_name = "masks-{:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(
+        date_str = "{:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(
             now.year, now.month, now.day, now.hour, now.minute, now.second)
-        path = os.path.join(self.EXPORT_IMGS_PATH, directory_name)
-        if not os.path.exists(path):
-            os.makedirs(path)
+
+        # prepare mask dir
+        masks_dirname = "masks-{}".format(date_str)
+        masks_path = os.path.join(self.EXPORT_PATH, masks_dirname)
+        if not os.path.exists(masks_path):
+            os.makedirs(masks_path)
+
+        # prepare imgs dir
+        sv = self.arch_handler.side_volume if not self.arch_handler.tilted else self.arch_handler.t_side_volume
+        if sv.original is None:
+            print("Could not extract side volume images")
+        else:
+            imgs_dirname = "imgs-{}".format(date_str)
+            imgs_path = os.path.join(self.EXPORT_PATH, imgs_dirname)
+            if not os.path.exists(imgs_path):
+                os.makedirs(imgs_path)
+
         for i, img in enumerate(self.mask_volume):
             if not img.any():  # skipping totally black images
                 continue
-            filename = "{}{}".format(i, self.EXPORT_IMGS_FILENAME)
-            export_img(img, os.path.join(path, filename))
+            export_img(img, os.path.join(masks_path, "{}{}".format(i, self.EXPORT_MASK_FILENAME)))
+            if sv.original is not None:
+                export_img(sv.original[i], os.path.join(imgs_path, "{}{}".format(i, self.EXPORT_IMG_FILENAME)))
         self.edited = False
 
     def export_mask_splines(self):
@@ -138,14 +155,14 @@ class AnnotationMasks():
             'scaling': self.arch_handler.side_volume_scale,
             'masks': [mask.get_json() if mask is not None else None for mask in self.masks]
         }
-        if not os.path.exists(self.EXPORT_IMGS_PATH):
-            os.makedirs(self.EXPORT_IMGS_PATH)
-        with open(os.path.join(self.EXPORT_IMGS_PATH, self.DUMP_MASKS_SPLINES_FILENAME), "w") as outfile:
+        if not os.path.exists(self.EXPORT_PATH):
+            os.makedirs(self.EXPORT_PATH)
+        with open(os.path.join(self.EXPORT_PATH, self.MASKS_SPLINES_DUMP_FILENAME), "w") as outfile:
             json.dump(dump, outfile)
         print("Mask splines dumped!")
 
     def load_mask_splines(self):
-        path = os.path.join(self.EXPORT_IMGS_PATH, self.DUMP_MASKS_SPLINES_FILENAME)
+        path = os.path.join(self.EXPORT_PATH, self.MASKS_SPLINES_DUMP_FILENAME)
         if not os.path.isfile(path):
             print("No masks to load")
             return
