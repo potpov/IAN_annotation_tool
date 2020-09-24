@@ -62,6 +62,7 @@ class ProgressLoadingDialog(QtWidgets.QDialog):
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowTitleHint | QtCore.Qt.CustomizeWindowHint)
         self.layout = QtGui.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setMinimumWidth(300)
         self.iterator = ProgressIterator()
         self.iterator.progress_step.connect(self.set_value)
         self.progress = self.iterator.progress

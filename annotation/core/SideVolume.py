@@ -71,13 +71,14 @@ class TiltedSideVolume(SideVolume):
         self.planes = [None] * len(arch_handler.side_coords)
         super().__init__(arch_handler, scale)
 
-    def _compute_on_spline(self, spline, cycle_fn=range):
+    def _compute_on_spline(self, spline, step_fn=None):
         if spline is None:
             return
         p, start, end = spline.get_poly_spline()
         derivative = np.polyder(p, 1)
-        for x in cycle_fn(self.data.shape[0]):
+        for x in range(self.data.shape[0]):
             if x in range(int(start), int(end)):
+                step_fn is not None and step_fn(x, self.data.shape[0])
                 side_coord = self.ah.side_coords[x]
                 plane = Plane(self.ah.Z, len(side_coord))
                 plane.from_line(side_coord)
@@ -93,10 +94,9 @@ class TiltedSideVolume(SideVolume):
         h = self.ah.Z
         w = max([len(points) for points in self.ah.side_coords])
         self.data = np.zeros((n, h, w))
-        pld = ProgressLoadingDialog("Computing on left canal spline")
-        pld.set_function(lambda: self._compute_on_spline(self.ah.L_canal_spline, cycle_fn=pld.get_iterator))
+        pld = ProgressLoadingDialog("Computing tilted views")
+        pld.set_function(lambda: self._compute_on_spline(self.ah.L_canal_spline, step_fn=pld.get_signal()))
         pld.start()
-        pld = ProgressLoadingDialog("Computing on right canal spline")
-        pld.set_function(lambda: self._compute_on_spline(self.ah.R_canal_spline, cycle_fn=pld.get_iterator))
+        pld.set_function(lambda: self._compute_on_spline(self.ah.R_canal_spline, step_fn=pld.get_signal()))
         pld.start()
         self._postprocess_data()

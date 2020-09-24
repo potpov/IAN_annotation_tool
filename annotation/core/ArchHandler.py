@@ -14,6 +14,7 @@ from annotation.core.Arch import Arch
 from annotation.core.ArchDetections import ArchDetections
 from annotation.core.SideVolume import SideVolume, TiltedSideVolume
 from annotation.spline.Spline import Spline
+from annotation.utils.math import clip_range
 
 
 class ArchHandler(Jaw):
@@ -47,9 +48,6 @@ class ArchHandler(Jaw):
             annotation_masks (AnnotationMasks): object that manages the annotations onto side_volume images
             canal (numpy.ndarray): same as side_volume, but has just the canal (obtained from masks) and it is scaled to original volume dimensions
             gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with Delaunay algorithm
-            tilted (bool): whether to use t_side_volume or not
-            t_side_volume (numpy.ndarray): same as side_volume, but contains the tilted planes
-            autosave (bool): whether to save on Actions or not
         """
         sup = super()
         LoadingDialog(func=lambda: sup.__init__(dicomdir_path), message="Loading DICOM")
@@ -70,13 +68,6 @@ class ArchHandler(Jaw):
         self.annotation_masks = None
         self.canal = None
         self.gt_delaunay = np.zeros_like(self.gt_volume)
-        self.tilted = False
-        self.t_side_volume = None
-        self.autosave = False
-
-    def set_autosave(self, autosave):
-        self.autosave = autosave
-        self.history.set_autosave(autosave)
 
     def is_there_data_to_load(self):
         path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
@@ -201,6 +192,11 @@ class ArchHandler(Jaw):
         l_arch, h_arch = self.LH_pano_arches
         return (l_arch.get_panorex(), h_arch.get_panorex())
 
+    def tilted(self):
+        if isinstance(self.side_volume, TiltedSideVolume):
+            return True
+        return False
+
     def compute_side_volume(self, scale=None, tilted=False):
         """
         Computes and updates the side volume.
@@ -208,17 +204,19 @@ class ArchHandler(Jaw):
         Args:
             scale (float): scale of side volume w.r.t. volume dimensions
         """
-
-        self.side_volume_scale = self.SIDE_VOLUME_SCALE if scale is None else scale
-        if tilted:
-            self.tilted = tilted
-            self.t_side_volume = TiltedSideVolume(self, self.side_volume_scale)
-
         # check if needed to recompute side_volume
-        if self.old_side_coords is not None and np.array_equal(self.side_coords, self.old_side_coords):
+        if self.old_side_coords is not None \
+                and np.array_equal(self.side_coords, self.old_side_coords) \
+                and self.tilted() == tilted:
             return
         self.old_side_coords = self.side_coords
-        self.side_volume = SideVolume(self, self.side_volume_scale)
+
+        self.side_volume_scale = self.SIDE_VOLUME_SCALE if scale is None else scale
+
+        if tilted:
+            self.side_volume = TiltedSideVolume(self, self.side_volume_scale)
+        else:
+            self.side_volume = SideVolume(self, self.side_volume_scale)
 
         # configuring annotations_masks
         shape = self.side_volume.get().shape
@@ -231,28 +229,48 @@ class ArchHandler(Jaw):
         """
         Method that wraps some steps in order to extract an annotated volume, starting from AnnotationMasks splines.
         """
-        if not self.tilted:
-            pld = ProgressLoadingDialog("Computing 3D canal")
-            pld.set_function(lambda: self.annotation_masks.compute_mask_volume(step_fn=pld.get_signal()))
-            pld.start()
-            self.canal = self.annotation_masks.mask_volume
-            if self.canal is None or not self.canal.any():
-                return
-            LoadingDialog(self.compute_gt_volume, "Computing ground truth volume")
-        else:
-            pld = ProgressLoadingDialog("Computing ground truth volume")
-            pld.set_function(lambda: self.annotation_masks.compute_mask_volume_tilted(step_fn=pld.get_signal()))
-            pld.start()
-        LoadingDialog(self.export_annotations_as_dicom, "Saving new DICOMs")
+        pld = ProgressLoadingDialog("Computing 3D canal")
+        pld.set_function(lambda: self.annotation_masks.compute_mask_volume(step_fn=pld.get_signal()))
+        pld.start()
+
+        self.canal = self.annotation_masks.mask_volume
+        if self.canal is None or not self.canal.any():
+            return
+
+        pld = ProgressLoadingDialog("Computing ground truth volume")
+        pld.set_function(lambda: self.compute_gt_volume(step_fn=pld.get_signal()))
+        pld.start()
+
+        LoadingDialog(self.export_annotations_as_dicom, "Saving new DICOM")
         LoadingDialog(self.compute_gt_volume_delaunay, "Applying Delaunay")
 
-    def compute_gt_volume(self):
+    def compute_gt_volume(self, step_fn=None):
         """Transfers the canal computed in compute_3d_canal in the original volume position, following the arch."""
         gt_volume = np.zeros_like(self.volume)
-        for z_id, points in enumerate(self.side_coords):
-            for w_id, (x, y) in enumerate(points):
-                if 0 <= int(x) < self.W and 0 <= int(y) < self.H:
-                    gt_volume[:, int(y), int(x)] = self.canal[z_id, :, w_id]
+        if not self.tilted():
+            for z_id, points in enumerate(self.side_coords):
+                step_fn is not None and step_fn(z_id, len(self.side_coords))
+                for w_id, (x, y) in enumerate(points):
+                    if 0 <= int(x) < self.W and 0 <= int(y) < self.H:
+                        gt_volume[:, int(y), int(x)] = self.canal[z_id, :, w_id]
+        else:
+            for i, (img, plane) in enumerate(zip(self.canal, self.side_volume.planes)):
+                step_fn is not None and step_fn(i, len(self.side_coords))
+                if plane is None:
+                    continue
+                X, Y, Z = plane.plane
+                bool_mask = img.astype(np.bool_)
+                if not bool_mask.any():
+                    continue
+                img = img[bool_mask]
+                X = X[bool_mask]
+                Y = Y[bool_mask]
+                Z = Z[bool_mask]
+                for val, x, y, z in np.nditer([img, X, Y, Z]):
+                    x = int(clip_range(x, 0, self.W - 1))
+                    y = int(clip_range(y, 0, self.H - 1))
+                    z = int(clip_range(z, 0, self.Z - 1))
+                    gt_volume[z, y, x] = val
         self.set_gt_volume(gt_volume)
 
     def export_annotations_as_dicom(self):
@@ -271,7 +289,5 @@ class ArchHandler(Jaw):
     def get_jaw_with_delaunay(self):
         return self.volume + self.gt_delaunay if self.gt_delaunay.any() else None
 
-    def get_side_volume_slice(self, pos, tilted=False):
-        if tilted and self.t_side_volume is not None:
-            return self.t_side_volume.get_slice(pos)
+    def get_side_volume_slice(self, pos):
         return self.side_volume.get_slice(pos)

@@ -77,5 +77,6 @@ class AnnotationContainer(QtGui.QWidget):
 
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler
+        self.panorex.set_can_edit_spline(not self.arch_handler.tilted())
         self.panorex.arch_handler = arch_handler
         self.sidevolume.arch_handler = arch_handler

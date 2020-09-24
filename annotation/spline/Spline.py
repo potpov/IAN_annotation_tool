@@ -34,7 +34,7 @@ class Spline():
             self.build_spline()
 
     def is_empty(self):
-        return len(self.cp) == 0
+        return len(self.get_spline()) == 0
 
     def update_cp(self, idx, x, y):
         """

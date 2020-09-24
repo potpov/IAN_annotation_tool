@@ -2,13 +2,12 @@ from PyQt5 import QtCore
 from pyface.qt import QtGui
 
 from annotation.actions.Action import TiltedPlanesAnnotationAction, DefaultPlanesAnnotationAction
-from annotation.components.Dialog import question, information, LoadingDialog
+from annotation.components.Dialog import question, information
 from annotation.containers.AnnotationContainer import AnnotationContainer
 from annotation.containers.ArchSplineContainer import ArchSplineContainer
 from annotation.containers.PanorexSplineContainer import PanorexSplineContainer
 from annotation.containers.SliceSelectionContainer import SliceSelectionContainer
 from annotation.components.Dialog3DPlot import Dialog3DPlot
-from annotation.containers.TiltAnnotationContainer import TiltAnnotationContainer
 from annotation.core.ArchHandler import ArchHandler
 
 
@@ -69,25 +68,25 @@ class Container(QtGui.QWidget):
             self.saved.emit()
 
         if self.arch_handler.is_there_data_to_load():
-            question(self, "Save", "Save data was found. Are you sure you want to overwrite the save?",
-                     yes_callback=lambda: yes(self))
+            message = "Save data was found. Are you sure you want to overwrite the save?"
+            question(self, "Save", message, yes_callback=lambda: yes(self))
         else:
             yes(self)
 
     def autosave(self, autosave):
-        self.arch_handler.set_autosave(autosave)
+        self.arch_handler.history.set_autosave(autosave)
 
     def load(self):
         def yes(self):
             self.arch_handler.load_state()
             self.loaded.emit()
 
+        title = "Load"
         if self.arch_handler.is_there_data_to_load():
-            question(self, "Load",
-                     "Save data was found. Are you sure you want to discard current changes and load from disk?",
-                     yes_callback=lambda: yes(self))
+            message = "Save data was found. Are you sure you want to discard current changes and load from disk?"
+            question(self, title, message, yes_callback=lambda: yes(self))
         else:
-            information(self, "Load", "Nothing to load.")
+            information(self, title, "Nothing to load.")
 
     def show_Dialog3DPlot(self, volume, title):
         if volume is None or not volume.any():
@@ -145,23 +144,24 @@ class Container(QtGui.QWidget):
         def yes(self):
             self.arch_handler.history.add(TiltedPlanesAnnotationAction())
             self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE, tilted=True)
-            self.annotation = TiltAnnotationContainer(self)
+            self.annotation = AnnotationContainer(self)
 
         def no(self):
             self.arch_handler.history.add(DefaultPlanesAnnotationAction())
-            self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE)
+            self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE, tilted=False)
             self.annotation = AnnotationContainer(self)
 
         self.enable_save_load(True)
         self.arch_handler.offset_arch(pano_offset=0)
+        title = "Tilted planes"
         if not self.arch_handler.L_canal_spline.is_empty() or not self.arch_handler.R_canal_spline.is_empty():
-            question(self, "Tilted planes",
-                     "Would you like to use planes orthogonal to the IAN canal as base for the annotations?",
-                     yes_callback=lambda: yes(self), no_callback=lambda: no(self))
+            message = "Would you like to use planes orthogonal to the IAN canal as base for the annotations?"
+            question(self, title, message, yes_callback=lambda: yes(self), no_callback=lambda: no(self))
         else:
-            information(self, "Tilted planes",
-                        "You will annotate on vertical slices because there are no canal splines.")
+            message = "You will annotate on vertical slices because there are no canal splines."
+            information(self, title, message)
             no(self)
+
         self.annotation.set_arch_handler(self.arch_handler)
         self.annotation.initialize()
         self.annotation.show_()

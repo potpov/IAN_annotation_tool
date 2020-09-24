@@ -12,12 +12,11 @@ from annotation.utils.qt import numpy2pixmap
 
 class CanvasSideVolume(SplineCanvas):
 
-    def __init__(self, parent, tilted=False):
+    def __init__(self, parent):
         super().__init__(parent)
         self.arch_handler = None
         self.current_pos = 0
         self.r = 3
-        self._tilted = tilted
 
         # flags
         self.show_dot = False
@@ -28,7 +27,7 @@ class CanvasSideVolume(SplineCanvas):
         self.action = None
 
     def set_img(self):
-        self.img = self.arch_handler.get_side_volume_slice(self.current_pos, self._tilted)
+        self.img = self.arch_handler.get_side_volume_slice(self.current_pos)
         self.pixmap = numpy2pixmap(self.img)
         self.adjust_size()
 
@@ -71,9 +70,7 @@ class CanvasSideVolume(SplineCanvas):
         painter.drawEllipse(QtCore.QPoint(x, z), self.r, self.r)
 
     def draw(self, painter):
-        if self.arch_handler is None \
-                or (not self._tilted and self.arch_handler.side_volume is None) \
-                or (self._tilted and self.arch_handler.t_side_volume is None):
+        if self.arch_handler is None or self.arch_handler.side_volume is None:
             return
 
         self.draw_background(painter)
@@ -83,8 +80,7 @@ class CanvasSideVolume(SplineCanvas):
         # draw mask spline
         if self.show_mask_spline:
             spline = self.arch_handler.annotation_masks.get_mask_spline(self.current_pos,
-                                                                        from_snake=self.auto_propagate,
-                                                                        tilted=self._tilted)
+                                                                        from_snake=self.auto_propagate)
             self.draw_spline(painter, spline, col.ANN_SPLINE)
 
         if self.show_dot:
@@ -183,10 +179,9 @@ class CanvasSideVolume(SplineCanvas):
 
 
 class SideVolume(QtGui.QWidget):
-    def __init__(self, parent, tilted=False):
+    def __init__(self, parent):
         super(SideVolume, self).__init__()
         self.parent = parent
-        self._tilted = tilted
 
         self.arch_handler = None
 
@@ -204,7 +199,7 @@ class SideVolume(QtGui.QWidget):
 
     def show_(self, pos=0):
         try:
-            pixmap = numpy2pixmap(self.arch_handler.get_side_volume_slice(pos, self._tilted))
+            pixmap = numpy2pixmap(self.arch_handler.get_side_volume_slice(pos))
             self.label.setPixmap(pixmap)
             self.label.update()
         except:
