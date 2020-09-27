@@ -4,10 +4,10 @@ import numpy as np
 from datetime import datetime
 
 from annotation.actions.Action import SideVolumeSplineExtractedAction
-from annotation.components.Dialog import show_message_box, LoadingDialog
+from annotation.components.Dialog import show_message_box, LoadingDialog, ProgressLoadingDialog
 from annotation.spline.Spline import ClosedSpline
 from annotation.utils.image import export_img, active_contour_balloon
-from annotation.utils.math import clip_range
+from conf import labels as l
 
 
 class AnnotationMasks():
@@ -26,7 +26,7 @@ class AnnotationMasks():
         self.masks = [None] * self.n
         self.created_from_snake = [False] * self.n
         self.mask_volume = None
-        self.edited = True
+        self._edited = True
 
     def check_shape(self, new_shape):
         n_, h_, w_ = new_shape
@@ -46,27 +46,36 @@ class AnnotationMasks():
                              message="The shape of the current side volume does not match with the shape of the loaded annotations. This may lead to inconsistency of the annotations.")
         self.n, self.h, self.w = new_shape
 
-    def compute_mask_image(self, spline, shape, resize_shape=None):
+    def compute_mask_image(self, spline, shape, resize_scale=None):
         if spline is not None:
-            return spline.generate_mask(shape, resize_shape)
+            return spline.generate_mask(shape, resize_scale)
         else:
-            return np.zeros(resize_shape or shape, dtype=np.uint8)
+            s = shape if resize_scale is None else tuple(map(lambda x: int(x / resize_scale), shape))
+            return np.full(s, l.BG, dtype=np.uint8)
 
-    def compute_mask_volume(self, step_fn=None):
+    def _compute_mask_volume(self, step_fn=None):
+        if not self._edited:
+            return
         scaled_h = int(self.h / self.arch_handler.side_volume_scale)
         scaled_w = int(self.w / self.arch_handler.side_volume_scale)
         shape = (self.n, scaled_h, scaled_w)
         self.mask_volume = np.zeros(shape, dtype=np.uint8)
         for i, mask in enumerate(self.masks):
             step_fn is not None and step_fn(i, len(self.masks))
-            mask_img = self.compute_mask_image(mask, (self.h, self.w), resize_shape=shape[1:])
-            mask_img[mask_img < 40] = 0
-            mask_img[mask_img > 0] = 1
-            mask_img = mask_img.astype(np.bool_)
-            self.mask_volume[i, mask_img] = 1
+            mask_img = self.compute_mask_image(mask, (self.h, self.w), resize_scale=self.arch_handler.side_volume_scale)
+            self.mask_volume[i] = mask_img
+            # mask_img[mask_img < 40] = 0
+            # mask_img[mask_img > 0] = 1
+            # mask_img = mask_img.astype(np.bool_)
+            # self.mask_volume[i, mask_img] = 1
+
+    def compute_mask_volume(self):
+        pld = ProgressLoadingDialog("Computing 3D canal")
+        pld.set_function(lambda: self._compute_mask_volume(step_fn=pld.get_signal()))
+        pld.start()
 
     def set_mask_spline(self, idx, spline, from_snake=False):
-        self.edited = True
+        self._edited = True
         self.created_from_snake[idx] = from_snake
         self.masks[idx] = spline
         return spline
@@ -95,7 +104,7 @@ class AnnotationMasks():
         return self.masks[idx]
 
     def export_mask_imgs(self):
-        if self.mask_volume is None or self.edited:
+        if self.mask_volume is None or self._edited:
             self.compute_mask_volume()
 
         now = datetime.now()
@@ -124,7 +133,8 @@ class AnnotationMasks():
             export_img(img, os.path.join(masks_path, "{}{}".format(i, self.EXPORT_MASK_FILENAME)))
             if sv.original is not None:
                 export_img(sv.original[i], os.path.join(imgs_path, "{}{}".format(i, self.EXPORT_IMG_FILENAME)))
-        self.edited = False
+
+        self._edited = False
 
     def export_mask_splines(self):
         dump = {
@@ -132,7 +142,8 @@ class AnnotationMasks():
             'h': self.h,
             'w': self.w,
             'scaling': self.arch_handler.side_volume_scale,
-            'masks': [mask.get_json() if mask is not None else None for mask in self.masks]
+            'masks': [mask.get_json() if mask is not None else None for mask in self.masks],
+            'from_snake': [fs for fs in self.created_from_snake]
         }
         if not os.path.exists(self.EXPORT_PATH):
             os.makedirs(self.EXPORT_PATH)
@@ -152,13 +163,15 @@ class AnnotationMasks():
         self.h = data['h']
         self.w = data['w']
         self.scaling = data['scaling']
-        self.masks = []
-        for spline_dump in data['masks']:
+        self.masks = [None] * self.n
+        for i, spline_dump in enumerate(data['masks']):
             if spline_dump is None:
                 spline = None
             else:
                 spline = ClosedSpline(load_from=spline_dump)
-            self.masks.append(spline)
+            # self.masks.append(spline)
+            from_snake = data['from_snake'][i] if 'from_snake' in data.keys() else False
+            self.set_mask_spline(i, spline, from_snake)
         self.handle_scaling_mismatch()
         self.check_shape(self.arch_handler.side_volume.get().shape)
         print('Mask splines loaded!')

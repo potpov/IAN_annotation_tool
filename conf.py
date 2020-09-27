@@ -12,3 +12,9 @@ conf = dotdict({
     'SAVE_DIR': r'Y:\work\datasets\canal_segmentation\patient1\labelme\masks'
 })
 
+labels = dotdict({
+    'CONTOUR': 0,
+    'INSIDE': 1,
+    'BG': 2,
+    'UNLABELED': 3
+})

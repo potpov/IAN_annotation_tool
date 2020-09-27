@@ -2,7 +2,7 @@ from PyQt5 import QtCore
 from pyface.qt import QtGui
 
 from annotation.actions.Action import TiltedPlanesAnnotationAction, DefaultPlanesAnnotationAction
-from annotation.components.Dialog import question, information
+from annotation.components.Dialog import question, information, LoadingDialog
 from annotation.containers.AnnotationContainer import AnnotationContainer
 from annotation.containers.ArchSplineContainer import ArchSplineContainer
 from annotation.containers.PanorexSplineContainer import PanorexSplineContainer
@@ -33,31 +33,38 @@ class Container(QtGui.QWidget):
         # data
         self.arch_handler = None
 
-    def add_view_menu(self):
-        if self.main_window.menubar.view is not None:
-            return
-
-        self.main_window.menubar.add_menu_view()
-        self.main_window.menubar.add_action_field_view(
-            "&Volume",
+    def connect_to_menubar(self):
+        # view
+        self.main_window.menubar.view_volume.connect(
             lambda: self.show_Dialog3DPlot(self.arch_handler.volume, "Volume"))
 
-        self.main_window.menubar.add_action_field_view(
-            "&GT volume",
-            lambda: self.show_Dialog3DPlot(self.arch_handler.gt_volume, "Ground truth"))
+        self.main_window.menubar.view_gt_volume.connect(
+            lambda: self.show_Dialog3DPlot(self.arch_handler.get_simple_gt_volume(), "Ground truth"))
 
-        self.main_window.menubar.add_action_field_view(
-            "GT volume (&Delaunay)",
+        self.main_window.menubar.view_gt_volume_delaunay.connect(
             lambda: self.show_Dialog3DPlot(self.arch_handler.gt_delaunay, "Ground truth with Delaunay smoothing"))
 
-        self.main_window.menubar.add_action_field_view(
-            "Volume with &canal",
+        self.main_window.menubar.view_volume_with_gt.connect(
             lambda: self.show_Dialog3DPlot(self.arch_handler.get_jaw_with_gt(), "Volume + Ground truth"))
 
-        self.main_window.menubar.add_action_field_view(
-            "Volume with canal (D&elaunay)",
+        self.main_window.menubar.view_volume_with_delaunay.connect(
             lambda: self.show_Dialog3DPlot(self.arch_handler.get_jaw_with_delaunay(),
                                            "Volume + Ground truth with Delaunay smoothing"))
+
+        # annotation
+        self.main_window.menubar.export_mask_imgs.connect(self.arch_handler.export_annotations_as_imgs)
+        self.main_window.menubar.export_annotated_dicom.connect(self.arch_handler.export_annotations_as_dicom)
+        self.main_window.menubar.export_gt_volume.connect(self.arch_handler.export_gt_volume)
+        self.main_window.menubar.apply_delaunay.connect(self.arch_handler.compute_gt_volume_delaunay)
+
+    def enable_view_menu(self):
+        self.main_window.menubar.enable_(self.main_window.menubar.view)
+
+    def enable_annotation_menu(self):
+        self.main_window.menubar.enable_(self.main_window.menubar.annotation)
+
+    def disable_annotation_menu(self):
+        self.main_window.menubar.disable_(self.main_window.menubar.annotation)
 
     def enable_save_load(self, enabled):
         self.main_window.menubar.enable_save_load(enabled)
@@ -84,7 +91,7 @@ class Container(QtGui.QWidget):
         title = "Load"
         if self.arch_handler.is_there_data_to_load():
             message = "Save data was found. Are you sure you want to discard current changes and load from disk?"
-            question(self, title, message, yes_callback=lambda: yes(self))
+            question(self, title, message, yes_callback=lambda: yes(self), default="no")
         else:
             information(self, title, "Nothing to load.")
 
@@ -152,11 +159,12 @@ class Container(QtGui.QWidget):
             self.annotation = AnnotationContainer(self)
 
         self.enable_save_load(True)
+        self.enable_annotation_menu()
         self.arch_handler.offset_arch(pano_offset=0)
         title = "Tilted planes"
         if not self.arch_handler.L_canal_spline.is_empty() or not self.arch_handler.R_canal_spline.is_empty():
             message = "Would you like to use planes orthogonal to the IAN canal as base for the annotations?"
-            question(self, title, message, yes_callback=lambda: yes(self), no_callback=lambda: no(self))
+            question(self, title, message, yes_callback=lambda: yes(self), no_callback=lambda: no(self), default="no")
         else:
             message = "You will annotate on vertical slices because there are no canal splines."
             information(self, title, message)
@@ -185,9 +193,10 @@ class Container(QtGui.QWidget):
             self.arch_handler.__init__(dicomdir_path)
         else:
             self.arch_handler = ArchHandler(dicomdir_path)
+            self.connect_to_menubar()
 
         self.clear()
-        self.add_view_menu()
+        self.enable_view_menu()
         if self.arch_handler.is_there_data_to_load():
             question(self, "Load data?", "A save file was found. Do you want to load it?",
                      yes_callback=lambda: yes(self), no_callback=lambda: no(self))
@@ -209,6 +218,7 @@ class Container(QtGui.QWidget):
 
     def clear(self):
         self.enable_save_load(False)
+        self.disable_annotation_menu()
         self.remove_SliceSelectionContainer()
         self.remove_ArchSplineContainer()
         self.remove_PanorexSplineContainer()

@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from annotation.spline.CatmullRom import CatmullRomChain, CatmullRomSpline, CENTRIPETAL
+from conf import labels as l
 from annotation.utils.math import get_poly_approx
 from functools import reduce
 import operator
@@ -183,13 +184,15 @@ class Spline():
         spline = self.get_spline()
         return get_poly_approx(spline)
 
-    def get_spline(self):
+    def get_spline(self, downscale=None):
         """
         Returns self.curves as one only list of coordinates
 
         Returns:
             (list of (float, float)): full spline
         """
+        if downscale is not None:
+            return [tuple(map(lambda j: j / downscale, point)) for point in self.get_spline()]
         return [point for curve in self.curves for point in curve if not math.isnan(point[0])]
 
     def get_json(self):
@@ -290,29 +293,45 @@ class ClosedSpline(Spline):
         cp.extend(self.cp[0:3])
         self.curves = CatmullRomChain(cp, kind=self.kind)
 
-    def generate_mask(self, img_shape, resize_shape=None):
+    def generate_mask(self, img_shape, resize_scale=None):
         """
         Computes an image with white pixels were the mask is placed, black elsewhere.
 
         Args:
             img_shape (tuple of int): shape of the output image (2D, no color channels)
         """
+
         if len(img_shape) != 2:
             raise ValueError("img_shape must have 2 dimensions (h, w)")
 
-        n_channels = 1
-        mask = np.zeros(img_shape).astype(np.uint8)
+        resize_shape = None
+        if resize_scale is not None:
+            resize_shape = tuple(map(lambda x: int(x / resize_scale), img_shape))
 
-        contour = self.get_spline()
+        ## OLD METHOD: first compute mask, then resize
+        # mask = np.zeros(img_shape).astype(np.uint8)
+        #
+        # contour = self.get_spline()
+        # if len(contour) == 0:
+        #     return np.zeros(resize_shape or img_shape).astype(np.uint8)
+        # contour = np.asarray(contour).astype(int)
+        # n_channels = 1
+        # white = (255,) * n_channels
+        # cv2.drawContours(mask, [contour], -1, white, 1, 0)
+        # cv2.fillPoly(mask, [contour], white)
+        #
+        # if resize_shape is not None:
+        #     mask = cv2.resize(mask, (resize_shape[1], resize_shape[0]), interpolation=cv2.INTER_AREA)
+
+        # NEW METHOD: first project coordinates in resized space, then work on image
+        mask = np.full(resize_shape or img_shape, l.BG, dtype=np.uint8)
+
+        contour = self.get_spline(downscale=resize_scale)
         if len(contour) == 0:
-            return np.zeros(resize_shape or img_shape).astype(np.uint8)
+            return mask
         contour = np.asarray(contour).astype(int)
-        white = (255,) * n_channels
-        cv2.drawContours(mask, [contour], -1, white, 1, 0)
-        cv2.fillPoly(mask, [contour], white)
 
-        if resize_shape is not None:
-            shape = (resize_shape[1], resize_shape[0])
-            mask = cv2.resize(mask, shape, interpolation=cv2.INTER_AREA)
+        mask = cv2.fillPoly(mask, [contour], l.INSIDE)
+        mask = cv2.polylines(mask, [contour], isClosed=1, color=l.CONTOUR, thickness=1)
 
         return mask

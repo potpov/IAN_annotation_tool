@@ -15,12 +15,15 @@ from annotation.core.ArchDetections import ArchDetections
 from annotation.core.SideVolume import SideVolume, TiltedSideVolume
 from annotation.spline.Spline import Spline
 from annotation.utils.math import clip_range
+from conf import labels as l
 
 
 class ArchHandler(Jaw):
     LH_OFFSET = 50
     DUMP_FILENAME = 'dump.json'
     ANNOTATED_DICOM_DIRECTORY = 'annotated_dicom'
+    EXPORT_GT_VOLUME_FILENAME = 'gt_volume.npy'
+
     SIDE_VOLUME_SCALE = 3  # desired scale of side_volume
 
     def __init__(self, dicomdir_path):
@@ -69,37 +72,13 @@ class ArchHandler(Jaw):
         self.canal = None
         self.gt_delaunay = np.zeros_like(self.gt_volume)
 
-    def is_there_data_to_load(self):
-        path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
-        return os.path.isfile(path)
-
-    def save_state(self):
-        data = {}
-        data['version'] = 1.0
-        data['spline'] = self.spline.get_json()
-        data['L_canal_spline'] = self.L_canal_spline.get_json()
-        data['R_canal_spline'] = self.R_canal_spline.get_json()
-        data['selected_slice'] = self.selected_slice
-        data['history'] = self.history.dump()
-        with open(os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME), "w") as outfile:
-            json.dump(data, outfile)
-        if self.annotation_masks is not None:
-            self.annotation_masks.export_mask_splines()
-        print("Saved")
-
-    def load_state(self):
-        path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
-        with open(path, "r") as infile:
-            data = json.load(infile)
-
-        self.compute_initial_state(0, data)
-        self.annotation_masks.load_mask_splines()
-        print("Loaded")
+    ####################
+    # ATTRIBUTE UPDATE #
+    ####################
 
     def _initalize_attributes(self, selected_slice=0, data=None):
         """
         Sets class attributes after the selection of the slice.
-
         It can also initialize attributes from data dump during loading.
 
         Args:
@@ -139,25 +118,20 @@ class ArchHandler(Jaw):
         self.compute_side_volume(self.side_volume_scale)
 
     def update_coords(self):
-        """
-        Updates the current arch after the changes in the spline.
-        Also updates the offsetted arches.
-        """
+        """Updates the current arch after the changes in the spline."""
         p, start, end = self.spline.get_poly_spline()
         self.arch_detections.set(self.selected_slice, (p, start, end))
         if p is not None:
             self.coords = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
 
     def compute_side_coords(self):
-        """
-        Updates side_coords on the new arch
-        """
+        """Updates side_coords on the new arch"""
         l_offset, coords, h_offset, derivative = self.coords
         self.side_coords = processing.generate_side_coords(h_offset, l_offset, derivative)
 
     def offset_arch(self, arch_offset=0, pano_offset=1):
         """
-        Computes the offsetted coordinates of an arch.
+        Computes/Updates the Arch objects after the offsets.
 
         Args:
             arch_offset (int): how much to displace the curve from the original coordinates
@@ -173,36 +147,24 @@ class ArchHandler(Jaw):
             h_arch = l_arch = self.arch.copy()
         self.LH_pano_arches = (l_arch, h_arch)
 
-    def get_panorex(self):
-        """
-        Returns the panorex.
-
-        Returns:
-            (numpy.ndarray): panorex
-        """
-        return self.arch.get_panorex()
-
-    def get_LH_panorexes(self):
-        """
-        Returns low and high panorexes.
-
-        Returns:
-            ((numpy.ndarray, numpy.ndarray)): panorexes
-        """
-        l_arch, h_arch = self.LH_pano_arches
-        return (l_arch.get_panorex(), h_arch.get_panorex())
-
     def tilted(self):
+        """
+        Whether ArchHandler has SideVolume or TiltedSideVolume as side_volume
+
+        Returns:
+            (bool): if True, ArchHandler has tilted side_volume
+        """
         if isinstance(self.side_volume, TiltedSideVolume):
             return True
         return False
 
     def compute_side_volume(self, scale=None, tilted=False):
         """
-        Computes and updates the side volume.
+        Computes and updates side_volume.
 
         Args:
             scale (float): scale of side volume w.r.t. volume dimensions
+            tilted (bool): selects TiltedSideVolume instead of default SideVolume
         """
         # check if needed to recompute side_volume
         if self.old_side_coords is not None \
@@ -225,28 +187,26 @@ class ArchHandler(Jaw):
         else:
             self.annotation_masks.check_shape(shape)
 
+    ###########################
+    # VOLUME + ANNOTATION OPS #
+    ###########################
+
     def extract_3D_annotations(self):
-        """
-        Method that wraps some steps in order to extract an annotated volume, starting from AnnotationMasks splines.
-        """
-        pld = ProgressLoadingDialog("Computing 3D canal")
-        pld.set_function(lambda: self.annotation_masks.compute_mask_volume(step_fn=pld.get_signal()))
-        pld.start()
+        """Transforms 2D annotations on SideVolume into gt_volume"""
+        self.annotation_masks.compute_mask_volume()
 
         self.canal = self.annotation_masks.mask_volume
         if self.canal is None or not self.canal.any():
             return
 
-        pld = ProgressLoadingDialog("Computing ground truth volume")
-        pld.set_function(lambda: self.compute_gt_volume(step_fn=pld.get_signal()))
-        pld.start()
+        self.compute_gt_volume()
 
-        LoadingDialog(self.export_annotations_as_dicom, "Saving new DICOM")
-        LoadingDialog(self.compute_gt_volume_delaunay, "Applying Delaunay")
-
-    def compute_gt_volume(self, step_fn=None):
-        """Transfers the canal computed in compute_3d_canal in the original volume position, following the arch."""
-        gt_volume = np.zeros_like(self.volume)
+    def _compute_gt_volume(self, step_fn=None):
+        """
+        Transfers the canal computed in AnnotationsMasks.compute_mask_volume() in the original volume position,
+        i.e. a curved 3D tube that follows the arch
+        """
+        gt_volume = np.full_like(self.volume, l.UNLABELED, dtype=np.uint8)
         if not self.tilted():
             for z_id, points in enumerate(self.side_coords):
                 step_fn is not None and step_fn(z_id, len(self.side_coords))
@@ -273,18 +233,115 @@ class ArchHandler(Jaw):
                     gt_volume[z, y, x] = val
         self.set_gt_volume(gt_volume)
 
-    def export_annotations_as_dicom(self):
+    def compute_gt_volume(self):
+        """Calls a ProgressLoadingDialod to compute gt_volume"""
+        pld = ProgressLoadingDialog("Computing ground truth volume")
+        pld.set_function(lambda: self._compute_gt_volume(step_fn=pld.get_signal()))
+        pld.start()
+
+    def _compute_gt_volume_delaunay(self):
+        """Applies Delaunay algorithm in order to have a smoother gt_volume."""
+        if self.gt_volume is None or self.gt_volume.any() == False:
+            return
+        gt_volume = self.get_simple_gt_volume()
+        gt_volume = viewer.delaunay(gt_volume)
+        self.gt_delaunay = gt_volume
+
+    def compute_gt_volume_delaunay(self):
+        """Extracts annotations, builds gt_volume and computes smoothed gt_volume"""
+        self.extract_3D_annotations()
+        LoadingDialog(self._compute_gt_volume_delaunay, "Applying Delaunay")
+
+    ###############
+    # SAVE | LOAD #
+    ###############
+
+    def is_there_data_to_load(self):
+        """
+        Check if save file exists
+
+        Returns:
+            (bool): save file presence
+        """
+        path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
+        return os.path.isfile(path)
+
+    def save_state(self):
+        """Saves ArchHandler state, with History and AnnotationsMasks"""
+        data = {}
+        data['version'] = 1.0
+        data['spline'] = self.spline.get_json()
+        data['L_canal_spline'] = self.L_canal_spline.get_json()
+        data['R_canal_spline'] = self.R_canal_spline.get_json()
+        data['selected_slice'] = self.selected_slice
+        data['history'] = self.history.dump()
+        with open(os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME), "w") as outfile:
+            json.dump(data, outfile)
+        if self.annotation_masks is not None:
+            self.annotation_masks.export_mask_splines()
+        print("Saved")
+
+    def load_state(self):
+        """Loads state for ArchHandler, with History and AnnotationsMasks"""
+        path = os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME)
+        with open(path, "r") as infile:
+            data = json.load(infile)
+
+        self.compute_initial_state(0, data)
+        self.annotation_masks.load_mask_splines()
+        print("Loaded")
+
+    def _export_annotations_as_dicom(self):
         """Exports the new DICOM with the annotations."""
         self.overwrite_annotations()
         self.save_dicom(os.path.join(os.path.dirname(self.dicomdir_path), self.ANNOTATED_DICOM_DIRECTORY))
 
-    def compute_gt_volume_delaunay(self):
-        """Applies delaunay algorithm in order to have a smoother gt_volume."""
-        gt_volume = viewer.delaunay(self.gt_volume)
-        self.gt_delaunay = gt_volume
+    def export_annotations_as_dicom(self):
+        """See ArchHandler._export_annotations_as_dicom()"""
+        self.extract_3D_annotations()
+        LoadingDialog(self._export_annotations_as_dicom, "Saving new DICOM")
+
+    def export_annotations_as_imgs(self):
+        """Saves annotations as images"""
+        self.annotation_masks.export_mask_imgs()
+
+    def export_gt_volume(self):
+        """Extracts annotations, builds gt_volume and saves it as npy file"""
+        self.extract_3D_annotations()
+        LoadingDialog(lambda: np.save(os.path.join(os.path.dirname(self.dicomdir_path), self.EXPORT_GT_VOLUME_FILENAME),
+                                      self.gt_volume), "Saving ground truth volume")
+
+    def import_gt_volume(self):
+        """Imports gt_volume npy file and stores it in gt_volume attribute"""
+        if os.path.isfile(os.path.join(os.path.dirname(self.dicomdir_path), self.EXPORT_GT_VOLUME_FILENAME)):
+            self.gt_volume = np.load(os.path.dirname(self.dicomdir_path), self.EXPORT_GT_VOLUME_FILENAME)
+
+    ###########
+    # GETTERS #
+    ###########
+
+    def get_panorex(self):
+        """
+        Returns the panorex.
+
+        Returns:
+            (numpy.ndarray): panorex
+        """
+        return self.arch.get_panorex()
+
+    def get_LH_panorexes(self):
+        """
+        Returns low and high panorexes.
+
+        Returns:
+            ((numpy.ndarray, numpy.ndarray)): panorexes
+        """
+        l_arch, h_arch = self.LH_pano_arches
+        return (l_arch.get_panorex(), h_arch.get_panorex())
 
     def get_jaw_with_gt(self):
-        return self.volume + self.gt_volume if self.gt_volume.any() else None
+        gt = self.get_simple_gt_volume()
+        return self.volume + gt if gt.any() else None
 
     def get_jaw_with_delaunay(self):
         return self.volume + self.gt_delaunay if self.gt_delaunay.any() else None

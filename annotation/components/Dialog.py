@@ -95,9 +95,15 @@ class ProgressLoadingDialog(QtWidgets.QDialog):
         self.exec_()
 
 
-def question(parent, title, message, yes_callback=lambda: None, no_callback=lambda: None):
+def question(parent, title, message, yes_callback=lambda: None, no_callback=lambda: None,
+             default="yes"):
     q = QtGui.QMessageBox()
-    r = q.question(parent, title, message, q.Yes | q.No)
+
+    defaultButton = q.Yes
+    if default.lower() == "no":
+        defaultButton = q.No
+
+    r = q.question(parent, title, message, q.Yes | q.No, defaultButton=defaultButton)
     if r == q.Yes:
         yes_callback()
     else:

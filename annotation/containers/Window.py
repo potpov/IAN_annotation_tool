@@ -31,4 +31,4 @@ class Window(QtGui.QMainWindow):
     def closeEvent(self, event):
         title = "Are you sure you want to quit?"
         message = "Unsaved changes will be lost."
-        question(self, title, message, event.accept, event.ignore)
+        question(self, title, message, event.accept, event.ignore, default="No")

@@ -100,8 +100,12 @@ def show_red_mask(img, mask):
     return img_
 
 
+def rescale255(img):
+    return np.array(img * (255 / img.max()), dtype=np.uint8)
+
+
 def export_img(img, filename):
-    img = cv2.convertScaleAbs(img, alpha=(255.0))
+    img = rescale255(img)
     print("exporting: {}".format(os.path.basename(filename)))
     cv2.imwrite(filename, img)
 

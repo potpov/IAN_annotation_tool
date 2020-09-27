@@ -1,3 +1,4 @@
+from conf import labels as l
 from dicom_loader import dicom_from_dicomdir
 import numpy as np
 from pydicom.filereader import read_dicomdir
@@ -58,24 +59,45 @@ class Jaw:
     # DICOM OPS
     ############
 
-    def add_annotation_overlay(self, ds, overlay_data):
+    def __add_overlay(self, ds, overlay_data, overlay_addr, overlay_desc):
         """
         Add annotation overlay at OVERLAY_ADDR
 
         Args:
             ds (pydicom.dataset.FileDataset): where to add the annotation overlay
             overlay_data (bytes): data for 'OverlayData' field
+            overlay_addr (int): address
+            overlay_desc (str): description
         """
-        ds.add_new((OVERLAY_ADDR, 0x0010), "US", self.H)
-        ds.add_new((OVERLAY_ADDR, 0x0011), "US", self.W)
-        ds.add_new((OVERLAY_ADDR, 0x0022), "LO", "Marker")
-        ds.add_new((OVERLAY_ADDR, 0x0040), "CS", "G")
-        ds.add_new((OVERLAY_ADDR, 0x0050), "SS", [1, 1])
-        ds.add_new((OVERLAY_ADDR, 0x0100), "US", 1)
-        ds.add_new((OVERLAY_ADDR, 0x0102), "US", 0)
-        ds.add_new((OVERLAY_ADDR, 0x3000), "OB", overlay_data)
+        ds.add_new((overlay_addr, 0x0010), "US", self.H)
+        ds.add_new((overlay_addr, 0x0011), "US", self.W)
+        ds.add_new((overlay_addr, 0x0022), "LO", overlay_desc)
+        ds.add_new((overlay_addr, 0x0040), "CS", "G")
+        ds.add_new((overlay_addr, 0x0050), "SS", [1, 1])
+        ds.add_new((overlay_addr, 0x0100), "US", 1)
+        ds.add_new((overlay_addr, 0x0102), "US", 0)
+        ds.add_new((overlay_addr, 0x3000), "OB", overlay_data)
+
+    def __overwrite_address(self, volume, overlay_addr=OVERLAY_ADDR, overlay_desc="Marker"):
+        """
+        Overwrites a specific overlay address with given volumetric data.
+
+        Args:
+            volume (np.ndarray): volumetric data
+            overlay_addr (int): address
+        """
+        for slice_num in range(len(self.dicom_files)):
+            overlay = volume[slice_num].flatten()
+            packed_bytes = pack_bits(overlay)
+            if len(packed_bytes) % 2:  # padding if needed
+                packed_bytes += b'\x00'
+            if self.dicom_files[slice_num].get((overlay_addr, 0x3000)) is None:
+                self.__add_overlay(self.dicom_files[slice_num], packed_bytes, overlay_addr, overlay_desc)
+            else:
+                self.dicom_files[slice_num][overlay_addr, 0x3000].value = packed_bytes
 
     def overwrite_annotations(self):
+
         """
         overwrite the original annotations in the DICOM files with the new annotations
         from the ground truth volume
@@ -83,21 +105,24 @@ class Jaw:
         if len(self.dicom_files) != self.gt_volume.shape[0]:
             raise Exception("ground truth volume has invalid shape with respect to the DICOM files!")
 
-        for slice_num in range(len(self.dicom_files)):
-            overlay = self.gt_volume[slice_num].flatten()
-            packed_bytes = pack_bits(overlay)
-            if len(packed_bytes) % 2:  # padding if needed
-                packed_bytes += b'\x00'
-            if self.dicom_files[slice_num].get((OVERLAY_ADDR, 0x3000)) is None:
-                self.add_annotation_overlay(self.dicom_files[slice_num], packed_bytes)
-            else:
-                self.dicom_files[slice_num][OVERLAY_ADDR, 0x3000].value = packed_bytes
+        volume = self.get_simple_gt_volume()
+        contour = self.filter_gt_volume_label(l.CONTOUR)
+        inside = self.filter_gt_volume_label(l.INSIDE)
+        bg = self.filter_gt_volume_label(l.BG)
+        unlabeled = self.filter_gt_volume_label(l.UNLABELED)
+
+        self.__overwrite_address(volume, OVERLAY_ADDR)
+        self.__overwrite_address(contour, 0x6006, "Contour")
+        self.__overwrite_address(inside, 0x6008, "Inside")
+        self.__overwrite_address(bg, 0x600A, "Background")
+        self.__overwrite_address(unlabeled, 0x600C, "Unlabeled")
 
     def save_dicom(self, path):
         """
         export the dicom files and the dicomdir to the path folder
+
         Args:
-            path (String): path where dicom files are going to be saved
+            path (str): path where dicom files are going to be saved
         """
         Path(path).mkdir(parents=True, exist_ok=True)
         self.dicom_dir.save_as(os.path.join(path, 'DICOMDIR'))
@@ -111,9 +136,10 @@ class Jaw:
     def x_slice(self, x_val, cut_gt=False):
         """
         fix the x-axis value and return a 2D view
+
         Args:
-            x_val (Int): value to fix
-            cut_gt (Bool): if true cut over the ground truth volume, if false cut over the volume
+            x_val (int): value to fix
+            cut_gt (bool): if true cut over the ground truth volume, if false cut over the volume
         Returns:
             cut (2D numpy array)
         """
@@ -125,9 +151,11 @@ class Jaw:
     def y_slice(self, y_val, cut_gt=False):
         """
         fix the y-axis value and return a 2D view
+
         Args:
-            y_val (Int): value to fix
-            cut_gt (Bool): if true cut over the ground truth volume, if false cut over the volume
+            y_val (int): value to fix
+            cut_gt (bool): if true cut over the ground truth volume, if false cut over the volume
+
         Returns:
             cut (2D numpy array)
         """
@@ -143,11 +171,12 @@ class Jaw:
         is used (we just want 0-1 values). if cut_gt is set to False then the cut is performed on the jawbone volume and
         the interpolation methods can be one of the available interpolation functions.
         xy_set can be one or more set of xy coordinates, the function create an image or a volume of cuts automatically.
+
         Args:
             xy_set (2D or 3D numpy array):
-            cut_gt (Bool): if true cuts the ground truth image, if false cuts the original volume
-            possible values are: bilinear_interpolation, bicubic_interpolation
-            interp_fn (String): name of the interpolation function
+            cut_gt (bool): if true cuts the ground truth image, if false cuts the original volume.
+                Possible values are: bilinear_interpolation, bicubic_interpolation
+            interp_fn (str): name of the interpolation function
 
         Returns:
             a 2D or 3D numpy array with the cuts
@@ -184,11 +213,12 @@ class Jaw:
         """
         cut the volumes according to a plane of coordinates. the resulting image has the shape of the plane.
         each point of the plane contains the set of zxy coordinates where the function perform the interpolation.
+
         Args:
             plane (3D numpy array): shape is 3xZxW where W is the len of the xy set of coordinates.
-            values are ordered as follow: [0] z coords, [1] x coords, [2] y coords
-            cut_gt (Bool): if true cuts is performed on the ground truth volume
-            interp_fn (String): name of the interpolation function, if cut_gt is True the interp_fn is nearest.
+                values are ordered as follow: [0] z coords, [1] x coords, [2] y coords
+            cut_gt (bool): if true cuts is performed on the ground truth volume
+            interp_fn (string): name of the interpolation function, if cut_gt is True the interp_fn is nearest.
 
         Returns:
             cut (2D numpy array)
@@ -211,10 +241,12 @@ class Jaw:
     def create_panorex(self, coords, include_annotations=False):
         """
         Create a 2D panorex image from a set of coordinates on the dental arch
+
         Args:
             coords (float numpy array): set of coordinates for the cut
-            include_annotations (Bool): if this flag is set, the panorex image is returned as an RGB
+            include_annotations (bool): if this flag is set, the panorex image is returned as an RGB
             image where the labels are marked in red
+
         Returns:
             panorex (numpy array)
         """
@@ -260,6 +292,27 @@ class Jaw:
 
     def get_gt_volume(self):
         return self.gt_volume
+
+    def filter_gt_volume_label(self, label):
+        """
+        Filters gt_volume labels by a given label. Voxels with that label have value 1, otherwise 0.
+
+        Args:
+            label (int): label to filter with
+
+        Returns:
+            (np.ndarray): filtered gt_volume
+        """
+        gt = np.copy(self.gt_volume)
+        gt[gt != label] = -1
+        gt[gt == label] = 0
+        gt += 1
+        return gt
+
+    def get_simple_gt_volume(self):
+        gt = self.filter_gt_volume_label(l.CONTOUR) + \
+             self.filter_gt_volume_label(l.INSIDE)
+        return gt
 
     def set_volume(self, volume):
         self.volume = volume

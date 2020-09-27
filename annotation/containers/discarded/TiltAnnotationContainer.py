@@ -1,8 +1,6 @@
 from pyface.qt import QtGui
 
 from annotation.actions.Action import SideVolumeSplineResetAction
-from annotation.components.Dialog import LoadingDialog
-from annotation.components.Dialog3DPlot import Dialog3DPlot
 from annotation.controlpanels.AnnotationControlPanel import AnnotationControlPanel
 from annotation.visualization.panorex import CanvasPanorexWidget
 from annotation.visualization.sidevolume import CanvasSideVolume
@@ -36,8 +34,6 @@ class TiltAnnotationContainer(QtGui.QWidget):
         self.panel.flags_changed.connect(self.sidevolume_show)
         self.panel.reset_annotation_clicked.connect(self.reset_annotation_clicked_handler)
         self.panel.acquire_annotation_clicked.connect(self.acquire_annotation_clicked_handler)
-        self.panel.show_result_clicked.connect(self.show_result_clicked_handler)
-        self.panel.export_mask_imgs_clicked.connect(self.export_mask_imgs_clicked_handler)
         self.layout.addWidget(self.panel, 1, 0)
 
         self.arch_handler = None
@@ -60,14 +56,6 @@ class TiltAnnotationContainer(QtGui.QWidget):
     def acquire_annotation_clicked_handler(self):
         self.arch_handler.annotation_masks.get_mask_spline(self.current_pos, from_snake=True)
         self.sidevolume_show()
-
-    def show_result_clicked_handler(self):
-        self.arch_handler.extract_3D_annotations()
-        dialog = Dialog3DPlot(self, "Volume with annotations")
-        dialog.show(self.arch_handler.get_jaw_with_delaunay())
-
-    def export_mask_imgs_clicked_handler(self):
-        LoadingDialog(self.arch_handler.annotation_masks.export_mask_imgs, "Exporting mask images")
 
     def show_(self):
         self.panel.setPosSliderMaximum(len(self.arch_handler.arch.get_arch()) - 1)
