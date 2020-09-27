@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.segmentation import inverse_gaussian_gradient, morphological_geodesic_active_contour
+from conf import labels as l
 
 
 def draw_blue_vertical_line(img, pos):
@@ -113,6 +114,8 @@ def export_img(img, filename):
 def active_contour_balloon(img, spline, debug=False, threshold='auto'):
     # source: https://stackoverflow.com/questions/45736132/scikit-image-expanding-active-contour-snakes
     init = spline.generate_mask(img.shape)
+    init[init == l.CONTOUR] = l.INSIDE
+    init[init == l.BG] = 0
     init.clip(max=1)
     debug and plot(init, "init")
     prep_img = inverse_gaussian_gradient(np.array(img))
