@@ -49,11 +49,25 @@ def get_poly_approx(coords):
             return None, None, None
         x = [x for x, y in coords]
         y = [y for x, y in coords]
-        pol = np.polyfit(x, y, 12)
-        p = np.poly1d(pol)
-        return p, min(x), max(x)
+        return get_poly_approx_(x, y)
     except:
         return None, None, None
+
+
+def get_poly_approx_(x, y):
+    """
+    Computes the polynomial approximation of a curve, defined by two lists of x and y coordinates.
+
+    Args:
+        x (list of float): x coordinates
+        y (list of float): y coordinates
+
+    Returns:
+        (np.poly1d, float, float): polynomial approximation, minimum x and maximum x
+    """
+    pol = np.polyfit(x, y, 12)
+    p = np.poly1d(pol)
+    return p, min(x), max(x)
 
 
 def apply_offset_to_point(point, offset, p):

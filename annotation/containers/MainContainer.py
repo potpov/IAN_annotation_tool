@@ -39,7 +39,7 @@ class Container(QtGui.QWidget):
             lambda: self.show_Dialog3DPlot(self.arch_handler.volume, "Volume"))
 
         self.main_window.menubar.view_gt_volume.connect(
-            lambda: self.show_Dialog3DPlot(self.arch_handler.get_simple_gt_volume(), "Ground truth"))
+            lambda: self.show_Dialog3DPlot(self.arch_handler.get_simpler_gt_volume(), "Ground truth"))
 
         self.main_window.menubar.view_gt_volume_delaunay.connect(
             lambda: self.show_Dialog3DPlot(self.arch_handler.gt_delaunay, "Ground truth with Delaunay smoothing"))

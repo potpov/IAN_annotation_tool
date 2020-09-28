@@ -1,3 +1,4 @@
+from annotation.utils.image import get_mask_by_label
 from conf import labels as l
 from dicom_loader import dicom_from_dicomdir
 import numpy as np
@@ -105,11 +106,11 @@ class Jaw:
         if len(self.dicom_files) != self.gt_volume.shape[0]:
             raise Exception("ground truth volume has invalid shape with respect to the DICOM files!")
 
-        volume = self.get_simple_gt_volume()
-        contour = self.filter_gt_volume_label(l.CONTOUR)
-        inside = self.filter_gt_volume_label(l.INSIDE)
-        bg = self.filter_gt_volume_label(l.BG)
-        unlabeled = self.filter_gt_volume_label(l.UNLABELED)
+        volume = self.get_simpler_gt_volume()
+        contour = get_mask_by_label(self.gt_volume, l.CONTOUR)
+        inside = get_mask_by_label(self.gt_volume, l.INSIDE)
+        bg = get_mask_by_label(self.gt_volume, l.BG)
+        unlabeled = get_mask_by_label(self.gt_volume, l.UNLABELED)
 
         self.__overwrite_address(volume, OVERLAY_ADDR)
         self.__overwrite_address(contour, 0x6006, "Contour")
@@ -293,27 +294,11 @@ class Jaw:
     def get_gt_volume(self):
         return self.gt_volume
 
-    def filter_gt_volume_label(self, label):
-        """
-        Filters gt_volume labels by a given label. Voxels with that label have value 1, otherwise 0.
-
-        Args:
-            label (int): label to filter with
-
-        Returns:
-            (np.ndarray): filtered gt_volume
-        """
-        gt = np.copy(self.gt_volume)
-        gt[gt != label] = -1
-        gt[gt == label] = 0
-        gt += 1
-        return gt
-
-    def get_simple_gt_volume(self):
-        if self.gt_volume.max() == 1:
+    def get_simpler_gt_volume(self):
+        if self.gt_volume.max() in [0, 1]:
             return self.gt_volume
-        gt = self.filter_gt_volume_label(l.CONTOUR) + \
-             self.filter_gt_volume_label(l.INSIDE)
+        gt = get_mask_by_label(self.gt_volume, l.CONTOUR) + \
+             get_mask_by_label(self.gt_volume, l.INSIDE)
         return gt
 
     def set_volume(self, volume):

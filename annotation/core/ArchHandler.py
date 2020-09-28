@@ -83,6 +83,7 @@ class ArchHandler(Jaw):
 
         Args:
             selected_slice (int): index of the selected slice in the jaw volume
+            data (dict): data to load from
         """
         if data is not None:
             self.selected_slice = data['selected_slice']
@@ -105,17 +106,18 @@ class ArchHandler(Jaw):
         l_arch = self.arch.get_offsetted(1)
         self.LH_pano_arches = (l_arch, h_arch)
 
-    def compute_initial_state(self, selected_slice=0, data=None):
+    def compute_initial_state(self, selected_slice=0, data=None, want_side_volume=True):
         """
         Sets class attributes after the selection of the slice.
         Then computes panorexes and side volume.
 
         Args:
             selected_slice (int): index of the selected slice in the jaw volume
+            data (dict): data to load from
         """
         self._initalize_attributes(selected_slice, data)
         self.compute_side_coords()
-        self.compute_side_volume(self.side_volume_scale)
+        want_side_volume and self.compute_side_volume(self.side_volume_scale)
 
     def update_coords(self):
         """Updates the current arch after the changes in the spline."""
@@ -243,7 +245,7 @@ class ArchHandler(Jaw):
         """Applies Delaunay algorithm in order to have a smoother gt_volume."""
         if self.gt_volume is None or self.gt_volume.any() == False:
             return
-        gt_volume = self.get_simple_gt_volume()
+        gt_volume = self.get_simpler_gt_volume()
         gt_volume = viewer.delaunay(gt_volume)
         self.gt_delaunay = gt_volume
 
@@ -340,7 +342,7 @@ class ArchHandler(Jaw):
         return (l_arch.get_panorex(), h_arch.get_panorex())
 
     def get_jaw_with_gt(self):
-        gt = self.get_simple_gt_volume()
+        gt = self.get_simpler_gt_volume()
         return self.volume + gt if gt.any() else None
 
     def get_jaw_with_delaunay(self):
