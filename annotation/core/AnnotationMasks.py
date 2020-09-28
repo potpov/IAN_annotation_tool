@@ -15,6 +15,8 @@ class AnnotationMasks():
     EXPORT_PATH = ""
     EXPORT_MASK_FILENAME = "_mask.png"
     EXPORT_IMG_FILENAME = "_img.png"
+    EXPORT_MASK_VOLUME_FILENAME = "masks.npy"
+    EXPORT_SIDE_VOLUME_FILENAME = "imgs.npy"
     MASKS_SPLINES_DUMP_FILENAME = "masks_splines_dump.json"
     NUM_CP_LOSS = 10  # higher values mean less control points and implies a loss in the spline's precision
 
@@ -116,6 +118,7 @@ class AnnotationMasks():
         masks_path = os.path.join(self.EXPORT_PATH, masks_dirname)
         if not os.path.exists(masks_path):
             os.makedirs(masks_path)
+        np.save(os.path.join(masks_path, self.EXPORT_MASK_VOLUME_FILENAME), self.mask_volume)
 
         # prepare imgs dir
         sv = self.arch_handler.side_volume
@@ -126,6 +129,7 @@ class AnnotationMasks():
             imgs_path = os.path.join(self.EXPORT_PATH, imgs_dirname)
             if not os.path.exists(imgs_path):
                 os.makedirs(imgs_path)
+            np.save(os.path.join(imgs_path, self.EXPORT_SIDE_VOLUME_FILENAME), sv.original)
 
         for i, img in enumerate(self.mask_volume):
             if not img.any():  # skipping totally black images
