@@ -310,6 +310,8 @@ class Jaw:
         return gt
 
     def get_simple_gt_volume(self):
+        if self.gt_volume.max() == 1:
+            return self.gt_volume
         gt = self.filter_gt_volume_label(l.CONTOUR) + \
              self.filter_gt_volume_label(l.INSIDE)
         return gt
