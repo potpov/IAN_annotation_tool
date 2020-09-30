@@ -66,10 +66,6 @@ class AnnotationMasks():
             step_fn is not None and step_fn(i, len(self.masks))
             mask_img = self.compute_mask_image(mask, (self.h, self.w), resize_scale=self.arch_handler.side_volume_scale)
             self.mask_volume[i] = mask_img
-            # mask_img[mask_img < 40] = 0
-            # mask_img[mask_img > 0] = 1
-            # mask_img = mask_img.astype(np.bool_)
-            # self.mask_volume[i, mask_img] = 1
 
     def compute_mask_volume(self):
         pld = ProgressLoadingDialog("Computing 3D canal")
@@ -155,7 +151,7 @@ class AnnotationMasks():
             json.dump(dump, outfile)
         print("Mask splines dumped!")
 
-    def load_mask_splines(self):
+    def load_mask_splines(self, check_shape=True):
         path = os.path.join(self.EXPORT_PATH, self.MASKS_SPLINES_DUMP_FILENAME)
         if not os.path.isfile(path):
             print("No masks to load")
@@ -177,7 +173,7 @@ class AnnotationMasks():
             from_snake = data['from_snake'][i] if 'from_snake' in data.keys() else False
             self.set_mask_spline(i, spline, from_snake)
         self.handle_scaling_mismatch()
-        self.check_shape(self.arch_handler.side_volume.get().shape)
+        check_shape and self.check_shape(self.arch_handler.side_volume.get().shape)
         print('Mask splines loaded!')
 
     def handle_scaling_mismatch(self):

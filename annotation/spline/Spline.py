@@ -85,6 +85,7 @@ class Spline():
         self.cp = [self.coords[0], ]
         offset = int(len(self.coords) / self.num_cp)
         self.cp.extend(self.coords[1:-1:offset])
+        self.cp.append(self.coords[-2])
         self.cp.append(self.coords[-1])
         self.num_cp = len(self.cp)
 

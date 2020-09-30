@@ -181,13 +181,27 @@ class Container(QtGui.QWidget):
             self.annotation.deleteLater()
             self.annotation = None
 
-    def dicomdir_changed(self, dicomdir_path):
-        def yes(self):
-            self.arch_handler.load_state()
-            self.add_ArchSplineContainer()
+    def add_AnnotationContainer_w_extraction(self):
+        self.enable_save_load(True)
+        self.arch_handler.compute_initial_state(96, want_side_volume=False)
+        self.arch_handler.extract_data_from_gt()
+        self.add_AnnotationContainer()
 
-        def no(self):
-            self.add_SliceSelectionContainer()
+    def dicomdir_changed(self, dicomdir_path):
+
+        def ask_load(self):
+            def yes(self):
+                self.arch_handler.load_state()
+                self.add_ArchSplineContainer()
+
+            def no(self):
+                self.add_SliceSelectionContainer()
+
+            if self.arch_handler.is_there_data_to_load():
+                question(self, "Load data?", "A save file was found. Do you want to load it?",
+                         yes_callback=lambda: yes(self), no_callback=lambda: no(self))
+            else:
+                no(self)
 
         if self.arch_handler is not None:
             self.arch_handler.__init__(dicomdir_path)
@@ -197,11 +211,15 @@ class Container(QtGui.QWidget):
 
         self.clear()
         self.enable_view_menu()
-        if self.arch_handler.is_there_data_to_load():
-            question(self, "Load data?", "A save file was found. Do you want to load it?",
-                     yes_callback=lambda: yes(self), no_callback=lambda: no(self))
+
+        if self.arch_handler.get_simpler_gt_volume().any():
+            title = "Ground truth available"
+            message = "This DICOM has already annotations available. Would you like to use those as an initialization for the annotation?"
+            question(self, title, message,
+                     yes_callback=self.add_AnnotationContainer_w_extraction,
+                     no_callback=lambda: ask_load(self))
         else:
-            no(self)
+            ask_load(self)
 
     def show_ArchSplineContainer(self, slice):
         self.clear()

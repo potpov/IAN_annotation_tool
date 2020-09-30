@@ -52,3 +52,9 @@ class History:
         if debug:
             print("loaded history:")
             print(self.h)
+
+    def has(self, ActionClass):
+        for action in self.h:
+            if isinstance(action, ActionClass):
+                return True
+        return False

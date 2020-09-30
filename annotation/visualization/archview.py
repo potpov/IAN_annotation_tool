@@ -40,7 +40,7 @@ class SplineArchView(SplineCanvas):
         super().__init__(parent)
         self.arch_handler = None
         self.selected_slice = None
-        self.current_pos = 0
+        self.current_pos = None
         self.action = None  # action in progress
 
     def set_img(self):
@@ -73,9 +73,10 @@ class SplineArchView(SplineCanvas):
         self.draw_spline(painter, self.arch_handler.spline, col.ARCH_SPLINE, col.ARCH_SPLINE_CP)
 
         # draw side_coords
-        if self.current_pos >= len(self.arch_handler.side_coords):
-            self.current_pos = len(self.arch_handler.side_coords) - 1
-        self.draw_points(painter, self.arch_handler.side_coords[self.current_pos], col.POS)
+        if self.current_pos is not None:
+            if self.current_pos >= len(self.arch_handler.side_coords):
+                self.current_pos = len(self.arch_handler.side_coords) - 1
+            self.draw_points(painter, self.arch_handler.side_coords[self.current_pos], col.POS)
 
     def handle_right_click(self, mouse_x, mouse_y):
         idx_to_remove = None

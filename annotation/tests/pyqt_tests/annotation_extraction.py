@@ -20,7 +20,7 @@ class Container(QtGui.QWidget):
         dicomdir_path = r"C:\Users\crime\Desktop\alveolar_nerve\dataset\Dataset\PROVA14__1948_05_25_NNTViewer_DICOM\DICOM\PROVA14__19480525_DICOM\DICOMDIR"
         # dicomdir_path = r"C:\Users\crime\Desktop\alveolar_nerve\dataset\Dataset\PROVA13__1966_08_06_NNTViewer_DICOM\DICOM\PROVA13__19660806_DICOM\DICOMDIR"
         self.arch_handler = ArchHandler(dicomdir_path)
-        self.selected_slice = 93
+        self.selected_slice = 96
         self.arch_handler.compute_initial_state(self.selected_slice, want_side_volume=False)
         self.slice = self.arch_handler.volume[self.selected_slice]
 
@@ -39,46 +39,8 @@ class Container(QtGui.QWidget):
 
         self.show_()
 
-    def get_lables(self):
-        gt = np.sum(self.arch_handler.gt_volume, axis=0, dtype=np.uint8)
-        gt[gt > 0] = 1
-        ret, labels = cv2.connectedComponents(gt)
-        if ret != 3:
-            raise ValueError("Expected 3 different labels, got {}".format(ret))
-        return labels
-
-    def extract_canal_spline(self, img, label):
-        mask = get_mask_by_label(img, label)
-        gt_canal = filter_volume_Z_axis(self.arch_handler.gt_volume, mask)
-        z, y, x = get_coords_by_label_3D(gt_canal, 1)
-        p, start, end = get_poly_approx_(x, z)
-        coords = []
-        for i, (x_, y_) in enumerate(self.arch_handler.arch.get_arch()):
-            if int(start) < x_ < int(end):
-                z_ = p(x_)
-                coords.append((i, z_))
-        return Spline(coords=coords, num_cp=10)
-
     def find_arch(self):
-        if self.arch_handler.gt_volume is None:
-            print("gt_volume is none")
-            return
-
-        # plot(self.arch_handler.create_panorex(self.arch_handler.arch.get_arch(), include_annotations=True), title="panorex+gt")
-
-        gt = np.copy(self.arch_handler.gt_volume)
-        gt[gt > 0] = 1
-
-        z, y, x = get_coords_by_label_3D(gt, 1)
-        p, start, end = get_poly_approx_(x, y)
-        self.arch_handler.arch_detections.set(self.selected_slice, (p, start, end))
-        self.arch_handler.arch.update(processing.arch_lines(p, start, end, offset=1)[1])
-
-        labels = self.get_lables()
-
-        self.arch_handler.L_canal_spline = self.extract_canal_spline(labels, 1)
-        self.arch_handler.R_canal_spline = self.extract_canal_spline(labels, 2)
-
+        self.arch_handler.extract_data_from_gt(debug=True)
         self.show_()
 
     def set_arch_handler(self):
@@ -87,7 +49,7 @@ class Container(QtGui.QWidget):
 
     def show_(self):
         self.archview.show_(self.selected_slice, True)
-        self.panorex.show_(0)
+        self.panorex.show_()
 
 
 class Window(QtGui.QMainWindow):

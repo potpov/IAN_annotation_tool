@@ -22,7 +22,7 @@ class CanvasPanorexWidget(SplineCanvas):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.current_pos = 0
+        self.current_pos = None
         self.arch_handler = None
         self.action = None
 
@@ -45,9 +45,10 @@ class CanvasPanorexWidget(SplineCanvas):
 
         self.draw_background(painter)
 
-        painter.setPen(col.POS)
-        painter.drawLine(WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN,
-                         WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN + self.img.shape[0] - 1)
+        if self.current_pos is not None:
+            painter.setPen(col.POS)
+            painter.drawLine(WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN,
+                             WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN + self.img.shape[0] - 1)
 
         if not self.arch_handler.tilted():
             self.draw_spline(painter, self.arch_handler.L_canal_spline, col.L_CANAL_SPLINE)

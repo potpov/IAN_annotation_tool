@@ -161,6 +161,8 @@ class SplineCanvas(Canvas, metaclass=CanvasMeta):
             m = -1 / derivative(x)
             y = p(x)
             q = y - m * x
+            if q > 10000:
+                return
             f = np.poly1d([m, q])
             off = 50
             self.draw_line_between_points(painter, (x - off, f(x - off)),

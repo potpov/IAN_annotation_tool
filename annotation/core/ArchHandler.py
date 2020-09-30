@@ -1,12 +1,13 @@
 import os
 
+import cv2
 import numpy as np
 import json
 
 import processing
 import viewer
 from Jaw import Jaw
-from annotation.actions.Action import SliceChangedAction
+from annotation.actions.Action import SliceChangedAction, TiltedPlanesAnnotationAction
 from annotation.actions.History import History
 from annotation.core.AnnotationMasks import AnnotationMasks
 from annotation.components.Dialog import LoadingDialog, ProgressLoadingDialog
@@ -14,7 +15,8 @@ from annotation.core.Arch import Arch
 from annotation.core.ArchDetections import ArchDetections
 from annotation.core.SideVolume import SideVolume, TiltedSideVolume
 from annotation.spline.Spline import Spline
-from annotation.utils.math import clip_range
+from annotation.utils.image import get_coords_by_label_3D, get_mask_by_label, filter_volume_Z_axis
+from annotation.utils.math import clip_range, get_poly_approx_
 from conf import labels as l
 
 
@@ -114,10 +116,12 @@ class ArchHandler(Jaw):
         Args:
             selected_slice (int): index of the selected slice in the jaw volume
             data (dict): data to load from
+            want_side_volume (bool): whether to compute or not side_volume. In most cases, it should.
         """
         self._initalize_attributes(selected_slice, data)
         self.compute_side_coords()
-        want_side_volume and self.compute_side_volume(self.side_volume_scale)
+        tilted = self.history.has(TiltedPlanesAnnotationAction)
+        want_side_volume and self.compute_side_volume(self.side_volume_scale, tilted=tilted)
 
     def update_coords(self):
         """Updates the current arch after the changes in the spline."""
@@ -221,22 +225,16 @@ class ArchHandler(Jaw):
                 if plane is None:
                     continue
                 X, Y, Z = plane.plane
-                bool_mask = img.astype(np.bool_)
-                if not bool_mask.any():
-                    continue
-                img = img[bool_mask]
-                X = X[bool_mask]
-                Y = Y[bool_mask]
-                Z = Z[bool_mask]
                 for val, x, y, z in np.nditer([img, X, Y, Z]):
                     x = int(clip_range(x, 0, self.W - 1))
                     y = int(clip_range(y, 0, self.H - 1))
                     z = int(clip_range(z, 0, self.Z - 1))
                     gt_volume[z, y, x] = val
+
         self.set_gt_volume(gt_volume)
 
     def compute_gt_volume(self):
-        """Calls a ProgressLoadingDialod to compute gt_volume"""
+        """Calls a ProgressLoadingDialog to compute gt_volume"""
         pld = ProgressLoadingDialog("Computing ground truth volume")
         pld.set_function(lambda: self._compute_gt_volume(step_fn=pld.get_signal()))
         pld.start()
@@ -317,6 +315,74 @@ class ArchHandler(Jaw):
         """Imports gt_volume npy file and stores it in gt_volume attribute"""
         if os.path.isfile(os.path.join(os.path.dirname(self.dicomdir_path), self.EXPORT_GT_VOLUME_FILENAME)):
             self.gt_volume = np.load(os.path.dirname(self.dicomdir_path), self.EXPORT_GT_VOLUME_FILENAME)
+
+    ################
+    # LOAD FROM GT #
+    ################
+
+    def extract_canal_mask_labels_Z(self):
+        def correct_labels(img):
+            h, w = img.shape
+            half = img[:, :w // 2]  # get left half
+            left_label = half[half > 0]  # get non zeros
+            left_label = np.bincount(left_label).argmax()  # get most frequent label in left half
+            if left_label == 1:
+                return img
+            label_1_to_2 = get_mask_by_label(img, 1)
+            label_1_to_2[label_1_to_2 == 1] = 2
+            label_2_to_1 = get_mask_by_label(img, 2)
+            return label_1_to_2 + label_2_to_1
+
+        gt = np.sum(self.gt_volume, axis=0, dtype=np.uint8)
+        gt[gt > 0] = 1
+        ret, labels = cv2.connectedComponents(gt)
+        if ret != 3:
+            raise ValueError("Expected 3 different labels, got {}".format(ret))
+        return correct_labels(labels)
+
+    def extract_canal_spline(self, img, label):
+        mask = get_mask_by_label(img, label)
+        gt_canal = filter_volume_Z_axis(self.gt_volume, mask)
+        z, y, x = get_coords_by_label_3D(gt_canal, 1)
+        p, start, end = get_poly_approx_(x, z)
+        coords = []
+        for i, (x_, y_) in enumerate(self.arch.get_arch()):
+            if int(start) < x_ < int(end):
+                z_ = p(x_)
+                coords.append((i, z_))
+        return Spline(coords=coords, num_cp=10)
+
+    def extract_data_from_gt(self, debug=False):
+        if self.gt_volume is None:
+            print("gt_volume is None")
+            return
+
+        if debug:
+            from annotation.utils.image import plot
+            plot(self.create_panorex(self.arch.get_arch(), include_annotations=True), title="panorex+gt")
+
+        gt = np.copy(self.gt_volume)
+        gt[gt > 0] = 1
+
+        z, y, x = get_coords_by_label_3D(gt, 1)
+        p, start, end = get_poly_approx_(x, y)
+        self.arch_detections.set(self.selected_slice, (p, start, end))
+        start = clip_range(start - 20, 0, start)
+        end = clip_range(end + 20, end, self.W - 1)
+        if p is not None:
+            self.coords = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
+            self.spline = Spline(coords=self.coords[1], num_cp=10)
+            self.update_coords()
+            self.arch.update(self.coords[1])
+            self.compute_side_coords()
+
+        labels = self.extract_canal_mask_labels_Z()
+
+        self.L_canal_spline = self.extract_canal_spline(labels, 1)
+        self.R_canal_spline = self.extract_canal_spline(labels, 2)
+        shape = (len(self.side_coords), self.Z, max([len(points) for points in self.side_coords]))
+        self.annotation_masks = AnnotationMasks(shape, self)
+        self.annotation_masks.load_mask_splines(check_shape=False)
 
     ###########
     # GETTERS #
