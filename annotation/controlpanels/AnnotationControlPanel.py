@@ -1,29 +1,18 @@
 from PyQt5 import QtWidgets, QtCore
-from pyface.qt import QtGui
-
 from annotation.components.PrevNextButtons import PrevNextButtons
-from annotation.components.Slider import Slider
+from annotation.controlpanels.ControlPanel import ControlPanel
 
 
-class AnnotationControlPanel(QtGui.QWidget):
+class AnnotationControlPanel(ControlPanel):
     pos_changed = QtCore.pyqtSignal()
     flags_changed = QtCore.pyqtSignal()
     acquire_annotation_clicked = QtCore.pyqtSignal()
     reset_annotation_clicked = QtCore.pyqtSignal()
-    
-    def __init__(self):
-        super(AnnotationControlPanel, self).__init__()
-        self.layout = QtGui.QFormLayout(self)
 
-        self.pos_slider = Slider(QtCore.Qt.Horizontal)
-        self.pos_slider.setMinimum(0)
-        self.pos_slider.setMaximum(0)
-        self.pos_slider.setValue(0)
-        self.pos_slider.setDefaultValue(0)
-        self.pos_slider.setTickPosition(QtWidgets.QSlider.TicksAbove)
-        self.pos_slider.setTickInterval(10)
-        self.pos_slider.valueChanged.connect(self.pos_changed.emit)
-        self.pos_slider.setMaximumHeight(50)
+    def __init__(self):
+        super().__init__()
+
+        self.pos_slider = self.create_slider(valueChanged=self.pos_changed.emit)
         self.layout.addRow(QtWidgets.QLabel("Position"), self.pos_slider)
 
         self.prev_next_btns = PrevNextButtons()

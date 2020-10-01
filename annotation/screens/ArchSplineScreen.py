@@ -1,19 +1,18 @@
 from PyQt5 import QtCore, QtWidgets
-from pyface.qt import QtGui
+from annotation.screens.Screen import Screen
 from annotation.controlpanels.ArchSplineControlPanel import ArchSplineControlPanel
 from annotation.visualization.archview import SplineArchView
 from annotation.visualization.panorex import PanorexWidget
 from annotation.visualization.sidevolume import SideVolume
 
 
-class ArchSplineContainer(QtGui.QWidget):
+class ArchSplineScreen(Screen):
     spline_selected = QtCore.pyqtSignal(int)
 
     def __init__(self, parent):
-        super(ArchSplineContainer, self).__init__()
-        self.container = parent
-        self.layout = QtGui.QGridLayout(self)
+        super().__init__(parent)
         self.container.loaded.connect(self.spline_changed)
+        self.current_pos = 0
 
         # arch view
         self.archview = SplineArchView(self)
@@ -41,9 +40,6 @@ class ArchSplineContainer(QtGui.QWidget):
         self.confirm_button.setShortcut("C")
         self.confirm_button.clicked.connect(self.spline_selected.emit)
         self.layout.addWidget(self.confirm_button, 1, 2)
-
-        self.arch_handler = None
-        self.current_pos = 0
 
     def initialize(self):
         self.archview.set_img()

@@ -1,18 +1,17 @@
 from PyQt5 import QtWidgets, QtCore
 from pyface.qt import QtGui
-
+from annotation.screens.Screen import Screen
 from annotation.visualization.panorex import CanvasPanorexWidget
 from annotation.controlpanels.PanorexSplineControlPanel import PanorexSplineControlPanel
 
 
-class PanorexSplineContainer(QtGui.QWidget):
+class PanorexSplineScreen(Screen):
     panorex_spline_selected = QtCore.pyqtSignal()
 
     def __init__(self, parent):
-        super(PanorexSplineContainer, self).__init__()
-        self.container = parent
-        self.layout = QtGui.QGridLayout(self)
+        super().__init__(parent)
         self.container.loaded.connect(self.show_)
+        self.current_pos = 0
 
         # panorex
         self.panorex = CanvasPanorexWidget(self)
@@ -28,9 +27,6 @@ class PanorexSplineContainer(QtGui.QWidget):
         self.confirm_button.setShortcut("C")
         self.confirm_button.clicked.connect(self.panorex_spline_selected.emit)
         self.layout.addWidget(self.confirm_button, 1, 2)
-
-        self.arch_handler = None
-        self.current_pos = 0
 
     def initialize(self):
         self.panorex.set_img()

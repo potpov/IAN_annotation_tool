@@ -1,5 +1,5 @@
 from pyface.qt import QtGui
-from annotation.containers.Window import Window
+from annotation.screens.Window import Window
 
 if __name__ == "__main__":
     # Don't create a new QApplication, it would unhook the Events

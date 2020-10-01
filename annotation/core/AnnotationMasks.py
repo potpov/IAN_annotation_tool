@@ -187,7 +187,7 @@ class AnnotationMasks():
         rescale_factor = self.arch_handler.side_volume_scale / self.scaling
         for spline in self.masks:
             if spline is not None:
-                coords = [tuple(map(lambda x: int(x * rescale_factor), point)) for point in spline.get_spline()]
+                coords = spline.get_spline(downscale=1 / rescale_factor)
                 new_spline = ClosedSpline(coords=coords, num_cp=(len(coords) // int(self.NUM_CP_LOSS * rescale_factor)))
                 new_masks.append(new_spline)
             else:

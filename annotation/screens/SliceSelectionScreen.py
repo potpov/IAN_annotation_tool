@@ -1,37 +1,26 @@
 from PyQt5 import QtWidgets, QtCore
-from pyface.qt import QtGui
-
-from annotation.components.Slider import Slider
+from annotation.screens.Screen import Screen
 from annotation.utils.math import clip_range
 from annotation.visualization.archview import ArchView
+from annotation.controlpanels.ControlPanel import ControlPanel
 
 
-class SliceSelectionContainer(QtGui.QWidget):
+class SliceSelectionScreen(Screen):
     slice_selected = QtCore.pyqtSignal(int)
 
     def __init__(self, parent):
-        super(SliceSelectionContainer, self).__init__()
-        self.container = parent
-        self.arch_handler = None
+        super().__init__(parent)
 
-        # layout setup
-        self.layout = QtGui.QGridLayout(self)
-
-        self.slider = Slider(QtCore.Qt.Vertical, "Slice")
-        self.slider.setMinimum(0)
-        self.slider.setMaximum(0)
-        self.slider.setValue(0)
-        self.slider.setDefaultValue(0)
-        self.slider.setTickPosition(QtWidgets.QSlider.TicksRight)
-        self.slider.setTickInterval(10)
-        self.slider.valueChanged.connect(self.show_)
-        self.slider.setMaximumWidth(100)
+        # slider
+        self.slider = ControlPanel.create_slider("Slice", orientation=QtCore.Qt.Vertical,
+                                                 max_h_w=100, valueChanged=self.show_)
         self.layout.addWidget(self.slider, 0, 1)
 
+        # arch view
         self.archview = ArchView(self)
         self.layout.addWidget(self.archview, 0, 0)
 
-        # arch checkbox setup
+        # arch checkbox
         self.arch_line = QtWidgets.QCheckBox("Arch")
         self.arch_line.setChecked(True)
         self.arch_line.toggled.connect(self.show_)

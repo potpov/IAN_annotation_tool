@@ -1,29 +1,18 @@
 from PyQt5 import QtWidgets, QtCore
-from pyface.qt import QtGui
-
 from annotation.components.PrevNextButtons import PrevNextButtons
-from annotation.components.Slider import Slider
+from annotation.controlpanels.ControlPanel import ControlPanel
 
 
-class ArchSplineControlPanel(QtGui.QWidget):
+class ArchSplineControlPanel(ControlPanel):
     pos_changed = QtCore.pyqtSignal()
     arch_offset_changed = QtCore.pyqtSignal()
     pano_offset_changed = QtCore.pyqtSignal()
     update_side_volume = QtCore.pyqtSignal()
 
     def __init__(self):
-        super(ArchSplineControlPanel, self).__init__()
-        self.layout = QtGui.QFormLayout(self)
+        super().__init__()
 
-        self.pos_slider = Slider(QtCore.Qt.Horizontal)
-        self.pos_slider.setMinimum(0)
-        self.pos_slider.setMaximum(0)
-        self.pos_slider.setValue(0)
-        self.pos_slider.setDefaultValue(0)
-        self.pos_slider.setTickPosition(QtWidgets.QSlider.TicksAbove)
-        self.pos_slider.setTickInterval(10)
-        self.pos_slider.valueChanged.connect(self.pos_changed.emit)
-        self.pos_slider.setMaximumHeight(50)
+        self.pos_slider = self.create_slider(valueChanged=self.pos_changed.emit)
         self.layout.addRow(QtWidgets.QLabel("Position"), self.pos_slider)
 
         self.prev_next_btns = PrevNextButtons()
@@ -35,22 +24,11 @@ class ArchSplineControlPanel(QtGui.QWidget):
         self.update_side_volume_btn.clicked.connect(self.update_side_volume.emit)
         self.layout.addRow(QtWidgets.QLabel("Side volume"), self.update_side_volume_btn)
 
-        self.arch_slider = Slider(QtCore.Qt.Horizontal)
-        self.arch_slider.setRange(-50, 50)
-        self.arch_slider.setValue(0)
-        self.arch_slider.setDefaultValue(0)
-        self.arch_slider.setTickPosition(QtWidgets.QSlider.TicksAbove)
-        self.arch_slider.setTickInterval(10)
-        self.arch_slider.valueChanged.connect(self.arch_offset_changed.emit)
+        self.arch_slider = self.create_slider(min=-50, max=50, valueChanged=self.arch_offset_changed.emit)
         self.layout.addRow(QtWidgets.QLabel("Arch"), self.arch_slider)
 
-        self.pano_offset_slider = Slider(QtCore.Qt.Horizontal)
-        self.pano_offset_slider.setRange(1, 10)
-        self.pano_offset_slider.setValue(1)
-        self.pano_offset_slider.setDefaultValue(1)
-        self.pano_offset_slider.setTickPosition(QtWidgets.QSlider.TicksAbove)
-        self.pano_offset_slider.setTickInterval(1)
-        self.pano_offset_slider.valueChanged.connect(self.pano_offset_changed.emit)
+        self.pano_offset_slider = self.create_slider(min=1, max=10, val=1, default=1, tick_interval=1,
+                                                     valueChanged=self.pano_offset_changed.emit)
         self.layout.addRow(QtWidgets.QLabel("Panorex offset"), self.pano_offset_slider)
 
     ###########

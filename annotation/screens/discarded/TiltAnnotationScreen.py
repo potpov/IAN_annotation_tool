@@ -6,9 +6,9 @@ from annotation.visualization.panorex import CanvasPanorexWidget
 from annotation.visualization.sidevolume import CanvasSideVolume
 
 
-class TiltAnnotationContainer(QtGui.QWidget):
+class TiltAnnotationScreen(QtGui.QWidget):
     def __init__(self, parent):
-        super(TiltAnnotationContainer, self).__init__()
+        super(TiltAnnotationScreen, self).__init__()
         self.container = parent
         self.layout = QtGui.QGridLayout(self)
         self.container.loaded.connect(self.show_)

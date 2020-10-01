@@ -3,7 +3,7 @@ from pyface.qt import QtGui
 
 from annotation.components.Dialog import question
 from annotation.components.Menu import Menu
-from annotation.containers.MainContainer import Container
+from annotation.screens.Container import Container
 
 
 class Window(QtGui.QMainWindow):
@@ -13,9 +13,9 @@ class Window(QtGui.QMainWindow):
         super(Window, self).__init__()
         self.setWindowTitle(self.WINDOW_TITLE)
 
-        self.menubar = Menu(self)
-        self.menubar.open.connect(self.open_dicomdir)
-        self.setMenuBar(self.menubar.get())
+        self.mb = Menu(self)
+        self.mb.open.connect(self.open_dicomdir)
+        self.setMenuBar(self.mb.get())
 
         self.container = Container(self)
         self.setCentralWidget(self.container)
