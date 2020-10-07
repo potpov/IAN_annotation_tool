@@ -26,7 +26,7 @@ class ArchHandler(Jaw):
     ANNOTATED_DICOM_DIRECTORY = 'annotated_dicom'
     EXPORT_GT_VOLUME_FILENAME = 'gt_volume.npy'
 
-    SIDE_VOLUME_SCALE = 3  # desired scale of side_volume
+    SIDE_VOLUME_SCALE = 4  # desired scale of side_volume
 
     def __init__(self, dicomdir_path):
         """
@@ -224,6 +224,8 @@ class ArchHandler(Jaw):
                 step_fn is not None and step_fn(i, len(self.side_coords))
                 if plane is None:
                     continue
+                if np.array_equal(img, np.full_like(img, l.UNLABELED, dtype=np.uint8)):
+                    continue
                 X, Y, Z = plane.plane
                 for val, x, y, z in np.nditer([img, X, Y, Z]):
                     x = int(clip_range(x, 0, self.W - 1))
@@ -278,7 +280,7 @@ class ArchHandler(Jaw):
         with open(os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME), "w") as outfile:
             json.dump(data, outfile)
         if self.annotation_masks is not None:
-            self.annotation_masks.export_mask_splines()
+            self.annotation_masks.save_mask_splines()
         print("Saved")
 
     def load_state(self):
@@ -381,6 +383,7 @@ class ArchHandler(Jaw):
         self.L_canal_spline = self.extract_canal_spline(labels, 1)
         self.R_canal_spline = self.extract_canal_spline(labels, 2)
         shape = (len(self.side_coords), self.Z, max([len(points) for points in self.side_coords]))
+        self.side_volume = TiltedSideVolume(self, self.side_volume_scale)
         self.annotation_masks = AnnotationMasks(shape, self)
         self.annotation_masks.load_mask_splines(check_shape=False)
 

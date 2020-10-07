@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.segmentation import inverse_gaussian_gradient, morphological_geodesic_active_contour
+from annotation.utils.math import clip_range
+from annotation.utils.metaclasses import SingletonMeta
 from conf import labels as l
 
 
@@ -25,6 +27,38 @@ def draw_blue_vertical_line(img, pos):
     blue_line = np.moveaxis(blue_line, 0, -1)
     img_rgb[:, pos, :] = blue_line
     return img_rgb
+
+
+class ContrastStretching(metaclass=SingletonMeta):
+    def __init__(self, min_=0, max_=255):
+        """
+        Class that manages contrast stretching in a uniform manner.
+        It uses min-max method.
+
+        Args:
+            min_(int): lower threshold
+            max_(int): higher threshold
+        """
+        self.min_ = min_
+        self.max_ = max_
+
+    def set_min(self, min_):
+        self.min_ = int(clip_range(min_, 0, 255))
+
+    def set_max(self, max_):
+        self.max_ = int(clip_range(max_, 0, 255))
+
+    def set_range(self, min_, max_):
+        if min_ > max_:
+            max_, min_ = min_, max_
+        self.set_min(min_)
+        self.set_max(max_)
+
+    def stretch(self, img, ret_dtype=np.uint8):
+        ret = np.array(img, dtype=np.float32)
+        ret = ((ret - self.min_) / (self.max_ - self.min_)) * 255
+        ret = np.clip(ret, 0, 255).astype(ret_dtype)
+        return ret
 
 
 def enhance_contrast(img):
@@ -101,29 +135,35 @@ def show_red_mask(img, mask):
     return img_
 
 
-def rescale255(img):
+def rescale255(img, maximum=None):
     """
     Rescales image value considering the maximum value in the image,
     in order to have max value 255.
 
     Args:
          img (np.ndarray): source image
+         maximum (int): maximum value to use as 255.
+            If None, it is the maximum value in 'img' argument.
 
     Returns:
         (np.ndarray): image with rescaled values
     """
-    return np.array(img * (255 / img.max()), dtype=np.uint8)
+    if maximum is None:
+        maximum = img.max()
+    return np.array(img * (255 / maximum), dtype=np.uint8)
 
 
-def export_img(img, filename):
+def export_img(img, filename, maximum=None):
     """
     Exports an image
 
     Args:
         img (np.ndarray): source image
         filename (str): where to export
+        maximum (int): maximum value to use as 255 in the output image.
+            If None, it is the maximum value in 'img' argument.
     """
-    img = rescale255(img)
+    img = rescale255(img, maximum=maximum)
     print("exporting: {}".format(os.path.basename(filename)))
     cv2.imwrite(filename, img)
 

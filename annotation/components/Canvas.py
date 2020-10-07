@@ -1,16 +1,13 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 import numpy as np
+from annotation.utils.metaclasses import AbstractQObjectMeta
 from annotation.utils.margin import WIDGET_MARGIN
 import annotation.utils.colors as col
 
 
-class CanvasMeta(type(QtCore.QObject), ABCMeta):
-    pass
-
-
-class Canvas(QtGui.QWidget, metaclass=CanvasMeta):
+class Canvas(QtGui.QWidget, metaclass=AbstractQObjectMeta):
     MARGIN = 50
 
     def __init__(self, parent):
@@ -96,7 +93,7 @@ class Canvas(QtGui.QWidget, metaclass=CanvasMeta):
         pass
 
 
-class SplineCanvas(Canvas, metaclass=CanvasMeta):
+class SplineCanvas(Canvas, metaclass=AbstractQObjectMeta):
     def __init__(self, parent):
         super().__init__(parent)
         self.l = 8  # size of the side of the square for the control points

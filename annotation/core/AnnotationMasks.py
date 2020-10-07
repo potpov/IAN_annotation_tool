@@ -29,6 +29,7 @@ class AnnotationMasks():
         self.created_from_snake = [False] * self.n
         self.mask_volume = None
         self._edited = True
+        self.skip = 0
 
     def check_shape(self, new_shape):
         n_, h_, w_ = new_shape
@@ -61,11 +62,19 @@ class AnnotationMasks():
         scaled_h = int(self.h / self.arch_handler.side_volume_scale)
         scaled_w = int(self.w / self.arch_handler.side_volume_scale)
         shape = (self.n, scaled_h, scaled_w)
-        self.mask_volume = np.zeros(shape, dtype=np.uint8)
+        # by default, mask_volume is UNLABELED
+        self.mask_volume = np.full(shape, l.UNLABELED, dtype=np.uint8)
         for i, mask in enumerate(self.masks):
             step_fn is not None and step_fn(i, len(self.masks))
-            mask_img = self.compute_mask_image(mask, (self.h, self.w), resize_scale=self.arch_handler.side_volume_scale)
-            self.mask_volume[i] = mask_img
+            # Get mask_image only if the use could have annotate it.
+            # This is because (self.skip + 1) defines which slices to annotate or not.
+            # (skip self.skip slices and annotate the next one)
+            # If the user cannot annotate a slice, then he gets full(UNLABELED).
+            # Otherwise, if he had the possibility to annotate, but there is no annotation, then he gets full(BG).
+            if i % (self.skip + 1) == 0 and self.arch_handler.side_volume.get()[i].any():
+                mask_img = self.compute_mask_image(mask, (self.h, self.w),
+                                                   resize_scale=self.arch_handler.side_volume_scale)
+                self.mask_volume[i] = mask_img
 
     def compute_mask_volume(self):
         pld = ProgressLoadingDialog("Computing 3D canal")
@@ -74,16 +83,20 @@ class AnnotationMasks():
 
     def set_mask_spline(self, idx, spline, from_snake=False):
         self._edited = True
-        self.created_from_snake[idx] = from_snake
-        self.masks[idx] = spline
+        try:  # if idx is outside lists dimensions, then ignore
+            self.created_from_snake[idx] = from_snake
+            self.masks[idx] = spline
+        except:
+            pass
         return spline
 
     def get_mask_spline(self, idx, from_snake=False):
         if self.masks[idx] is None and from_snake is True:
-            from_idx = idx - 1
+            step = self.skip + 1
+            from_idx = idx - step
             init = self.masks[from_idx]
             if init is None:
-                from_idx = idx + 1
+                from_idx = idx + step
                 init = self.masks[from_idx]
             if init is not None:
                 ####
@@ -130,18 +143,20 @@ class AnnotationMasks():
         for i, img in enumerate(self.mask_volume):
             if not img.any():  # skipping totally black images
                 continue
-            export_img(img, os.path.join(masks_path, "{}{}".format(i, self.EXPORT_MASK_FILENAME)))
+            export_img(img, os.path.join(masks_path, "{}{}".format(i, self.EXPORT_MASK_FILENAME)),
+                       maximum=max(l.values()))
             if sv.original is not None:
                 export_img(sv.original[i], os.path.join(imgs_path, "{}{}".format(i, self.EXPORT_IMG_FILENAME)))
 
         self._edited = False
 
-    def export_mask_splines(self):
+    def save_mask_splines(self):
         dump = {
             'n': self.n,
             'h': self.h,
             'w': self.w,
             'scaling': self.arch_handler.side_volume_scale,
+            'skip': self.skip,
             'masks': [mask.get_json() if mask is not None else None for mask in self.masks],
             'from_snake': [fs for fs in self.created_from_snake]
         }
@@ -163,13 +178,13 @@ class AnnotationMasks():
         self.h = data['h']
         self.w = data['w']
         self.scaling = data['scaling']
+        self.skip = data['skip'] if 'skip' in data.keys() else 0
         self.masks = [None] * self.n
         for i, spline_dump in enumerate(data['masks']):
             if spline_dump is None:
                 spline = None
             else:
                 spline = ClosedSpline(load_from=spline_dump)
-            # self.masks.append(spline)
             from_snake = data['from_snake'][i] if 'from_snake' in data.keys() else False
             self.set_mask_spline(i, spline, from_snake)
         self.handle_scaling_mismatch()
@@ -193,3 +208,10 @@ class AnnotationMasks():
             else:
                 new_masks.append(None)
         self.masks = new_masks
+
+    ###########
+    # SETTERS #
+    ###########
+
+    def set_skip(self, skip):
+        self.skip = skip

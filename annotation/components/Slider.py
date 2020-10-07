@@ -5,7 +5,7 @@ from pyface.qt import QtGui
 class Slider(QtGui.QWidget):
     valueChanged = QtCore.pyqtSignal()
 
-    def __init__(self, orientation, name=None):
+    def __init__(self, orientation, name=None, step=1):
         """
         Widget that connects a QSlider and a QSpinBox for better interactions.
         It can also display a tag name and has a "reset to default" button
@@ -13,6 +13,7 @@ class Slider(QtGui.QWidget):
         Args:
             orientation (int): either Qt.Horizontal or Qt.Vertical
             name (str): tag name
+            step (int): how much to increment or decrement slider
         """
         super(Slider, self).__init__()
 
@@ -35,15 +36,18 @@ class Slider(QtGui.QWidget):
         self.box = QtWidgets.QSpinBox()
         self.reset = QtWidgets.QPushButton("Reset")
 
+        # step settings
+        self.setStep(step)
+
         # slider settings
-        self.slider.valueChanged.connect(self.box.setValue)
+        self.slider.valueChanged.connect(self.slider_valueChanged_handler)
         self.slider.valueChanged.connect(self.valueChanged.emit)
         self.slider.rangeChanged.connect(self.box.setRange)
 
         # box settings
         self.box.setRange(self.slider.minimum(), self.slider.maximum())
         self.box.setFixedWidth(50)
-        self.box.valueChanged.connect(self.slider.setValue)
+        self.box.valueChanged.connect(self.box_valueChanged_handler)
 
         # reset settings
         self.reset.clicked.connect(self.resetToDefault)
@@ -57,6 +61,22 @@ class Slider(QtGui.QWidget):
     def resetToDefault(self):
         if self.default is not None:
             self.box.setValue(self.default)
+
+    def _value_step_fix(self, value):
+        step_count = int(value / self.step)
+        return step_count * self.step
+
+    def box_valueChanged_handler(self, value):
+        if self.step != 1:
+            value = self._value_step_fix(value)
+            self.box.setValue(value)
+        self.slider.setValue(value)
+
+    def slider_valueChanged_handler(self, value):
+        if self.step != 1:
+            value = self._value_step_fix(value)
+            self.slider.setValue(value)
+        self.box.setValue(value)
 
     ###########
     # Getters #
@@ -88,7 +108,7 @@ class Slider(QtGui.QWidget):
         self.default = val
 
     def setValue(self, val):
-        self.slider.setValue(val)
+        self.box.setValue(val)
 
     def setTickPosition(self, position):
         self.slider.setTickPosition(position)
@@ -98,3 +118,9 @@ class Slider(QtGui.QWidget):
 
     def setText(self, text):
         self.label.setText(text)
+
+    def setStep(self, step):
+        self.step = step
+        self.slider.setSingleStep(self.step)
+        self.slider.setPageStep(self.step)
+        self.box.setSingleStep(self.step)

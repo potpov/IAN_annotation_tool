@@ -16,8 +16,6 @@ class AnnotationControlPanel(ControlPanel):
         self.layout.addRow(QtWidgets.QLabel("Position"), self.pos_slider)
 
         self.prev_next_btns = PrevNextButtons()
-        self.prev_next_btns.prev_clicked.connect(lambda: self.pos_slider.setValue(self.pos_slider.value() - 1))
-        self.prev_next_btns.next_clicked.connect(lambda: self.pos_slider.setValue(self.pos_slider.value() + 1))
         self.layout.addRow(QtWidgets.QLabel(" "), self.prev_next_btns)
 
         self.show_dot = QtWidgets.QCheckBox("Show dot (D)")
@@ -52,6 +50,16 @@ class AnnotationControlPanel(ControlPanel):
     ###########
     # Getters #
     ###########
+
+    def setStep(self, step):
+        try:
+            self.prev_next_btns.prev_clicked.disconnect()
+            self.prev_next_btns.next_clicked.disconnect()
+        except:
+            pass
+        self.prev_next_btns.prev_clicked.connect(lambda: self.pos_slider.setValue(self.pos_slider.value() - step))
+        self.prev_next_btns.next_clicked.connect(lambda: self.pos_slider.setValue(self.pos_slider.value() + step))
+        self.pos_slider.setStep(step)
 
     def getPosValue(self):
         return self.pos_slider.value()

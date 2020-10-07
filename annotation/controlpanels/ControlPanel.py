@@ -1,24 +1,19 @@
 from PyQt5 import QtCore, QtWidgets
 from pyface.qt import QtGui
-from abc import ABCMeta
-
 from annotation.components.Slider import Slider
+from annotation.utils.metaclasses import AbstractQObjectMeta
 
 
-class ControlPanelMeta(type(QtCore.QObject), ABCMeta):
-    pass
-
-
-class ControlPanel(QtGui.QWidget, metaclass=ControlPanelMeta):
+class ControlPanel(QtGui.QWidget, metaclass=AbstractQObjectMeta):
     def __init__(self):
         """Control panel widget, usually used in Screen objects"""
         super(ControlPanel, self).__init__()
         self.layout = QtGui.QFormLayout(self)
 
     @staticmethod
-    def create_slider(name=None, min=0, max=0, val=0, default=0, orientation=QtCore.Qt.Horizontal,
+    def create_slider(name=None, step=1, min=0, max=0, val=0, default=0, orientation=QtCore.Qt.Horizontal,
                       tick_interval=10, max_h_w=50, valueChanged=lambda: None):
-        slider = Slider(orientation, name)
+        slider = Slider(orientation, name, step)
         slider.setMinimum(min)
         slider.setMaximum(max)
         slider.setValue(val)

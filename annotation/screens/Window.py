@@ -29,6 +29,6 @@ class Window(QtGui.QMainWindow):
             self.container.dicomdir_changed(path)
 
     def closeEvent(self, event):
-        title = "Are you sure you want to quit?"
-        message = "Unsaved changes will be lost."
+        title = "Exit"
+        message = "Are you sure you wanto to quit?"
         question(self, title, message, event.accept, event.ignore, default="No")

@@ -228,7 +228,7 @@ class TiltedSideVolume(SideVolume):
                 angle = -np.degrees(np.arctan(derivative(x)))
                 plane.tilt_z(angle, p(x))
                 cut = self.ah.plane_slice(plane)
-                print("cutting x: {}".format(x))
+                print("{}/{}".format(x, len(self.planes)), end='\r')
                 self.planes[x] = plane
                 self.data[x] = cut
 

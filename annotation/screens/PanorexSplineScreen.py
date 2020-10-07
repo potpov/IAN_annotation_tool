@@ -1,8 +1,8 @@
 from PyQt5 import QtWidgets, QtCore
-from pyface.qt import QtGui
+from annotation.controlpanels.SkipControlPanel import SkipControlPanel
 from annotation.screens.Screen import Screen
+from annotation.visualization.archview import ArchView
 from annotation.visualization.panorex import CanvasPanorexWidget
-from annotation.controlpanels.PanorexSplineControlPanel import PanorexSplineControlPanel
 
 
 class PanorexSplineScreen(Screen):
@@ -13,14 +13,18 @@ class PanorexSplineScreen(Screen):
         self.container.loaded.connect(self.show_)
         self.current_pos = 0
 
+        # arch view
+        self.archview = ArchView(self)
+        self.layout.addWidget(self.archview, 0, 0)
+
         # panorex
         self.panorex = CanvasPanorexWidget(self)
-        self.layout.addWidget(self.panorex, 0, 0)
+        self.layout.addWidget(self.panorex, 0, 1)
 
-        # control panel
-        self.panel = PanorexSplineControlPanel()
-        self.panel.pos_changed.connect(self.pos_changed_handler)
-        self.layout.addWidget(self.panel, 1, 0)
+        # sparsity selector
+        self.panel = SkipControlPanel()
+        self.panel.skip_changed.connect(self.skip_changed_handler)
+        self.layout.addWidget(self.panel, 1, 0, 1, 2)
 
         # continue button
         self.confirm_button = QtWidgets.QPushButton(self, text="Confirm (C)")
@@ -30,15 +34,18 @@ class PanorexSplineScreen(Screen):
 
     def initialize(self):
         self.panorex.set_img()
+        max_ = len(self.arch_handler.arch.get_arch()) - 1
+        self.panel.setSkipMaximum(max_)
+        self.panel.setSkipValue(self.arch_handler.annotation_masks.skip)
 
-    def pos_changed_handler(self):
-        self.current_pos = self.panel.getPosValue()
-        self.show_()
+    def skip_changed_handler(self, skip):
+        self.arch_handler.annotation_masks.set_skip(skip)
 
     def show_(self):
-        self.panel.setPosSliderMaximum(len(self.arch_handler.arch.get_arch()) - 1)
-        self.panorex.show_(pos=self.current_pos)
+        self.panorex.show_()
+        self.archview.show_(self.arch_handler.selected_slice, True)
 
     def set_arch_handler(self, arch_handler):
         self.arch_handler = arch_handler
         self.panorex.arch_handler = arch_handler
+        self.archview.arch_handler = arch_handler

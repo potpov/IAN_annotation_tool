@@ -1,13 +1,11 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
+
+from annotation.utils.metaclasses import AbstractQObjectMeta
 
 
-class ScreenMeta(type(QtCore.QObject), ABCMeta):
-    pass
-
-
-class Screen(QtGui.QWidget, metaclass=ScreenMeta):
+class Screen(QtGui.QWidget, metaclass=AbstractQObjectMeta):
     def __init__(self, parent):
         """
         Application screen
@@ -26,6 +24,10 @@ class Screen(QtGui.QWidget, metaclass=ScreenMeta):
 
     @abstractmethod
     def set_arch_handler(self, arch_handler):
+        """
+        Args:
+            arch_handler (annotation.core.ArchHandler.ArchHandler): ah
+        """
         self.arch_handler = arch_handler
 
     @abstractmethod

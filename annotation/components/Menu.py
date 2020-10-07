@@ -1,6 +1,8 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
 
+from annotation.components.DialogImageSettings import DialogImageSettings
+
 
 class Menu(QtGui.QWidget):
     # file
@@ -30,6 +32,7 @@ class Menu(QtGui.QWidget):
         self.file = None
         self.view = None
         self.annotation = None
+        self.options = None
 
         self.save_action = None
         self.autosave_action = None
@@ -38,6 +41,8 @@ class Menu(QtGui.QWidget):
         self.add_menu_file()
         self.add_menu_view()
         self.add_menu_annotation()
+        self.add_menu_options()
+
         self.disable_(self.view)
         self.disable_(self.annotation)
 
@@ -133,6 +138,16 @@ class Menu(QtGui.QWidget):
         apply_delaunay_action = QtGui.QAction("Apply &Delaunay", self)
         apply_delaunay_action.triggered.connect(self.apply_delaunay.emit)
         self.annotation.addAction(apply_delaunay_action)
+
+    def add_menu_options(self):
+        self.options = self.bar.addMenu("&Options")
+
+        image_settings_action = QtGui.QAction("Edit image settings", self)
+        image_settings_action.triggered.connect(self.show_options)
+        self.options.addAction(image_settings_action)
+
+    def show_options(self):
+        DialogImageSettings().exec_()
 
     def disable_(self, menu):
         menu.setDisabled(True)

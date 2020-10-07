@@ -49,6 +49,7 @@ class Container(QtGui.QWidget):
             lambda: self.show_Dialog3DPlot(self.arch_handler.volume, "Volume"))
 
         self.window.mb.view_gt_volume.connect(
+            # lambda: self.show_Dialog3DPlot(self.arch_handler.gt_volume, "Ground truth"))
             lambda: self.show_Dialog3DPlot(self.arch_handler.get_simpler_gt_volume(), "Ground truth"))
 
         self.window.mb.view_gt_volume_delaunay.connect(
@@ -199,11 +200,11 @@ class Container(QtGui.QWidget):
             self.annotation.deleteLater()
             self.annotation = None
 
-    def add_AnnotationScreen_w_extraction(self):
+    def add_PanorexSplineScreen_w_extraction(self):
         self.enable_save_load(True)
         self.arch_handler.compute_initial_state(96, want_side_volume=False)
         self.arch_handler.extract_data_from_gt()
-        self.add_AnnotationScreen()
+        self.add_PanorexSplineScreen()
 
     ########################
     # SHOW SCREEN HANDLERS #
@@ -263,7 +264,7 @@ class Container(QtGui.QWidget):
             title = "Ground truth available"
             message = "This DICOM has already annotations available. Would you like to use those as an initialization for the annotation?"
             question(self, title, message,
-                     yes_callback=self.add_AnnotationScreen_w_extraction,
+                     yes_callback=self.add_PanorexSplineScreen_w_extraction,
                      no_callback=lambda: ask_load(self))
         else:
             ask_load(self)
