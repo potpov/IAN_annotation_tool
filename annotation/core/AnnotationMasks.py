@@ -83,11 +83,8 @@ class AnnotationMasks():
 
     def set_mask_spline(self, idx, spline, from_snake=False):
         self._edited = True
-        try:  # if idx is outside lists dimensions, then ignore
-            self.created_from_snake[idx] = from_snake
-            self.masks[idx] = spline
-        except:
-            pass
+        self.created_from_snake[idx] = from_snake
+        self.masks[idx] = spline
         return spline
 
     def get_mask_spline(self, idx, from_snake=False):
@@ -180,6 +177,7 @@ class AnnotationMasks():
         self.scaling = data['scaling']
         self.skip = data['skip'] if 'skip' in data.keys() else 0
         self.masks = [None] * self.n
+        self.created_from_snake = [False] * self.n
         for i, spline_dump in enumerate(data['masks']):
             if spline_dump is None:
                 spline = None

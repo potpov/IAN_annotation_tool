@@ -15,7 +15,7 @@ from annotation.core.Arch import Arch
 from annotation.core.ArchDetections import ArchDetections
 from annotation.core.SideVolume import SideVolume, TiltedSideVolume
 from annotation.spline.Spline import Spline
-from annotation.utils.image import get_coords_by_label_3D, get_mask_by_label, filter_volume_Z_axis
+from annotation.utils.image import get_coords_by_label_3D, get_mask_by_label, filter_volume_Z_axis, plot
 from annotation.utils.math import clip_range, get_poly_approx_
 from conf import labels as l
 
@@ -359,9 +359,7 @@ class ArchHandler(Jaw):
             print("gt_volume is None")
             return
 
-        if debug:
-            from annotation.utils.image import plot
-            plot(self.create_panorex(self.arch.get_arch(), include_annotations=True), title="panorex+gt")
+        debug and plot(self.create_panorex(self.arch.get_arch(), include_annotations=True), title="panorex+gt")
 
         gt = np.copy(self.gt_volume)
         gt[gt > 0] = 1
@@ -369,8 +367,8 @@ class ArchHandler(Jaw):
         z, y, x = get_coords_by_label_3D(gt, 1)
         p, start, end = get_poly_approx_(x, y)
         self.arch_detections.set(self.selected_slice, (p, start, end))
-        start = clip_range(start - 20, 0, start)
-        end = clip_range(end + 20, end, self.W - 1)
+        # start = clip_range(start - 20, 0, start)
+        # end = clip_range(end + 20, end, self.W - 1)
         if p is not None:
             self.coords = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
             self.spline = Spline(coords=self.coords[1], num_cp=10)
@@ -379,6 +377,7 @@ class ArchHandler(Jaw):
             self.compute_side_coords()
 
         labels = self.extract_canal_mask_labels_Z()
+        debug and plot(labels, "labels")
 
         self.L_canal_spline = self.extract_canal_spline(labels, 1)
         self.R_canal_spline = self.extract_canal_spline(labels, 2)
