@@ -17,10 +17,11 @@ from annotation.core.SideVolume import SideVolume, TiltedSideVolume
 from annotation.spline.Spline import Spline
 from annotation.utils.image import get_coords_by_label_3D, get_mask_by_label, filter_volume_Z_axis, plot
 from annotation.utils.math import clip_range, get_poly_approx_
+from annotation.utils.metaclasses import SingletonMeta
 from conf import labels as l
 
 
-class ArchHandler(Jaw):
+class ArchHandler(Jaw, metaclass=SingletonMeta):
     LH_OFFSET = 50
     DUMP_FILENAME = 'dump.json'
     ANNOTATED_DICOM_DIRECTORY = 'annotated_dicom'
@@ -354,7 +355,7 @@ class ArchHandler(Jaw):
                 coords.append((i, z_))
         return Spline(coords=coords, num_cp=10)
 
-    def extract_data_from_gt(self, debug=False):
+    def extract_data_from_gt(self, load_annotations=True, debug=False):
         if self.gt_volume is None:
             print("gt_volume is None")
             return
@@ -383,8 +384,10 @@ class ArchHandler(Jaw):
         self.R_canal_spline = self.extract_canal_spline(labels, 2)
         shape = (len(self.side_coords), self.Z, max([len(points) for points in self.side_coords]))
         self.side_volume = TiltedSideVolume(self, self.side_volume_scale)
-        self.annotation_masks = AnnotationMasks(shape, self)
-        self.annotation_masks.load_mask_splines(check_shape=False)
+
+        if load_annotations:
+            self.annotation_masks = AnnotationMasks(shape, self)
+            self.annotation_masks.load_mask_splines(check_shape=False)
 
     ###########
     # GETTERS #

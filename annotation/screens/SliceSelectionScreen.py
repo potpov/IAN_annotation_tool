@@ -34,10 +34,6 @@ class SliceSelectionScreen(Screen):
 
     def initialize(self):
         self.archview.set_img()
-
-    def set_arch_handler(self, arch_handler):
-        self.arch_handler = arch_handler
-        self.archview.arch_handler = arch_handler
         if self.slider.maximum() == 0:
             max = self.arch_handler.Z - 1
             self.slider.setMaximum(max)

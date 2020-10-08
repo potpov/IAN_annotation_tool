@@ -28,7 +28,7 @@ class Toolbar(QtGui.QWidget):
         load_action.setToolTip("Load state")
         self.bar.addAction(load_action)
 
-        self.arch_handler = None
+        self.arch_handler = ArchHandler()
 
     def save(self):
         def yes(self):

@@ -15,6 +15,7 @@ from annotation.components.Canvas import SplineCanvas
 from annotation.utils.image import draw_blue_vertical_line
 from annotation.utils.qt import numpy2pixmap
 from annotation.utils.math import clip_range
+from annotation.core.ArchHandler import ArchHandler
 
 
 class CanvasPanorexWidget(SplineCanvas):
@@ -23,7 +24,7 @@ class CanvasPanorexWidget(SplineCanvas):
     def __init__(self, parent):
         super().__init__(parent)
         self.current_pos = None
-        self.arch_handler = None
+        self.arch_handler = ArchHandler()
         self.action = None
 
     def set_img(self):
@@ -162,7 +163,7 @@ class SinglePanorexWidget(QtGui.QWidget):
         super(SinglePanorexWidget, self).__init__()
         self.parent = parent
 
-        self.arch_handler = None
+        self.arch_handler = ArchHandler()
 
         self.layout = QtGui.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -188,7 +189,7 @@ class PanorexWidget(QtGui.QWidget):
         super(PanorexWidget, self).__init__()
         self.parent = parent
 
-        self.arch_handler = None
+        self.arch_handler = ArchHandler()
 
         self.layout = QtGui.QVBoxLayout(self)
 

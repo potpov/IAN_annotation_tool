@@ -9,8 +9,8 @@ class ArchDetections():
         Args:
             arch_handler (ArchHandler): ArchHandler parent object
         """
-        self.ah = arch_handler
-        self.data = [None] * self.ah.Z
+        self.arch_handler = arch_handler
+        self.data = [None] * self.arch_handler.Z
 
     def compute(self, i):
         """
@@ -20,7 +20,7 @@ class ArchDetections():
             i (int): slice
         """
         try:
-            self.data[i] = processing.arch_detection(self.ah.volume[i])
+            self.data[i] = processing.arch_detection(self.arch_handler.volume[i])
         except:
             self.data[i] = None
 

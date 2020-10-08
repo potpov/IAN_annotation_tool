@@ -1,6 +1,6 @@
 import numpy as np
 from pyface.qt import QtGui
-from annotation.utils.image import ContrastStretching
+from annotation.utils.ContrastStretching import ContrastStretching
 
 
 def numpy2pixmap(data):
@@ -13,18 +13,17 @@ def numpy2pixmap(data):
     Returns:
         (pyface.qt.QtGui.QPixmap): pixmap of the image
     """
-    print("{} - {}".format(data.shape, data.dtype))
-    if np.max(data) <= 1.01:  # sometimes we have max(data) == 1.00001
-        img_ = (data * 255)
-    else:
-        img_ = data
-    if len(img_.shape) != 3:
-        img_ = np.stack((img_,) * 3, axis=-1)
-    h, w, c = img_.shape
-    step = w * c
+    img_ = np.clip(data, 0, 1)
     cs = ContrastStretching()
     img_ = cs.stretch(img_)
+    img_ = np.clip(img_ * 255, 0, 255)
+
+    if len(img_.shape) != 3:
+        img_ = np.stack((img_,) * 3, axis=-1)
+
+    h, w, c = img_.shape
+    step = w * c
     # must pass a copy of the image
-    qimage = QtGui.QImage(img_.copy(), w, h, step, QtGui.QImage.Format_RGB888)
+    qimage = QtGui.QImage(np.array(img_, dtype=np.uint8), w, h, step, QtGui.QImage.Format_RGB888)
     pixmap = QtGui.QPixmap(qimage)
     return pixmap

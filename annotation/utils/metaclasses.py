@@ -22,5 +22,9 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
+class QObjectSingletonMeta(type(QtCore.QObject), SingletonMeta):
+    pass
+
+
 class AbstractQObjectMeta(type(QtCore.QObject), ABCMeta):
     pass

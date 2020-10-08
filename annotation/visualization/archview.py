@@ -6,12 +6,13 @@ from annotation.components.Canvas import SplineCanvas, Canvas
 from annotation.utils.qt import numpy2pixmap
 from annotation.utils.math import clip_range
 from annotation.actions.Action import ArchCpChangedAction, ArchCpRemovedAction, ArchCpAddedAction
+from annotation.core.ArchHandler import ArchHandler
 
 
 class ArchView(Canvas):
     def __init__(self, parent):
         super(ArchView, self).__init__(parent)
-        self.arch_handler = None
+        self.arch_handler = ArchHandler()
         self.slice_idx = 0
         self.show_arch = True
 
@@ -38,7 +39,7 @@ class SplineArchView(SplineCanvas):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.arch_handler = None
+        self.arch_handler = ArchHandler()
         self.selected_slice = None
         self.current_pos = None
         self.action = None  # action in progress

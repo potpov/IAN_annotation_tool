@@ -12,7 +12,7 @@ class AnnotationScreen(Screen):
         super().__init__(parent)
         self.container.loaded.connect(self.show_)
         self.current_pos = 0
-        
+
         self.layout.setAlignment(QtCore.Qt.AlignCenter)
 
         # panorex
@@ -34,6 +34,7 @@ class AnnotationScreen(Screen):
 
     def initialize(self):
         self.panorex.set_img()
+        self.panorex.set_can_edit_spline(not self.arch_handler.tilted())
         self.sidevolume.set_img()
 
     def pos_changed_handler(self):
@@ -50,12 +51,6 @@ class AnnotationScreen(Screen):
     def acquire_annotation_clicked_handler(self):
         self.arch_handler.annotation_masks.get_mask_spline(self.current_pos, from_snake=True)
         self._sidevolume_show()
-
-    def set_arch_handler(self, arch_handler):
-        self.arch_handler = arch_handler
-        self.panorex.set_can_edit_spline(not self.arch_handler.tilted())
-        self.panorex.arch_handler = arch_handler
-        self.sidevolume.arch_handler = arch_handler
 
     def show_(self):
         self.panel.setPosSliderMaximum(len(self.arch_handler.arch.get_arch()) - 1)

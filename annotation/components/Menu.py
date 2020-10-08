@@ -1,10 +1,11 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
 
-from annotation.components.DialogImageSettings import DialogImageSettings
+from annotation.components.DialogHUSettings import DialogHUSettings
+from annotation.utils.metaclasses import QObjectSingletonMeta
 
 
-class Menu(QtGui.QWidget):
+class Menu(QtGui.QWidget, metaclass=QObjectSingletonMeta):
     # file
     open = QtCore.pyqtSignal()
     save = QtCore.pyqtSignal()
@@ -45,6 +46,7 @@ class Menu(QtGui.QWidget):
 
         self.disable_(self.view)
         self.disable_(self.annotation)
+        self.disable_(self.options)
 
     def get(self):
         return self.bar
@@ -142,12 +144,12 @@ class Menu(QtGui.QWidget):
     def add_menu_options(self):
         self.options = self.bar.addMenu("&Options")
 
-        image_settings_action = QtGui.QAction("Edit image settings", self)
-        image_settings_action.triggered.connect(self.show_options)
-        self.options.addAction(image_settings_action)
+        HU_settings_action = QtGui.QAction("Edit HU thresholds", self)
+        HU_settings_action.triggered.connect(self.show_options)
+        self.options.addAction(HU_settings_action)
 
     def show_options(self):
-        DialogImageSettings().exec_()
+        DialogHUSettings().exec_()
 
     def disable_(self, menu):
         menu.setDisabled(True)

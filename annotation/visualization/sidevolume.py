@@ -8,13 +8,14 @@ from annotation.components.Canvas import SplineCanvas
 from annotation.spline.Spline import ClosedSpline
 from annotation.utils.math import clip_range
 from annotation.utils.qt import numpy2pixmap
+from annotation.core.ArchHandler import ArchHandler
 
 
 class CanvasSideVolume(SplineCanvas):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.arch_handler = None
+        self.arch_handler = ArchHandler()
         self.current_pos = 0
         self.r = 3
 
@@ -183,7 +184,7 @@ class SideVolume(QtGui.QWidget):
         super(SideVolume, self).__init__()
         self.parent = parent
 
-        self.arch_handler = None
+        self.arch_handler = ArchHandler()
 
         self.layout = QtGui.QVBoxLayout(self)
 

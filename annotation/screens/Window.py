@@ -30,5 +30,5 @@ class Window(QtGui.QMainWindow):
 
     def closeEvent(self, event):
         title = "Exit"
-        message = "Are you sure you wanto to quit?"
+        message = "Are you sure you want to quit?"
         question(self, title, message, event.accept, event.ignore, default="No")

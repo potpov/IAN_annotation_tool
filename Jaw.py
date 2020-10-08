@@ -25,11 +25,12 @@ class Jaw:
         """
         basename = os.path.basename(dicomdir_path)
         if basename.lower() != 'dicomdir':
-            raise Exception("ERROR: DICODIR PATH HAS TO END WITH DICOMDIR")
+            raise Exception("ERROR: DICOMDIR PATH HAS TO END WITH DICOMDIR")
 
         self.dicom_dir = read_dicomdir(os.path.join(dicomdir_path))
         self.filenames, self.dicom_files, self.volume = dicom_from_dicomdir(self.dicom_dir)
         self.Z, self.H, self.W = self.volume.shape
+        self.HU_intercept, self.HU_slope = self.__get_HU_rescale_params()
 
         if flip:  # Z-axis has to be flipped
             self.volume = np.flip(self.volume, 0)
@@ -37,8 +38,10 @@ class Jaw:
             self.filenames.reverse()
 
         self.__remove_quantiles()
+        self.max_value = 0
         self.__normalize()
         self.gt_volume = self.__build_ann_volume()
+        self.HU_volume = self.convert_01_to_HU(self.volume)
 
     def merge_predictions(self, plane, pred):
         """
@@ -59,6 +62,20 @@ class Jaw:
     ############
     # DICOM OPS
     ############
+
+    def __get_HU_rescale_params(self):
+        """
+        Retrieves RescaleIntercept and RescaleSlope values from DICOM's DataSet
+
+        Returns:
+            (int, int): RescaleIntercept and RescaleSlope values
+        """
+        HU_intercept = self.dicom_files[0].get((0x0028, 0x1052))
+        HU_slope = self.dicom_files[0].get((0x0028, 0x1053))
+        if HU_intercept is not None and HU_slope is not None:
+            return HU_intercept.value, HU_slope.value
+        else:
+            return -1000, 1
 
     def __add_overlay(self, ds, overlay_data, overlay_addr, overlay_desc):
         """
@@ -278,6 +295,12 @@ class Jaw:
 
         return panorex
 
+    def convert_01_to_HU(self, data):
+        return data * self.max_value * self.HU_slope + self.HU_intercept
+
+    def convert_HU_to_01(self, data):
+        return (data - self.HU_intercept) / (self.HU_slope * self.max_value)
+
     ###################
     # GETTERS | SETTERS
     ###################
@@ -300,6 +323,13 @@ class Jaw:
         gt = get_mask_by_label(self.gt_volume, l.CONTOUR) + \
              get_mask_by_label(self.gt_volume, l.INSIDE)
         return gt
+
+    def get_HU_volume(self):
+        return self.HU_volume
+
+    def get_min_max_HU(self):
+        HU_volume = self.get_HU_volume()
+        return HU_volume.min(), HU_volume.max()
 
     def set_volume(self, volume):
         self.volume = volume
@@ -468,6 +498,7 @@ class Jaw:
             type (String): type of normalizations, simple [0-1]
         """
         if type == 'simple':
+            self.max_value = self.volume.max()
             self.volume = self.volume.astype(np.float32) / self.volume.max()
 
     def __build_ann_volume(self):

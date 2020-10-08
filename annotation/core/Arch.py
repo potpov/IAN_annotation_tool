@@ -12,7 +12,7 @@ class Arch():
             arch_handler (ArchHandler): ArchHandler parent object
             arch (list of (float, float)): list of coordinates
         """
-        self.ah = arch_handler
+        self.arch_handler = arch_handler
         self.set_arch(arch)
         self.set_panorex(self.compute_panorex())
 
@@ -23,7 +23,7 @@ class Arch():
         Returns:
             (numpy.ndarray): computed panorex
         """
-        return self.ah.create_panorex(self.arch)
+        return self.arch_handler.create_panorex(self.arch)
 
     def compute_poly(self):
         """
@@ -79,7 +79,7 @@ class Arch():
             (Arch): copy of this Arch
         """
         arch = self.arch.copy()
-        return Arch(self.ah, arch)
+        return Arch(self.arch_handler, arch)
 
     ###########
     # GETTERS #

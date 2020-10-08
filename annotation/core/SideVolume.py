@@ -20,14 +20,14 @@ class SideVolume():
             arch_handler (annotation.core.ArchHandler.ArchHandler): arch handler that is parent of this object
             scale (float): scale of the desired side_volume wrt the orginal shape
         """
-        self.ah = arch_handler
+        self.arch_handler = arch_handler
         self.scale = scale
         self.original = None
         self.data = None
         self.update()
 
     def is_there_data_to_load(self):
-        base = os.path.dirname(self.ah.dicomdir_path)
+        base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
         sv = os.path.join(dir, self.SIDE_VOLUME_FILENAME)
         sc = os.path.join(dir, self.SIDE_COORDS_FILENAME)
@@ -35,16 +35,16 @@ class SideVolume():
         return os.path.isfile(sv) and os.path.isfile(sc) and os.path.isfile(co)
 
     def save_(self):
-        base = os.path.dirname(self.ah.dicomdir_path)
+        base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
         if not os.path.exists(dir):
             os.makedirs(dir)
         np.save(os.path.join(dir, self.SIDE_VOLUME_FILENAME), self.original)
-        np.save(os.path.join(dir, self.SIDE_COORDS_FILENAME), self.ah.side_coords)
-        np.save(os.path.join(dir, self.COORDS_FILENAME), np.asarray(self.ah.coords))
+        np.save(os.path.join(dir, self.SIDE_COORDS_FILENAME), self.arch_handler.side_coords)
+        np.save(os.path.join(dir, self.COORDS_FILENAME), np.asarray(self.arch_handler.coords))
 
     def load_(self):
-        base = os.path.dirname(self.ah.dicomdir_path)
+        base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
         sv = os.path.join(dir, self.SIDE_VOLUME_FILENAME)
         sc = os.path.join(dir, self.SIDE_COORDS_FILENAME)
@@ -58,13 +58,13 @@ class SideVolume():
         sc_ = np.load(sc)
         co_ = np.load(co, allow_pickle=True)
 
-        if not np.array_equal(sc_, self.ah.side_coords):
+        if not np.array_equal(sc_, self.arch_handler.side_coords):
             msg = "Loaded side coords do not match with current side coords"
             print(msg)
             raise ValueError(msg)
         self.data = sv_
-        self.ah.side_coords = sc_
-        self.ah.coords = (co_[0], co_[1], co_[2], co_[3])
+        self.arch_handler.side_coords = sc_
+        self.arch_handler.coords = (co_[0], co_[1], co_[2], co_[3])
         self._postprocess_data()
 
     def _postprocess_data(self):
@@ -89,7 +89,7 @@ class SideVolume():
         Args:
             scale (float): scale of side volume w.r.t. volume dimensions
         """
-        self.data = self.ah.line_slice(self.ah.side_coords, step_fn=step_fn)
+        self.data = self.arch_handler.line_slice(self.arch_handler.side_coords, step_fn=step_fn)
         self._postprocess_data()
         # self.save_()
 
@@ -127,7 +127,7 @@ class TiltedSideVolume(SideVolume):
     CANAL_SPLINES_FILENAME = "canals.json"
 
     def __init__(self, arch_handler, scale):
-        self.ah = arch_handler
+        self.arch_handler = arch_handler
         self.scale = scale
         self.original = None
         self.data = None
@@ -142,10 +142,10 @@ class TiltedSideVolume(SideVolume):
             self.load_()
         except Exception as e:
             warning(None, "Error", str(e))
-            super().__init__(self.ah, self.scale)
+            super().__init__(self.arch_handler, self.scale)
 
     def is_there_data_to_load(self):
-        base = os.path.dirname(self.ah.dicomdir_path)
+        base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
         p = os.path.join(dir, self.PLANES_FILENAME)
         cs = os.path.join(dir, self.CANAL_SPLINES_FILENAME)
@@ -153,7 +153,7 @@ class TiltedSideVolume(SideVolume):
 
     def save_(self):
         super().save_()
-        base = os.path.dirname(self.ah.dicomdir_path)
+        base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
 
         # planes
@@ -170,15 +170,15 @@ class TiltedSideVolume(SideVolume):
         # canal splines
         cs = os.path.join(dir, self.CANAL_SPLINES_FILENAME)
         splines = {
-            "l_canal": self.ah.L_canal_spline.get_json(),
-            "r_canal": self.ah.R_canal_spline.get_json()
+            "l_canal": self.arch_handler.L_canal_spline.get_json(),
+            "r_canal": self.arch_handler.R_canal_spline.get_json()
         }
         with open(cs, "w") as outfile:
             json.dump(splines, outfile)
 
     def load_(self):
         super().load_()
-        base = os.path.dirname(self.ah.dicomdir_path)
+        base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
 
         # planes
@@ -209,7 +209,7 @@ class TiltedSideVolume(SideVolume):
         L_canal_spline = splines['l_canal']
         R_canal_spline = splines['r_canal']
 
-        if not L_canal_spline == self.ah.L_canal_spline.get_json() or not R_canal_spline == self.ah.R_canal_spline.get_json():
+        if not L_canal_spline == self.arch_handler.L_canal_spline.get_json() or not R_canal_spline == self.arch_handler.R_canal_spline.get_json():
             msg = "Loaded side volume corresponding canal splines do not match with current canals"
             print(msg)
             raise ValueError(msg)
@@ -222,25 +222,25 @@ class TiltedSideVolume(SideVolume):
         for x in range(self.data.shape[0]):
             if x in range(int(start), int(end)):
                 step_fn is not None and step_fn(x, self.data.shape[0])
-                side_coord = self.ah.side_coords[x]
-                plane = Plane(self.ah.Z, len(side_coord))
+                side_coord = self.arch_handler.side_coords[x]
+                plane = Plane(self.arch_handler.Z, len(side_coord))
                 plane.from_line(side_coord)
                 angle = -np.degrees(np.arctan(derivative(x)))
                 plane.tilt_z(angle, p(x))
-                cut = self.ah.plane_slice(plane)
+                cut = self.arch_handler.plane_slice(plane)
                 print("{}/{}".format(x, len(self.planes)), end='\r')
                 self.planes[x] = plane
                 self.data[x] = cut
 
     def update(self):
-        n = len(self.ah.side_coords)
-        h = self.ah.Z
-        w = max([len(points) for points in self.ah.side_coords])
+        n = len(self.arch_handler.side_coords)
+        h = self.arch_handler.Z
+        w = max([len(points) for points in self.arch_handler.side_coords])
         self.data = np.zeros((n, h, w))
         pld = ProgressLoadingDialog("Computing tilted views")
-        pld.set_function(lambda: self._compute_on_spline(self.ah.L_canal_spline, step_fn=pld.get_signal()))
+        pld.set_function(lambda: self._compute_on_spline(self.arch_handler.L_canal_spline, step_fn=pld.get_signal()))
         pld.start()
-        pld.set_function(lambda: self._compute_on_spline(self.ah.R_canal_spline, step_fn=pld.get_signal()))
+        pld.set_function(lambda: self._compute_on_spline(self.arch_handler.R_canal_spline, step_fn=pld.get_signal()))
         pld.start()
         self._postprocess_data()
         self.save_()

@@ -2,16 +2,18 @@ from PyQt5 import QtCore, QtWidgets
 from pyface.qt import QtGui
 import numpy as np
 
-from annotation.utils.image import ContrastStretching
+from annotation.core.ArchHandler import ArchHandler
+from annotation.utils.ContrastStretching import ContrastStretching
 from annotation.utils.qt import numpy2pixmap
 from annotation.controlpanels.ControlPanel import ControlPanel
 
 
-class DialogImageSettings(QtWidgets.QDialog):
+class DialogHUSettings(QtWidgets.QDialog):
     def __init__(self, parent=None):
-        super(DialogImageSettings, self).__init__(parent)
+        super(DialogHUSettings, self).__init__(parent)
 
-        self.setWindowTitle("Image settings")
+        self.setWindowTitle("Hounsfield Units thresholds")
+        self.setMinimumWidth(500)
         self.layout = QtGui.QVBoxLayout(self)
         self.cs = ContrastStretching()
 
@@ -19,11 +21,16 @@ class DialogImageSettings(QtWidgets.QDialog):
         self.test_image_label = QtGui.QLabel()
         self.test_image_label.setPixmap(numpy2pixmap(self.test_image))
 
-        self.min_slider = ControlPanel().create_slider(name="Lower threshold", min=0, max=255,
-                                                       val=self.cs.min_, default=0,
+        self.arch_handler = ArchHandler()
+        min_, max_ = self.arch_handler.get_min_max_HU()
+
+        self.min_slider = ControlPanel().create_slider(name="Lower threshold", min=min_, max=max_,
+                                                       val=self.cs.min_, default=min_,
+                                                       tick_interval=100,
                                                        valueChanged=self.min_slider_changed_handler)
-        self.max_slider = ControlPanel().create_slider(name="Higher threshold", min=0, max=255,
-                                                       val=self.cs.max_, default=255,
+        self.max_slider = ControlPanel().create_slider(name="Higher threshold", min=min_, max=max_,
+                                                       val=self.cs.max_, default=max_,
+                                                       tick_interval=100,
                                                        valueChanged=self.max_slider_changed_handler)
         self.close_button = QtGui.QPushButton("Close")
         self.close_button.clicked.connect(self.close)
@@ -49,4 +56,4 @@ class DialogImageSettings(QtWidgets.QDialog):
         self.update_test_image()
 
     def create_test_image(self):
-        return np.tile(np.arange(0, 255).repeat(2), (100, 1)).astype(np.uint8)
+        return np.tile(np.arange(0, 255).repeat(2), (100, 1)).astype(np.float32) / 255

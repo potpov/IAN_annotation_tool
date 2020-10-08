@@ -4,6 +4,7 @@ from annotation.actions.Action import SideVolumeSplineResetAction
 from annotation.controlpanels.AnnotationControlPanel import AnnotationControlPanel
 from annotation.visualization.panorex import CanvasPanorexWidget
 from annotation.visualization.sidevolume import CanvasSideVolume
+from annotation.core.ArchHandler import ArchHandler
 
 
 class TiltAnnotationScreen(QtGui.QWidget):
@@ -36,7 +37,7 @@ class TiltAnnotationScreen(QtGui.QWidget):
         self.panel.acquire_annotation_clicked.connect(self.acquire_annotation_clicked_handler)
         self.layout.addWidget(self.panel, 1, 0)
 
-        self.arch_handler = None
+        self.arch_handler = ArchHandler()
         self.current_pos = 0
 
     def initialize(self):
@@ -73,9 +74,3 @@ class TiltAnnotationScreen(QtGui.QWidget):
                                 auto_propagate=self.panel.auto_acquire_annotation.isChecked(),
                                 show_mask_spline=self.panel.show_mask_spline.isChecked()
                                 )
-
-    def set_arch_handler(self, arch_handler):
-        self.arch_handler = arch_handler
-        self.panorex.arch_handler = arch_handler
-        self.sidevolume.arch_handler = arch_handler
-        self.t_sidevolume.arch_handler = arch_handler

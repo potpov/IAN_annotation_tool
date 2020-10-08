@@ -3,6 +3,7 @@ from pyface.qt import QtGui
 
 from annotation.actions.Action import TiltedPlanesAnnotationAction, DefaultPlanesAnnotationAction
 from annotation.components.Dialog import question, information, LoadingDialog
+from annotation.components.Menu import Menu
 from annotation.screens.AnnotationScreen import AnnotationScreen
 from annotation.screens.ArchSplineScreen import ArchSplineScreen
 from annotation.screens.PanorexSplineScreen import PanorexSplineScreen
@@ -26,9 +27,10 @@ class Container(QtGui.QWidget):
         self.layout = QtGui.QGridLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.window = parent
-        self.window.mb.save.connect(self.save)
-        self.window.mb.autosave.connect(self.autosave)
-        self.window.mb.load.connect(self.load)
+        self.mb = Menu()
+        self.mb.save.connect(self.save)
+        self.mb.autosave.connect(self.autosave)
+        self.mb.load.connect(self.load)
 
         # screens (always register here all screens)
         self.slice_sel = None
@@ -45,40 +47,43 @@ class Container(QtGui.QWidget):
 
     def connect_to_menubar(self):
         # view
-        self.window.mb.view_volume.connect(
+        self.mb.view_volume.connect(
             lambda: self.show_Dialog3DPlot(self.arch_handler.volume, "Volume"))
 
-        self.window.mb.view_gt_volume.connect(
+        self.mb.view_gt_volume.connect(
             # lambda: self.show_Dialog3DPlot(self.arch_handler.gt_volume, "Ground truth"))
             lambda: self.show_Dialog3DPlot(self.arch_handler.get_simpler_gt_volume(), "Ground truth"))
 
-        self.window.mb.view_gt_volume_delaunay.connect(
+        self.mb.view_gt_volume_delaunay.connect(
             lambda: self.show_Dialog3DPlot(self.arch_handler.gt_delaunay, "Ground truth with Delaunay smoothing"))
 
-        self.window.mb.view_volume_with_gt.connect(
+        self.mb.view_volume_with_gt.connect(
             lambda: self.show_Dialog3DPlot(self.arch_handler.get_jaw_with_gt(), "Volume + Ground truth"))
 
-        self.window.mb.view_volume_with_delaunay.connect(
+        self.mb.view_volume_with_delaunay.connect(
             lambda: self.show_Dialog3DPlot(self.arch_handler.get_jaw_with_delaunay(),
                                            "Volume + Ground truth with Delaunay smoothing"))
 
         # annotation
-        self.window.mb.export_mask_imgs.connect(self.arch_handler.export_annotations_as_imgs)
-        self.window.mb.export_annotated_dicom.connect(self.arch_handler.export_annotations_as_dicom)
-        self.window.mb.export_gt_volume.connect(self.arch_handler.export_gt_volume)
-        self.window.mb.apply_delaunay.connect(self.arch_handler.compute_gt_volume_delaunay)
+        self.mb.export_mask_imgs.connect(self.arch_handler.export_annotations_as_imgs)
+        self.mb.export_annotated_dicom.connect(self.arch_handler.export_annotations_as_dicom)
+        self.mb.export_gt_volume.connect(self.arch_handler.export_gt_volume)
+        self.mb.apply_delaunay.connect(self.arch_handler.compute_gt_volume_delaunay)
 
     def enable_view_menu(self):
-        self.window.mb.enable_(self.window.mb.view)
+        self.mb.enable_(self.mb.view)
 
     def enable_annotation_menu(self):
-        self.window.mb.enable_(self.window.mb.annotation)
+        self.mb.enable_(self.mb.annotation)
+
+    def enable_options_menu(self):
+        self.mb.enable_(self.mb.options)
 
     def disable_annotation_menu(self):
-        self.window.mb.disable_(self.window.mb.annotation)
+        self.mb.disable_(self.mb.annotation)
 
     def enable_save_load(self, enabled):
-        self.window.mb.enable_save_load(enabled)
+        self.mb.enable_save_load(enabled)
 
     ###############
     # SAVE | LOAD #
@@ -124,7 +129,6 @@ class Container(QtGui.QWidget):
         self.enable_save_load(False)
         self.slice_sel = SliceSelectionScreen(self)
         self.slice_sel.slice_selected.connect(self.show_ArchSplineScreen)
-        self.slice_sel.set_arch_handler(self.arch_handler)
         self.slice_sel.initialize()
         self.slice_sel.show_()
         self.layout.addWidget(self.slice_sel, 0, 0)
@@ -139,7 +143,6 @@ class Container(QtGui.QWidget):
         self.enable_save_load(True)
         self.arch_spline = ArchSplineScreen(self)
         self.arch_spline.spline_selected.connect(self.show_PanorexSplineScreen)
-        self.arch_spline.set_arch_handler(self.arch_handler)
         self.arch_spline.initialize()
         self.arch_spline.show_()
         self.layout.addWidget(self.arch_spline, 0, 0)
@@ -155,7 +158,6 @@ class Container(QtGui.QWidget):
         self.arch_handler.offset_arch(pano_offset=0)
         self.pano_spline = PanorexSplineScreen(self)
         self.pano_spline.panorex_spline_selected.connect(self.show_AnnotationScreen)
-        self.pano_spline.set_arch_handler(self.arch_handler)
         self.pano_spline.initialize()
         self.pano_spline.show_()
         self.layout.addWidget(self.pano_spline, 0, 0)
@@ -189,7 +191,6 @@ class Container(QtGui.QWidget):
             information(self, title, message)
             no(self)
 
-        self.annotation.set_arch_handler(self.arch_handler)
         self.annotation.initialize()
         self.annotation.show_()
         self.layout.addWidget(self.annotation, 0, 0)
@@ -259,6 +260,7 @@ class Container(QtGui.QWidget):
 
         self.clear()
         self.enable_view_menu()
+        self.enable_options_menu()
 
         if self.arch_handler.get_simpler_gt_volume().any():
             title = "Ground truth available"

@@ -62,12 +62,6 @@ class ArchSplineScreen(Screen):
         self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE)
         self.show_()
 
-    def set_arch_handler(self, arch_handler):
-        self.arch_handler = arch_handler
-        self.archview.arch_handler = arch_handler
-        self.panorex.arch_handler = arch_handler
-        self.sidevolume.arch_handler = arch_handler
-
     def show_(self):
         self.panel.setPosSliderMaximum(len(self.arch_handler.arch.get_arch()) - 1)
         self.archview.show_(pos=self.current_pos)

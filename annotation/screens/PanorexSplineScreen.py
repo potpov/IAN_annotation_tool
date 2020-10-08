@@ -44,8 +44,3 @@ class PanorexSplineScreen(Screen):
     def show_(self):
         self.panorex.show_()
         self.archview.show_(self.arch_handler.selected_slice, True)
-
-    def set_arch_handler(self, arch_handler):
-        self.arch_handler = arch_handler
-        self.panorex.arch_handler = arch_handler
-        self.archview.arch_handler = arch_handler

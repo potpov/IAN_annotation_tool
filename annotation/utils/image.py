@@ -3,8 +3,6 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.segmentation import inverse_gaussian_gradient, morphological_geodesic_active_contour
-from annotation.utils.math import clip_range
-from annotation.utils.metaclasses import SingletonMeta
 from conf import labels as l
 
 
@@ -27,38 +25,6 @@ def draw_blue_vertical_line(img, pos):
     blue_line = np.moveaxis(blue_line, 0, -1)
     img_rgb[:, pos, :] = blue_line
     return img_rgb
-
-
-class ContrastStretching(metaclass=SingletonMeta):
-    def __init__(self, min_=0, max_=255):
-        """
-        Class that manages contrast stretching in a uniform manner.
-        It uses min-max method.
-
-        Args:
-            min_(int): lower threshold
-            max_(int): higher threshold
-        """
-        self.min_ = min_
-        self.max_ = max_
-
-    def set_min(self, min_):
-        self.min_ = int(clip_range(min_, 0, 255))
-
-    def set_max(self, max_):
-        self.max_ = int(clip_range(max_, 0, 255))
-
-    def set_range(self, min_, max_):
-        if min_ > max_:
-            max_, min_ = min_, max_
-        self.set_min(min_)
-        self.set_max(max_)
-
-    def stretch(self, img, ret_dtype=np.uint8):
-        ret = np.array(img, dtype=np.float32)
-        ret = ((ret - self.min_) / (self.max_ - self.min_)) * 255
-        ret = np.clip(ret, 0, 255).astype(ret_dtype)
-        return ret
 
 
 def enhance_contrast(img):
