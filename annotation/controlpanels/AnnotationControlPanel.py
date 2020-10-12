@@ -30,6 +30,12 @@ class AnnotationControlPanel(ControlPanel):
         self.show_mask_spline.clicked.connect(self.flags_changed.emit)
         self.layout.addRow(QtWidgets.QLabel(""), self.show_mask_spline)
 
+        self.show_cp_boxes = QtWidgets.QCheckBox("Show control points (C)")
+        self.show_cp_boxes.setChecked(True)
+        self.show_cp_boxes.setShortcut("C")
+        self.show_cp_boxes.clicked.connect(self.flags_changed.emit)
+        self.layout.addRow(QtWidgets.QLabel(""), self.show_cp_boxes)
+
         self.auto_acquire_annotation = QtWidgets.QCheckBox(
             "Automatically acquire annotation from previous/succeeding (Ctrl+A)")
         self.auto_acquire_annotation.setChecked(False)

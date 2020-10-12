@@ -2,7 +2,7 @@ from pyface.qt import QtGui
 
 from annotation.actions.Action import SideVolumeSplineResetAction
 from annotation.controlpanels.AnnotationControlPanel import AnnotationControlPanel
-from annotation.visualization.panorex import CanvasPanorexWidget
+from annotation.visualization.panorex import CanvasPanorex
 from annotation.visualization.sidevolume import CanvasSideVolume
 from annotation.core.ArchHandler import ArchHandler
 
@@ -15,7 +15,7 @@ class TiltAnnotationScreen(QtGui.QWidget):
         self.container.loaded.connect(self.show_)
 
         # panorex
-        self.panorex = CanvasPanorexWidget(self, tilted=True)
+        self.panorex = CanvasPanorex(self, tilted=True)
         self.panorex.set_can_edit_spline(False)
         self.panorex.spline_changed.connect(self.sidevolume_show)
         self.layout.addWidget(self.panorex, 0, 0)

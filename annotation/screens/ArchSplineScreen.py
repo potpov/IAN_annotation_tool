@@ -2,7 +2,7 @@ from PyQt5 import QtCore, QtWidgets
 from annotation.screens.Screen import Screen
 from annotation.controlpanels.ArchSplineControlPanel import ArchSplineControlPanel
 from annotation.visualization.archview import SplineArchView
-from annotation.visualization.panorex import PanorexWidget
+from annotation.visualization.panorex import MultiPanorex
 from annotation.visualization.sidevolume import SideVolume
 
 
@@ -20,7 +20,7 @@ class ArchSplineScreen(Screen):
         self.layout.addWidget(self.archview, 0, 0)
 
         # panorex
-        self.panorex = PanorexWidget(self)
+        self.panorex = MultiPanorex(self)
         self.layout.addWidget(self.panorex, 0, 1)
 
         # side volume

@@ -1,17 +1,19 @@
 from PyQt5 import QtWidgets
 from pyface.qt import QtGui
-
+import os
 from annotation.components.Dialog import question
 from annotation.components.Menu import Menu
 from annotation.screens.Container import Container
 
 
 class Window(QtGui.QMainWindow):
-    WINDOW_TITLE = "IAN Annotation Tool"
+    WINDOW_TITLE = "IAN Anjanotation Tool"
+    ICON = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "images", "icon.ico")
 
     def __init__(self):
         super(Window, self).__init__()
         self.setWindowTitle(self.WINDOW_TITLE)
+        self.setWindowIcon(QtGui.QIcon(self.ICON))
 
         self.mb = Menu(self)
         self.mb.open.connect(self.open_dicomdir)

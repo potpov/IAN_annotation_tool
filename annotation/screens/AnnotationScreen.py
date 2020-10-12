@@ -3,7 +3,7 @@ from PyQt5 import QtCore
 from annotation.actions.Action import SideVolumeSplineResetAction
 from annotation.screens.Screen import Screen
 from annotation.controlpanels.AnnotationControlPanel import AnnotationControlPanel
-from annotation.visualization.panorex import CanvasPanorexWidget
+from annotation.visualization.panorex import CanvasPanorex
 from annotation.visualization.sidevolume import CanvasSideVolume
 
 
@@ -16,7 +16,7 @@ class AnnotationScreen(Screen):
         self.layout.setAlignment(QtCore.Qt.AlignCenter)
 
         # panorex
-        self.panorex = CanvasPanorexWidget(self)
+        self.panorex = CanvasPanorex(self)
         self.panorex.spline_changed.connect(self._sidevolume_show)
         self.layout.addWidget(self.panorex, 0, 0)
 
@@ -38,6 +38,7 @@ class AnnotationScreen(Screen):
         self.sidevolume.set_img()
 
     def pos_changed_handler(self):
+        self.arch_handler.history.save_()
         self.arch_handler.annotation_masks.save_mask_splines()
         self.current_pos = self.panel.getPosValue()
         self.show_()
@@ -62,5 +63,6 @@ class AnnotationScreen(Screen):
         self.sidevolume.show_(pos=self.current_pos,
                               show_dot=self.panel.show_dot.isChecked(),
                               auto_propagate=self.panel.auto_acquire_annotation.isChecked(),
-                              show_mask_spline=self.panel.show_mask_spline.isChecked()
+                              show_mask_spline=self.panel.show_mask_spline.isChecked(),
+                              show_cp_boxes=self.panel.show_cp_boxes.isChecked(),
                               )

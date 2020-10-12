@@ -23,6 +23,7 @@ class CanvasSideVolume(SplineCanvas):
         self.show_dot = False
         self.auto_propagate = False
         self.show_mask_spline = False
+        self.show_cp_boxes = True
 
         # action
         self.action = None
@@ -82,7 +83,7 @@ class CanvasSideVolume(SplineCanvas):
         if self.show_mask_spline:
             spline = self.arch_handler.annotation_masks.get_mask_spline(self.current_pos,
                                                                         from_snake=self.auto_propagate)
-            self.draw_spline(painter, spline, col.ANN_SPLINE)
+            self.draw_spline(painter, spline, col.ANN_SPLINE, show_cp_boxes=self.show_cp_boxes)
 
         if self.show_dot:
             self.draw_dot(painter, x, z, LR)
@@ -112,8 +113,8 @@ class CanvasSideVolume(SplineCanvas):
         if not self._can_edit_spline:
             return
 
-        # if we don't show the spline, then we don't react to clicks
-        if not self.show_mask_spline:
+        # if we don't show the spline or its cp boxes, then we don't react to clicks
+        if not self.show_mask_spline or not self.show_cp_boxes:
             return
 
         self.drag_point = None
@@ -170,11 +171,12 @@ class CanvasSideVolume(SplineCanvas):
             # Redraw curve
             self.update()
 
-    def show_(self, pos=0, show_dot=False, auto_propagate=False, show_mask_spline=False):
+    def show_(self, pos=0, show_dot=False, auto_propagate=False, show_mask_spline=False, show_cp_boxes=True):
         self.current_pos = pos
         self.show_dot = show_dot
         self.auto_propagate = auto_propagate
         self.show_mask_spline = show_mask_spline
+        self.show_cp_boxes = show_cp_boxes
         self.set_img()
         self.update()
 

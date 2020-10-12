@@ -24,6 +24,7 @@ def numpy2pixmap(data):
     h, w, c = img_.shape
     step = w * c
     # must pass a copy of the image
-    qimage = QtGui.QImage(np.array(img_, dtype=np.uint8), w, h, step, QtGui.QImage.Format_RGB888)
+    img_ = img_.astype(np.uint8)
+    qimage = QtGui.QImage(img_.copy(), w, h, step, QtGui.QImage.Format_RGB888)
     pixmap = QtGui.QPixmap(qimage)
     return pixmap

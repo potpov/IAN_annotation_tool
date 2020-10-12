@@ -8,7 +8,7 @@ from annotation.spline.Spline import Spline
 from annotation.utils.image import plot, filter_volume_Z_axis, get_coords_by_label_3D, get_mask_by_label
 from annotation.utils.math import get_poly_approx_
 from annotation.visualization.archview import ArchView
-from annotation.visualization.panorex import CanvasPanorexWidget
+from annotation.visualization.panorex import CanvasPanorex
 
 
 class Container(QtGui.QWidget):
@@ -25,7 +25,7 @@ class Container(QtGui.QWidget):
         self.slice = self.arch_handler.volume[self.selected_slice]
 
         self.archview = ArchView(self)
-        self.panorex = CanvasPanorexWidget(self)
+        self.panorex = CanvasPanorex(self)
         self.panorex.set_can_edit_spline(False)
         self.set_arch_handler()
 

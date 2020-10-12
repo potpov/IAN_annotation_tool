@@ -118,7 +118,8 @@ class SplineCanvas(Canvas, metaclass=AbstractQObjectMeta):
     def mouseMoveEvent(self, QMouseEvent):
         pass
 
-    def draw_spline(self, painter, spline, spline_color, cp_box_color=None, show_cp_idx=False, offsetXY=WIDGET_MARGIN):
+    def draw_spline(self, painter, spline, spline_color, show_cp_boxes=True,
+                    cp_box_color=None, show_cp_idx=False, offsetXY=WIDGET_MARGIN):
         """
         Paints a spline onto a QPainter.
 
@@ -126,6 +127,7 @@ class SplineCanvas(Canvas, metaclass=AbstractQObjectMeta):
             painter (QtGui.QPainter): where to draw the spline
             spline (annotation.spline.Spline.Spline): spline to draw
             spline_color (QtGui.QColor): color of the spline
+            show_cp_boxes (bool): draw control points or not
             cp_box_color (QtGui.QColor): color of the control points
             show_cp_idx (bool): draw control point index number
         """
@@ -134,16 +136,17 @@ class SplineCanvas(Canvas, metaclass=AbstractQObjectMeta):
 
         self.draw_points(painter, spline.get_spline(), spline_color, offsetXY)
 
-        cp_box_color = cp_box_color or spline_color
-        painter.setPen(cp_box_color)
-        brush = QtGui.QColor(cp_box_color)
-        brush.setAlpha(120)
-        painter.setBrush(brush)
-        for idx, (x, y) in enumerate(spline.cp):
-            rect_x = int((x + offsetXY) - (self.l // 2))
-            rect_y = int((y + offsetXY) - (self.l // 2))
-            painter.drawRect(rect_x, rect_y, self.l, self.l)
-            show_cp_idx and painter.drawText(rect_x, rect_y, str(idx))
+        if show_cp_boxes:
+            cp_box_color = cp_box_color or spline_color
+            painter.setPen(cp_box_color)
+            brush = QtGui.QColor(cp_box_color)
+            brush.setAlpha(120)
+            painter.setBrush(brush)
+            for idx, (x, y) in enumerate(spline.cp):
+                rect_x = int((x + offsetXY) - (self.l // 2))
+                rect_y = int((y + offsetXY) - (self.l // 2))
+                painter.drawRect(rect_x, rect_y, self.l, self.l)
+                show_cp_idx and painter.drawText(rect_x, rect_y, str(idx))
 
     def draw_tilted_plane_line(self, painter, spline, spline_color):
         if spline is None:

@@ -38,9 +38,14 @@ What follows is the configuration used to freeze the application into an executa
     ```
 2. Add DLLs to virtual environment. DLLs are available in Python installation,
 so navigate to that folder, copy `DLLs` directory and paste it into `venv`.
-2. Launch `buildExe.py`:
+2. Launch `build_exe.py`:
     ```bash
-   python buildExe.py build
-   ```
+    python build_exe.py build
+    ```
+    Instead, to create an installer for Windows, run the following command:
+    ```bash
+    python build_exe.py bdist_msi
+    ```
 3. Check into `build` directory.
+
 

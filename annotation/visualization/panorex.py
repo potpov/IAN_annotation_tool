@@ -18,7 +18,7 @@ from annotation.utils.math import clip_range
 from annotation.core.ArchHandler import ArchHandler
 
 
-class CanvasPanorexWidget(SplineCanvas):
+class CanvasPanorex(SplineCanvas):
     spline_changed = QtCore.pyqtSignal()
 
     def __init__(self, parent):
@@ -158,9 +158,9 @@ class CanvasPanorexWidget(SplineCanvas):
         self.update()
 
 
-class SinglePanorexWidget(QtGui.QWidget):
+class SinglePanorex(QtGui.QWidget):
     def __init__(self, parent):
-        super(SinglePanorexWidget, self).__init__()
+        super(SinglePanorex, self).__init__()
         self.parent = parent
 
         self.arch_handler = ArchHandler()
@@ -184,9 +184,9 @@ class SinglePanorexWidget(QtGui.QWidget):
         self.pano.update()
 
 
-class PanorexWidget(QtGui.QWidget):
+class MultiPanorex(QtGui.QWidget):
     def __init__(self, parent):
-        super(PanorexWidget, self).__init__()
+        super(MultiPanorex, self).__init__()
         self.parent = parent
 
         self.arch_handler = ArchHandler()
@@ -194,15 +194,15 @@ class PanorexWidget(QtGui.QWidget):
         self.layout = QtGui.QVBoxLayout(self)
 
         # higher
-        self.h_pano = SinglePanorexWidget(self.parent)
+        self.h_pano = SinglePanorex(self.parent)
         self.layout.addWidget(self.h_pano)
 
         # main
-        self.m_pano = SinglePanorexWidget(self.parent)
+        self.m_pano = SinglePanorex(self.parent)
         self.layout.addWidget(self.m_pano)
 
         # lower
-        self.l_pano = SinglePanorexWidget(self.parent)
+        self.l_pano = SinglePanorex(self.parent)
         self.layout.addWidget(self.l_pano)
 
     def show_(self, pos=None):

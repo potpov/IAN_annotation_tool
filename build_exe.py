@@ -3,10 +3,21 @@ import os
 import scipy
 import skimage
 import opcode
+import sys
 
-PYTHON_INSTALL_DIR = os.path.dirname(os.path.dirname(os.__file__))
-LIB_DIR = os.path.join(PYTHON_INSTALL_DIR, "Lib")
+VENV_DIR = os.path.dirname(os.path.dirname(os.__file__))
+LIB_DIR = os.path.join(VENV_DIR, "Lib")
 SITE_PACKAGES_DIR = os.path.join(LIB_DIR, "site-packages")
+PROJECT_DIR = os.path.abspath(os.path.curdir)
+
+APP_NAME = 'IAN Annotation Tool'
+SCRIPT_PATH = os.path.join(PROJECT_DIR, "annotation_tool.py")
+ICON_PATH = os.path.join(PROJECT_DIR, "annotation", "images", "icon.ico")
+
+
+## installs in Program Files --> the installer fails because it has not enough privileges
+# if 'bdist_msi' in sys.argv:
+#     sys.argv += ['--initial-target-dir', r'C:\Program Files\{}'.format(APP_NAME)]
 
 
 def collect_dist_info(packages):
@@ -63,25 +74,29 @@ include_files.append((distutils_path, 'distutils'))
 
 build_exe_options = {
     "packages": packages,
-    "excludes": [],
+    "excludes": ['tkinter', 'multiprocessing.Pool'],
     "includes": [],
     "include_files": include_files
 }
 
-filename = r'C:\\Users\\crime\\Desktop\\alveolar_nerve\\annotation_tool.py'
 executable = Executable(
-    script=filename,
-    targetName="annotation_tool.exe",
-    base='Win32GUI', )
+    script=SCRIPT_PATH,
+    targetName="{}.exe".format(APP_NAME),
+    base='Win32GUI',
+    icon=ICON_PATH,
+    shortcutName=APP_NAME,
+    shortcutDir="DesktopFolder",
+)
 
-setup(name="IAN Annotation Tool",
+setup(name=APP_NAME,
       version="1.0",
-      description="",
+      description=APP_NAME,
+      author="AImageLab",
       options={"build_exe": build_exe_options},
       executables=[executable]
       )
 
 # fix multiprocessing Pool.pyc --> pool.pyc
 # from https://github.com/marcelotduarte/cx_Freeze/issues/353#issuecomment-376829379
-multiprocessing_dir = os.path.join("build", os.listdir("build")[0], "lib", "multiprocessing")
+multiprocessing_dir = os.path.join("build", "exe.win-amd64-3.7", "lib", "multiprocessing")
 os.rename(os.path.join(multiprocessing_dir, "Pool.pyc"), os.path.join(multiprocessing_dir, "pool.pyc"))

@@ -2,7 +2,7 @@ from PyQt5 import QtWidgets, QtCore
 from annotation.controlpanels.SkipControlPanel import SkipControlPanel
 from annotation.screens.Screen import Screen
 from annotation.visualization.archview import ArchView
-from annotation.visualization.panorex import CanvasPanorexWidget
+from annotation.visualization.panorex import CanvasPanorex
 
 
 class PanorexSplineScreen(Screen):
@@ -18,7 +18,7 @@ class PanorexSplineScreen(Screen):
         self.layout.addWidget(self.archview, 0, 0)
 
         # panorex
-        self.panorex = CanvasPanorexWidget(self)
+        self.panorex = CanvasPanorex(self)
         self.layout.addWidget(self.panorex, 0, 1)
 
         # sparsity selector

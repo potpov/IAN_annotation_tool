@@ -1,12 +1,15 @@
 from annotation.actions.Action import create_action
+import json
+import os
 
 
 class History:
     SAVE_NAME = "history.json"
 
-    def __init__(self, save_func):
+    def __init__(self, arch_handler, save_func):
         self.h = []
         self.autosave = False
+        self.arch_handler = arch_handler
         self.save_func = save_func
         self.curr = -1
         self.last = -1
@@ -35,6 +38,20 @@ class History:
 
     def dump(self):
         return [action.get_data() for action in self.h]
+
+    def save_(self):
+        data = {'history': self.dump()}
+        with open(os.path.join(os.path.dirname(self.arch_handler.dicomdir_path), self.SAVE_NAME), "w") as outfile:
+            json.dump(data, outfile)
+
+    def load_(self):
+        path = os.path.join(os.path.dirname(self.arch_handler.dicomdir_path), self.SAVE_NAME)
+        if not os.path.isfile(path):
+            print("No history to load")
+            return
+        with open(path, "r") as infile:
+            data = json.load(infile)
+        self.load(data['history'])
 
     def load(self, h, debug=False):
         """

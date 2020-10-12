@@ -58,7 +58,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         sup = super()
         LoadingDialog(func=lambda: sup.__init__(dicomdir_path), message="Loading DICOM")
         self.dicomdir_path = dicomdir_path
-        self.history = History(save_func=self.save_state)
+        self.history = History(self, save_func=self.save_state)
         self.selected_slice = None
         self.arch_detections = ArchDetections(self)
         self.coords = None
@@ -90,7 +90,6 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         """
         if data is not None:
             self.selected_slice = data['selected_slice']
-            self.history.load(data['history'])
             self.spline = Spline(load_from=data['spline'])
             self.L_canal_spline = Spline(load_from=data['L_canal_spline'])
             self.R_canal_spline = Spline(load_from=data['R_canal_spline'])
@@ -277,9 +276,9 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         data['L_canal_spline'] = self.L_canal_spline.get_json()
         data['R_canal_spline'] = self.R_canal_spline.get_json()
         data['selected_slice'] = self.selected_slice
-        data['history'] = self.history.dump()
         with open(os.path.join(os.path.dirname(self.dicomdir_path), self.DUMP_FILENAME), "w") as outfile:
             json.dump(data, outfile)
+        self.history.save_()
         if self.annotation_masks is not None:
             self.annotation_masks.save_mask_splines()
         print("Saved")
@@ -291,6 +290,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
             data = json.load(infile)
 
         self.compute_initial_state(0, data)
+        self.history.load_()
         self.annotation_masks.load_mask_splines()
         print("Loaded")
 
@@ -368,8 +368,6 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         z, y, x = get_coords_by_label_3D(gt, 1)
         p, start, end = get_poly_approx_(x, y)
         self.arch_detections.set(self.selected_slice, (p, start, end))
-        # start = clip_range(start - 20, 0, start)
-        # end = clip_range(end + 20, end, self.W - 1)
         if p is not None:
             self.coords = processing.arch_lines(p, start, end, offset=self.LH_OFFSET)
             self.spline = Spline(coords=self.coords[1], num_cp=10)

@@ -214,7 +214,7 @@ class TiltedSideVolume(SideVolume):
             print(msg)
             raise ValueError(msg)
 
-    def _compute_on_spline(self, spline, step_fn=None):
+    def _compute_on_spline(self, spline, step_fn=None, debug=False):
         if spline is None:
             return
         p, start, end = spline.get_poly_spline()
@@ -228,7 +228,7 @@ class TiltedSideVolume(SideVolume):
                 angle = -np.degrees(np.arctan(derivative(x)))
                 plane.tilt_z(angle, p(x))
                 cut = self.arch_handler.plane_slice(plane)
-                print("{}/{}".format(x, len(self.planes)), end='\r')
+                debug and print("{}/{}".format(x, len(self.planes)), end='\r')
                 self.planes[x] = plane
                 self.data[x] = cut
 

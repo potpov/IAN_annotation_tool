@@ -1,7 +1,14 @@
+import concurrent.futures
 import os
 from annotation.core.ArchHandler import ArchHandler
 import argparse
 from tqdm import tqdm
+import time
+import sys
+import warnings
+
+if not sys.warnoptions:
+    warnings.simplefilter("ignore")
 
 TOOL_DIRS = ['side_volume', 'annotated_dicom', 'masks']
 TOOL_FILES = ['dump.json']
@@ -20,6 +27,8 @@ def parse_args():
                         help="Force re-computation even if side volume is already available")
     parser.add_argument("-c", dest='clean', action='store_true', required=False, default=False,
                         help="Clean directory from saves and other data")
+    parser.add_argument("-w", dest='workers', type=int, required=False, default=2,
+                        help="Amount of workers for concurrent side volume computation")
     return parser.parse_args()
 
 
@@ -45,6 +54,16 @@ def clean(root):
         delete_dir(os.path.join(root, dir))
 
 
+def extract_gt(dicomdir):
+    ah = ArchHandler(dicomdir)
+    ah.compute_initial_state(96, want_side_volume=False)
+    ah.extract_data_from_gt(load_annotations=False)
+    try:
+        ah.compute_side_volume(ah.SIDE_VOLUME_SCALE, True)
+    except:
+        pass
+
+
 if __name__ == '__main__':
     args = parse_args()
     dicomdirs = []
@@ -53,19 +72,21 @@ if __name__ == '__main__':
         if "DICOMDIR" in files:
             if args.clean:
                 clean(root)
+            side_volume_dir = os.path.join(root, "side_volume")
             if args.forced:
-                delete_dir(os.path.join(root, "side_volume"))
+                delete_dir(side_volume_dir)
+            if os.path.isdir(side_volume_dir) and not args.forced:
+                continue
             dicomdirs.append(os.path.join(root, "DICOMDIR"))
 
-    ah = None
-    for dicomdir in tqdm(dicomdirs):
-        if ah is None:
-            ah = ArchHandler(dicomdir)
-        else:
-            ah.__init__(dicomdir)
-        ah.compute_initial_state(96, want_side_volume=False)
-        ah.extract_data_from_gt(load_annotations=False)
-        try:
-            ah.compute_side_volume(ah.SIDE_VOLUME_SCALE, True)
-        except:
-            pass
+    num_dicoms = len(dicomdirs)
+
+    t_start = time.time()
+    with concurrent.futures.ProcessPoolExecutor(max_workers=args.workers) as executor:
+        results = list(tqdm(executor.map(extract_gt, dicomdirs), total=num_dicoms))
+    t_end = time.time()
+    print("DICOMs: {}".format(num_dicoms))
+    print("Workers: {}".format(args.workers))
+    seconds = (t_end - t_start) / 60
+    print("Time: {} seconds".format(seconds))
+    print("Seconds per DICOM: {}".format(seconds / num_dicoms))
