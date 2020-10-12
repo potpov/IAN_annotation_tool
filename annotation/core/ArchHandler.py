@@ -281,7 +281,6 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         self.history.save_()
         if self.annotation_masks is not None:
             self.annotation_masks.save_mask_splines()
-        print("Saved")
 
     def load_state(self):
         """Loads state for ArchHandler, with History and AnnotationsMasks"""
@@ -292,7 +291,6 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         self.compute_initial_state(0, data)
         self.history.load_()
         self.annotation_masks.load_mask_splines()
-        print("Loaded")
 
     def _export_annotations_as_dicom(self):
         """Exports the new DICOM with the annotations."""

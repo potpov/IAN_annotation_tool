@@ -1,4 +1,5 @@
-import concurrent.futures
+from multiprocessing import cpu_count
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
 from annotation.core.ArchHandler import ArchHandler
 import argparse
@@ -27,7 +28,7 @@ def parse_args():
                         help="Force re-computation even if side volume is already available")
     parser.add_argument("-c", dest='clean', action='store_true', required=False, default=False,
                         help="Clean directory from saves and other data")
-    parser.add_argument("-w", dest='workers', type=int, required=False, default=2,
+    parser.add_argument("-w", dest='workers', type=int, required=False, default=cpu_count(),
                         help="Amount of workers for concurrent side volume computation")
     return parser.parse_args()
 
@@ -56,6 +57,7 @@ def clean(root):
 
 def extract_gt(dicomdir):
     ah = ArchHandler(dicomdir)
+    ah.__init__(dicomdir)
     ah.compute_initial_state(96, want_side_volume=False)
     ah.extract_data_from_gt(load_annotations=False)
     try:
@@ -68,6 +70,7 @@ if __name__ == '__main__':
     args = parse_args()
     dicomdirs = []
 
+    print("Analyzing {}".format(args.dir))
     for root, dirs, files in os.walk(args.dir):
         if "DICOMDIR" in files:
             if args.clean:
@@ -82,11 +85,23 @@ if __name__ == '__main__':
     num_dicoms = len(dicomdirs)
 
     t_start = time.time()
-    with concurrent.futures.ProcessPoolExecutor(max_workers=args.workers) as executor:
-        results = list(tqdm(executor.map(extract_gt, dicomdirs), total=num_dicoms))
+
+    with ProcessPoolExecutor(max_workers=args.workers) as executor:
+        futures = [executor.submit(extract_gt, dicomdir) for dicomdir in dicomdirs]
+
+        kwargs = {
+            'total': len(futures),
+            'unit_scale': True,
+            'leave': True
+        }
+
+        for f in tqdm(as_completed(futures), **kwargs):
+            pass
+
     t_end = time.time()
+
     print("DICOMs: {}".format(num_dicoms))
     print("Workers: {}".format(args.workers))
-    seconds = (t_end - t_start) / 60
-    print("Time: {} seconds".format(seconds))
-    print("Seconds per DICOM: {}".format(seconds / num_dicoms))
+    minutes = (t_end - t_start) / 60
+    print("Time: {} minutes".format(minutes))
+    print("Minutess per DICOM: {}".format(minutes / num_dicoms))

@@ -161,7 +161,6 @@ class AnnotationMasks():
             os.makedirs(self.EXPORT_PATH)
         with open(os.path.join(self.EXPORT_PATH, self.MASKS_SPLINES_DUMP_FILENAME), "w") as outfile:
             json.dump(dump, outfile)
-        print("Mask splines dumped!")
 
     def load_mask_splines(self, check_shape=True):
         path = os.path.join(self.EXPORT_PATH, self.MASKS_SPLINES_DUMP_FILENAME)
@@ -187,7 +186,6 @@ class AnnotationMasks():
             self.set_mask_spline(i, spline, from_snake)
         self.handle_scaling_mismatch()
         check_shape and self.check_shape(self.arch_handler.side_volume.get().shape)
-        print('Mask splines loaded!')
 
     def handle_scaling_mismatch(self):
         if self.scaling != self.arch_handler.side_volume_scale:
