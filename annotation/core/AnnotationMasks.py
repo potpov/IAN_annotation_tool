@@ -18,7 +18,7 @@ class AnnotationMasks():
     EXPORT_MASK_VOLUME_FILENAME = "masks.npy"
     EXPORT_SIDE_VOLUME_FILENAME = "imgs.npy"
     MASKS_SPLINES_DUMP_FILENAME = "masks_splines_dump.json"
-    NUM_CP_LOSS = 10  # higher values mean less control points and implies a loss in the spline's precision
+    NUM_CP_LOSS = 10  # higher value means less control points and implies a loss in the spline's precision
 
     def __init__(self, shape, arch_handler):
         self.n, self.h, self.w = shape
@@ -28,7 +28,7 @@ class AnnotationMasks():
         self.masks = [None] * self.n
         self.created_from_snake = [False] * self.n
         self.mask_volume = None
-        self._edited = True
+        self._edited = False
         self.skip = 0
 
     def check_shape(self, new_shape):
@@ -57,8 +57,6 @@ class AnnotationMasks():
             return np.full(s, l.BG, dtype=np.uint8)
 
     def _compute_mask_volume(self, step_fn=None):
-        if not self._edited:
-            return
         scaled_h = int(self.h / self.arch_handler.side_volume_scale)
         scaled_w = int(self.w / self.arch_handler.side_volume_scale)
         shape = (self.n, scaled_h, scaled_w)
@@ -108,12 +106,10 @@ class AnnotationMasks():
                 self.arch_handler.history.add(SideVolumeSplineExtractedAction(idx, from_idx))
                 self.set_mask_spline(idx, ClosedSpline(coords=snake, num_cp=(len(snake) // self.NUM_CP_LOSS)),
                                      from_snake)
-
         return self.masks[idx]
 
     def export_mask_imgs(self):
-        if self.mask_volume is None or self._edited:
-            self.compute_mask_volume()
+        self.compute_mask_volume()
 
         now = datetime.now()
         date_str = "{:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(
@@ -145,9 +141,9 @@ class AnnotationMasks():
             if sv.original is not None:
                 export_img(sv.original[i], os.path.join(imgs_path, "{}{}".format(i, self.EXPORT_IMG_FILENAME)))
 
-        self._edited = False
-
     def save_mask_splines(self):
+        if not self._edited:
+            return
         dump = {
             'n': self.n,
             'h': self.h,
@@ -161,6 +157,7 @@ class AnnotationMasks():
             os.makedirs(self.EXPORT_PATH)
         with open(os.path.join(self.EXPORT_PATH, self.MASKS_SPLINES_DUMP_FILENAME), "w") as outfile:
             json.dump(dump, outfile)
+        self._edited = False
 
     def load_mask_splines(self, check_shape=True):
         path = os.path.join(self.EXPORT_PATH, self.MASKS_SPLINES_DUMP_FILENAME)
@@ -186,6 +183,7 @@ class AnnotationMasks():
             self.set_mask_spline(i, spline, from_snake)
         self.handle_scaling_mismatch()
         check_shape and self.check_shape(self.arch_handler.side_volume.get().shape)
+        self._edited = False
 
     def handle_scaling_mismatch(self):
         if self.scaling != self.arch_handler.side_volume_scale:

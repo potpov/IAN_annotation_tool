@@ -166,6 +166,7 @@ class CanvasSideVolume(SplineCanvas):
 
             # Set new point data
             new_idx = spline.update_cp(cp_index, new_x, new_y)
+            self.arch_handler.annotation_masks.set_mask_spline(self.current_pos, spline)
             self.drag_point = (new_idx, self.drag_point[1])
 
             # Redraw curve

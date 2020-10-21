@@ -246,6 +246,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         if self.gt_volume is None or self.gt_volume.any() == False:
             return
         gt_volume = self.get_simpler_gt_volume()
+        # gt_volume = get_mask_by_label(self.gt_volume, l.CONTOUR)
         gt_volume = viewer.delaunay(gt_volume)
         self.gt_delaunay = gt_volume
 
