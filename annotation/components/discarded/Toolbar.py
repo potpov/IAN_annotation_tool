@@ -1,8 +1,8 @@
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore
 from pyface.qt import QtGui
 import qtawesome as qta
 
-from annotation.components.Dialog import question
+from annotation.components.message.Dialog import question
 
 
 class Toolbar(QtGui.QWidget):
@@ -37,7 +37,7 @@ class Toolbar(QtGui.QWidget):
 
         if self.arch_handler.is_there_data_to_load():
             question(self, "Save", "Save data was found. Are you sure you want to overwrite the save?",
-                     yes_callback=lambda: yes(self))
+                     yes=lambda: yes(self))
         else:
             yes(self)
 
@@ -49,4 +49,4 @@ class Toolbar(QtGui.QWidget):
         if self.arch_handler.is_there_data_to_load():
             question(self, "Load",
                      "Save data was found. Are you sure you want to discard current changes and load from disk?",
-                     yes_callback=lambda: yes(self))
+                     yes=lambda: yes(self))

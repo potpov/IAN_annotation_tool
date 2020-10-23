@@ -1,8 +1,7 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
-
-from annotation.components.Dialog import LoadingDialog
 from annotation.components.MayaviViewer import MayaviViewer
+from annotation.components.message.Messenger import Messenger
 
 
 class Dialog3DPlot(QtGui.QDialog):
@@ -13,9 +12,10 @@ class Dialog3DPlot(QtGui.QDialog):
         self.layout = QtGui.QHBoxLayout(self)
         self.mayavi = MayaviViewer(self)
         self.layout.addWidget(self.mayavi)
+        self.messenger = Messenger()
 
     def show(self, volume=None):
         if volume is None or not volume.any():
             return
-        LoadingDialog(lambda: self.mayavi.visualization.plot_volume(volume), "Plotting")
+        self.messenger.loading_message("Plotting", lambda: self.mayavi.visualization.plot_volume(volume))
         super().show()

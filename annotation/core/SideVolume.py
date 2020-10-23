@@ -1,9 +1,10 @@
 from Plane import Plane
-from annotation.components.Dialog import ProgressLoadingDialog, question, warning
 import numpy as np
 import cv2
 import os
 import json
+
+from annotation.components.message.Messenger import Messenger
 
 
 class SideVolume():
@@ -21,6 +22,7 @@ class SideVolume():
             scale (float): scale of the desired side_volume wrt the orginal shape
         """
         self.arch_handler = arch_handler
+        self.messenger = Messenger()
         self.scale = scale
         self.original = None
         self.data = None
@@ -94,9 +96,7 @@ class SideVolume():
         # self.save_()
 
     def update(self):
-        pld = ProgressLoadingDialog("Computing side volume")
-        pld.set_function(lambda: self.__update(step_fn=pld.get_signal()))
-        pld.start()
+        self.messenger.progress_message(message="Computing side volume", func=self.__update, func_args={})
 
     def get_slice(self, pos):
         """
@@ -127,6 +127,7 @@ class TiltedSideVolume(SideVolume):
     CANAL_SPLINES_FILENAME = "canals.json"
 
     def __init__(self, arch_handler, scale):
+        self.messenger = Messenger()
         self.arch_handler = arch_handler
         self.scale = scale
         self.original = None
@@ -141,7 +142,7 @@ class TiltedSideVolume(SideVolume):
         try:
             self.load_()
         except Exception as e:
-            warning(None, "Error", str(e))
+            self.messenger.message("warning", title="Error", message=str(e))
             super().__init__(self.arch_handler, self.scale)
 
     def is_there_data_to_load(self):
@@ -237,10 +238,11 @@ class TiltedSideVolume(SideVolume):
         h = self.arch_handler.Z
         w = max([len(points) for points in self.arch_handler.side_coords])
         self.data = np.zeros((n, h, w))
-        pld = ProgressLoadingDialog("Computing tilted views")
-        pld.set_function(lambda: self._compute_on_spline(self.arch_handler.L_canal_spline, step_fn=pld.get_signal()))
-        pld.start()
-        pld.set_function(lambda: self._compute_on_spline(self.arch_handler.R_canal_spline, step_fn=pld.get_signal()))
-        pld.start()
+        self.messenger.progress_message(func=self._compute_on_spline,
+                                        func_args={'spline': self.arch_handler.L_canal_spline},
+                                        message="Computing tilted views (L)")
+        self.messenger.progress_message(func=self._compute_on_spline,
+                                        func_args={'spline': self.arch_handler.R_canal_spline},
+                                        message="Computing tilted views (R)")
         self._postprocess_data()
         self.save_()

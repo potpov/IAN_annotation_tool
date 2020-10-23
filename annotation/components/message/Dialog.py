@@ -95,7 +95,7 @@ class ProgressLoadingDialog(QtWidgets.QDialog):
         self.exec_()
 
 
-def question(parent, title, message, yes_callback=lambda: None, no_callback=lambda: None,
+def question(parent, title, message, yes=lambda: None, no=lambda: None,
              default="yes"):
     q = QtGui.QMessageBox()
 
@@ -105,9 +105,9 @@ def question(parent, title, message, yes_callback=lambda: None, no_callback=lamb
 
     r = q.question(parent, title, message, q.Yes | q.No, defaultButton=defaultButton)
     if r == q.Yes:
-        yes_callback()
+        yes()
     else:
-        no_callback()
+        no()
 
 
 def warning(parent, title, message):
@@ -118,27 +118,3 @@ def warning(parent, title, message):
 def information(parent, title, message):
     q = QtGui.QMessageBox()
     q.information(parent, title, message)
-
-
-def show_message_box(kind, title, message, yes_callback=None, no_callback=None, details="", parent=None):
-    # FIXME: if I create a messagebox like this, closing it will make the application crash if Windows sound is still active.
-    return
-    ##########
-    kind = kind.capitalize()
-    if kind not in ['Information', 'Question', 'Warning', 'Critical']:
-        kind = 'Information'
-    msg = QtWidgets.QMessageBox(parent=parent)
-    msg.setIcon(getattr(QtWidgets.QMessageBox, kind))
-    msg.setWindowTitle(title)
-    msg.setText(message)
-    if details != "":
-        msg.setDetailedText(details)
-    if yes_callback is not None or no_callback is not None:
-        msg.setStandardButtons(msg.Yes | msg.No)
-    ret = msg.exec()
-    if ret == msg.Yes:
-        if yes_callback is not None:
-            yes_callback()
-    elif ret == msg.No:
-        if no_callback is not None:
-            no_callback()

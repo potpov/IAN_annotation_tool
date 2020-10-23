@@ -161,7 +161,7 @@ class SplineCanvas(Canvas, metaclass=AbstractQObjectMeta):
             m = -1 / derivative(x)
             y = p(x)
             q = y - m * x
-            if q > 10000:
+            if q > 5000:
                 return
             f = np.poly1d([m, q])
             off = 50

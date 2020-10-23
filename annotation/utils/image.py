@@ -130,7 +130,6 @@ def export_img(img, filename, maximum=None):
             If None, it is the maximum value in 'img' argument.
     """
     img = rescale255(img, maximum=maximum)
-    print("exporting: {}".format(os.path.basename(filename)))
     cv2.imwrite(filename, img)
 
 

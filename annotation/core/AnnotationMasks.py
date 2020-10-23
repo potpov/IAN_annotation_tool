@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 
 from annotation.actions.Action import SideVolumeSplineExtractedAction
-from annotation.components.Dialog import show_message_box, LoadingDialog, ProgressLoadingDialog
+from annotation.components.message.Messenger import Messenger
 from annotation.spline.Spline import ClosedSpline
 from annotation.utils.image import export_img, active_contour_balloon
 from conf import labels as l
@@ -30,12 +30,13 @@ class AnnotationMasks():
         self.mask_volume = None
         self._edited = False
         self.skip = 0
+        self.messenger = Messenger()
 
     def check_shape(self, new_shape):
         n_, h_, w_ = new_shape
         if n_ != self.n:
-            show_message_box(kind="Warning", title="Side volume amount of images mismatch",
-                             message="The loaded annotations expect a different amount of images inside side_volume. Exceeding annotations will be deleted")
+            # self.messenger.message(kind="Warning", title="Side volume amount of images mismatch",
+            #                       message="The loaded annotations expect a different amount of images inside side_volume. Exceeding annotations will be deleted")
             diff = n_ - self.n
             if diff > 0:  # enlarge
                 self.masks.extend([None] * diff)
@@ -45,8 +46,9 @@ class AnnotationMasks():
                 self.masks = self.masks[:diff]
                 self.created_from_snake = self.created_from_snake[:diff]
         if h_ != self.h or w_ != self.w:
-            show_message_box(kind="Warning", title="Side volume shape mismatch",
-                             message="The shape of the current side volume does not match with the shape of the loaded annotations. This may lead to inconsistency of the annotations.")
+            # self.messenger.message(kind="Warning", title="Side volume shape mismatch",
+            #                  message="The shape of the current side volume does not match with the shape of the loaded annotations. This may lead to inconsistency of the annotations.")
+            pass
         self.n, self.h, self.w = new_shape
 
     def compute_mask_image(self, spline, shape, resize_scale=None):
@@ -75,9 +77,7 @@ class AnnotationMasks():
                 self.mask_volume[i] = mask_img
 
     def compute_mask_volume(self):
-        pld = ProgressLoadingDialog("Computing 3D canal")
-        pld.set_function(lambda: self._compute_mask_volume(step_fn=pld.get_signal()))
-        pld.start()
+        self.messenger.progress_message(message="Computing 3D canal", func=self._compute_mask_volume, func_args={})
 
     def set_mask_spline(self, idx, spline, from_snake=False):
         self._edited = True
@@ -187,9 +187,8 @@ class AnnotationMasks():
 
     def handle_scaling_mismatch(self):
         if self.scaling != self.arch_handler.side_volume_scale:
-            show_message_box("warning", "Scaling mismatch",
-                             "The size scale of the volume from which the annotations were taken does not match the current scale. The annotations will be resized and may lose consistency.")
-            LoadingDialog(self.rescale_annotations, "Rescaling splines")
+            # self.messenger.message("warning", "Scaling mismatch", "The size scale of the volume from which the annotations were taken does not match the current scale. The annotations will be resized and may lose consistency.")
+            self.messenger.loading_message(func=self.rescale_annotations, message="Rescaling splines")
 
     def rescale_annotations(self):
         new_masks = []

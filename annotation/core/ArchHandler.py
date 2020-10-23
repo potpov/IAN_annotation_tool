@@ -9,8 +9,9 @@ import viewer
 from Jaw import Jaw
 from annotation.actions.Action import SliceChangedAction, TiltedPlanesAnnotationAction
 from annotation.actions.History import History
+from annotation.components.message.Messenger import Messenger
+from annotation.components.message.Strategies import QtMessageStrategy
 from annotation.core.AnnotationMasks import AnnotationMasks
-from annotation.components.Dialog import LoadingDialog, ProgressLoadingDialog
 from annotation.core.Arch import Arch
 from annotation.core.ArchDetections import ArchDetections
 from annotation.core.SideVolume import SideVolume, TiltedSideVolume
@@ -56,7 +57,8 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
             gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with Delaunay algorithm
         """
         sup = super()
-        LoadingDialog(func=lambda: sup.__init__(dicomdir_path), message="Loading DICOM")
+        self.messenger = Messenger(QtMessageStrategy())
+        self.messenger.loading_message(func=lambda: sup.__init__(dicomdir_path), message="Loading DICOM")
         self.dicomdir_path = dicomdir_path
         self.history = History(self, save_func=self.save_state)
         self.selected_slice = None
@@ -71,7 +73,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         self.side_volume_scale = self.SIDE_VOLUME_SCALE
         self.L_canal_spline = None
         self.R_canal_spline = None
-        self.annotation_masks = None
+        self.annotation_masks: AnnotationMasks = None
         self.canal = None
         self.gt_delaunay = np.zeros_like(self.gt_volume)
 
@@ -212,13 +214,50 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         Transfers the canal computed in AnnotationsMasks.compute_mask_volume() in the original volume position,
         i.e. a curved 3D tube that follows the arch
         """
+
+        def assign_to_gt_volume(self, val, x, y, z):
+            x_ = clip_range(x, 0, self.W - 1)
+            y_ = clip_range(y, 0, self.H - 1)
+            z_ = int(clip_range(z, 0, self.Z - 1))
+            gt_volume[z_, floor(y_), floor(x_)] = val
+            gt_volume[z_, floor(y_), ceil(x_)] = val
+            gt_volume[z_, ceil(y_), floor(x_)] = val
+            gt_volume[z_, ceil(y_), ceil(x_)] = val
+
+        from math import floor, ceil
         gt_volume = np.full_like(self.volume, l.UNLABELED, dtype=np.uint8)
         if not self.tilted():
             for z_id, points in enumerate(self.side_coords):
                 step_fn is not None and step_fn(z_id, len(self.side_coords))
                 for w_id, (x, y) in enumerate(points):
                     if 0 <= int(x) < self.W and 0 <= int(y) < self.H:
-                        gt_volume[:, int(y), int(x)] = self.canal[z_id, :, w_id]
+                        # # less precise method
+                        # gt_volume[:, int(y), int(x)] = self.canal[z_id, :, w_id]
+
+                        # # floor and ceil only CONTOUR and INSIDE labels
+                        # z_column = self.canal[z_id, :, w_id]
+                        # gt_volume[:, int(y), int(x)] = z_column
+                        # for h_id in np.argwhere(np.logical_or(z_column == l.CONTOUR, z_column == l.INSIDE)):
+                        #     val = z_column[h_id]
+                        #     gt_volume[h_id, floor(y), floor(x)] = val
+                        #     gt_volume[h_id, floor(y), ceil(x)] = val
+                        #     gt_volume[h_id, ceil(y), floor(x)] = val
+                        #     gt_volume[h_id, ceil(y), ceil(x)] = val
+
+                        z_column = self.canal[z_id, :, w_id]
+
+                        # floor and ceil for every label
+                        x_ = clip_range(x, 0, self.W - 1)
+                        y_ = clip_range(y, 0, self.H - 1)
+                        gt_volume[:, floor(y_), floor(x_)] = self.canal[z_id, :, w_id]
+                        gt_volume[:, floor(y_), ceil(x_)] = self.canal[z_id, :, w_id]
+                        gt_volume[:, ceil(y_), floor(x_)] = self.canal[z_id, :, w_id]
+                        gt_volume[:, ceil(y_), ceil(x_)] = self.canal[z_id, :, w_id]
+                        for h_id in np.argwhere(z_column == l.INSIDE):
+                            assign_to_gt_volume(self, 6, x, y, h_id)
+                        for h_id in np.argwhere(z_column == l.CONTOUR):
+                            assign_to_gt_volume(self, 10, x, y, h_id)
+
         else:
             for i, (img, plane) in enumerate(zip(self.canal, self.side_volume.planes)):
                 step_fn is not None and step_fn(i, len(self.side_coords))
@@ -228,18 +267,16 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
                     continue
                 X, Y, Z = plane.plane
                 for val, x, y, z in np.nditer([img, X, Y, Z]):
-                    x = int(clip_range(x, 0, self.W - 1))
-                    y = int(clip_range(y, 0, self.H - 1))
-                    z = int(clip_range(z, 0, self.Z - 1))
-                    gt_volume[z, y, x] = val
+                    assign_to_gt_volume(self, val, x, y, z)
+                    # gt_volume[z, y, x] = val
 
         self.set_gt_volume(gt_volume)
 
     def compute_gt_volume(self):
-        """Calls a ProgressLoadingDialog to compute gt_volume"""
-        pld = ProgressLoadingDialog("Computing ground truth volume")
-        pld.set_function(lambda: self._compute_gt_volume(step_fn=pld.get_signal()))
-        pld.start()
+        """Shows a progress bar while computing gt_volume"""
+        self.messenger.progress_message(message="Computing ground truth volume",
+                                        func=self._compute_gt_volume,
+                                        func_args={})
 
     def _compute_gt_volume_delaunay(self):
         """Applies Delaunay algorithm in order to have a smoother gt_volume."""
@@ -253,7 +290,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
     def compute_gt_volume_delaunay(self):
         """Extracts annotations, builds gt_volume and computes smoothed gt_volume"""
         self.extract_3D_annotations()
-        LoadingDialog(self._compute_gt_volume_delaunay, "Applying Delaunay")
+        self.messenger.loading_message(message="Applying Delaunay", func=self._compute_gt_volume_delaunay)
 
     ###############
     # SAVE | LOAD #
@@ -289,8 +326,8 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         with open(path, "r") as infile:
             data = json.load(infile)
 
-        self.compute_initial_state(0, data)
         self.history.load_()
+        self.compute_initial_state(0, data)
         self.annotation_masks.load_mask_splines()
 
     def _export_annotations_as_dicom(self):
@@ -301,7 +338,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
     def export_annotations_as_dicom(self):
         """See ArchHandler._export_annotations_as_dicom()"""
         self.extract_3D_annotations()
-        LoadingDialog(self._export_annotations_as_dicom, "Saving new DICOM")
+        self.messenger.loading_message("Saving new DICOM", self._export_annotations_as_dicom)
 
     def export_annotations_as_imgs(self):
         """Saves annotations as images"""
@@ -310,8 +347,10 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
     def export_gt_volume(self):
         """Extracts annotations, builds gt_volume and saves it as npy file"""
         self.extract_3D_annotations()
-        LoadingDialog(lambda: np.save(os.path.join(os.path.dirname(self.dicomdir_path), self.EXPORT_GT_VOLUME_FILENAME),
-                                      self.gt_volume), "Saving ground truth volume")
+        self.messenger.loading_message(
+            "Saving ground truth volume",
+            func=lambda: np.save(os.path.join(os.path.dirname(self.dicomdir_path), self.EXPORT_GT_VOLUME_FILENAME),
+                                 self.gt_volume))
 
     def import_gt_volume(self):
         """Imports gt_volume npy file and stores it in gt_volume attribute"""

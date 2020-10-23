@@ -1,9 +1,11 @@
 from PyQt5 import QtWidgets
 from pyface.qt import QtGui
 import os
-from annotation.components.Dialog import question
+from annotation.components.message.Dialog import question
 from annotation.components.Menu import Menu
 from annotation.screens.Container import Container
+from annotation.components.message.Messenger import Messenger
+from annotation.components.message.Strategies import TerminalMessageStrategy, QtMessageStrategy
 
 
 class Window(QtGui.QMainWindow):
@@ -12,6 +14,9 @@ class Window(QtGui.QMainWindow):
 
     def __init__(self):
         super(Window, self).__init__()
+
+        Messenger(QtMessageStrategy())
+
         self.setWindowTitle(self.WINDOW_TITLE)
         self.setWindowIcon(QtGui.QIcon(self.ICON))
 

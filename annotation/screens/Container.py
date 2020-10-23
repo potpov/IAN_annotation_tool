@@ -2,8 +2,8 @@ from PyQt5 import QtCore
 from pyface.qt import QtGui
 
 from annotation.actions.Action import TiltedPlanesAnnotationAction, DefaultPlanesAnnotationAction
-from annotation.components.Dialog import question, information, LoadingDialog
 from annotation.components.Menu import Menu
+from annotation.components.message.Messenger import Messenger
 from annotation.screens.AnnotationScreen import AnnotationScreen
 from annotation.screens.ArchSplineScreen import ArchSplineScreen
 from annotation.screens.PanorexSplineScreen import PanorexSplineScreen
@@ -28,6 +28,7 @@ class Container(QtGui.QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.window = parent
         self.mb = Menu()
+        self.messenger = Messenger()
         self.mb.save.connect(self.save)
         self.mb.autosave.connect(self.autosave)
         self.mb.load.connect(self.load)
@@ -96,7 +97,7 @@ class Container(QtGui.QWidget):
 
         if self.arch_handler.is_there_data_to_load():
             message = "Save data was found. Are you sure you want to overwrite the save?"
-            question(self, "Save", message, yes_callback=lambda: yes(self))
+            self.messenger.question(title="Save", message=message, yes=lambda: yes(self))
         else:
             yes(self)
 
@@ -111,9 +112,9 @@ class Container(QtGui.QWidget):
         title = "Load"
         if self.arch_handler.is_there_data_to_load():
             message = "Save data was found. Are you sure you want to discard current changes and load from disk?"
-            question(self, title, message, yes_callback=lambda: yes(self), default="no")
+            self.messenger.question(title, message, lambda: yes(self), default="no")
         else:
-            information(self, title, "Nothing to load.")
+            self.messenger.message(kind="information", title=title, message="Nothing to load")
 
     #######################
     # ADD / REMOVE SCREEN #
@@ -121,7 +122,7 @@ class Container(QtGui.QWidget):
 
     def show_Dialog3DPlot(self, volume, title):
         if volume is None or not volume.any():
-            information(self, "Plot", "No volume to show")
+            self.messenger.message(kind="information", title="Plot", message="No volume to show")
         dialog = Dialog3DPlot(self, title)
         dialog.show(volume)
 
@@ -185,10 +186,11 @@ class Container(QtGui.QWidget):
         title = "Tilted planes"
         if not self.arch_handler.L_canal_spline.is_empty() or not self.arch_handler.R_canal_spline.is_empty():
             message = "Would you like to use planes orthogonal to the IAN canal as base for the annotations?"
-            question(self, title, message, yes_callback=lambda: yes(self), no_callback=lambda: no(self), default="no")
+            self.messenger.question(title=title, message=message, yes=lambda: yes(self),
+                                    no=lambda: no(self), default="no")
         else:
             message = "You will annotate on vertical slices because there are no canal splines."
-            information(self, title, message)
+            self.messenger.message(kind="information", title=title, message=message)
             no(self)
 
         self.annotation.initialize()
@@ -247,8 +249,8 @@ class Container(QtGui.QWidget):
                 self.add_SliceSelectionScreen()
 
             if self.arch_handler.is_there_data_to_load():
-                question(self, "Load data?", "A save file was found. Do you want to load it?",
-                         yes_callback=lambda: yes(self), no_callback=lambda: no(self))
+                self.messenger.question(title="Load data?", message="A save file was found. Do you want to load it?",
+                                        yes=lambda: yes(self), no=lambda: no(self))
             else:
                 no(self)
 
@@ -265,8 +267,9 @@ class Container(QtGui.QWidget):
         if self.arch_handler.get_simpler_gt_volume().any():
             title = "Ground truth available"
             message = "This DICOM has already annotations available. Would you like to use those as an initialization for the annotation?"
-            question(self, title, message,
-                     yes_callback=self.add_PanorexSplineScreen_w_extraction,
-                     no_callback=lambda: ask_load(self))
+            self.messenger.question(title=title, message=message,
+                                    yes=self.add_PanorexSplineScreen_w_extraction,
+                                    no=lambda: ask_load(self),
+                                    parent=self)
         else:
             ask_load(self)

@@ -48,4 +48,29 @@ so navigate to that folder, copy `DLLs` directory and paste it into `venv`.
     ```
 3. Check into `build` directory.
 
+## Precalculate titlted planes and images
+To precalc the tilted planes and images of side volume given a set of DICOMs pre-annotated by technicians, you need to use `tsv_precalc.py`.
+```bash
+usage: tsv_precalc.py [-h] -d DIR [-f] [-c] [-w WORKERS]
+
+optional arguments:
+  -h, --help  show this help message and exit
+  -d DIR      Directory to explore to find DICOMDIR
+  -f          Force re-computation even if side volume is already available
+  -c          Clean directory from saves and other data
+  -w WORKERS  Amount of workers for concurrent side volume computation
+```
+
+## Export `gt_volume.npy`, `masks.npy` and `imgs.npy`
+To export `gt_volume.npy`, `masks.npy` and `imgs.npy` given  a set of DICOMs, you need to use `annotation_export.py`.
+```bash
+usage: annotation_export.py [-h] -d DIR [-f] [-w WORKERS]
+
+optional arguments:
+  -h, --help  show this help message and exit
+  -d DIR      Directory to explore to find DICOMDIR
+  -f          Force re-computation even if gt_volume.npy already exists
+  -w WORKERS  Amount of workers for concurrent extraction
+```
+
 
