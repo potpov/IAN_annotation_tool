@@ -1,10 +1,9 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
 
-from annotation.actions.Action import TiltedPlanesAnnotationAction, DefaultPlanesAnnotationAction
 from annotation.components.Menu import Menu
 from annotation.components.message.Messenger import Messenger
-from annotation.screens.AnnotationScreen import AnnotationScreen
+from annotation.screens import Screen
 from annotation.screens.ArchSplineScreen import ArchSplineScreen
 from annotation.screens.PanorexSplineScreen import PanorexSplineScreen
 from annotation.screens.SliceSelectionScreen import SliceSelectionScreen
@@ -27,20 +26,28 @@ class Container(QtGui.QWidget):
         self.layout = QtGui.QGridLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.window = parent
-        self.mb = Menu()
         self.messenger = Messenger()
+
+        self.mb = Menu()
         self.mb.save.connect(self.save)
         self.mb.autosave.connect(self.autosave)
         self.mb.load.connect(self.load)
 
-        # screens (always register here all screens)
-        self.slice_sel = None
-        self.arch_spline = None
-        self.pano_spline = None
-        self.annotation = None
+        self.screen: Screen = None
 
-        # data
-        self.arch_handler = None
+        self.arch_handler: ArchHandler = None
+
+    def transition_to(self, ScreenClass: Screen, w_extraction=False):
+        self.clear()
+        self.screen = ScreenClass(self)
+        w_extraction and self.setup_extraction()
+        self.screen.start_()
+        self.layout.addWidget(self.screen, 0, 0)
+
+    def setup_extraction(self):
+        self.mb.enable_save_load(True)
+        self.arch_handler.compute_initial_state(96, want_side_volume=False)
+        self.arch_handler.extract_data_from_gt()
 
     ###########
     # MENUBAR #
@@ -70,21 +77,6 @@ class Container(QtGui.QWidget):
         self.mb.export_annotated_dicom.connect(self.arch_handler.export_annotations_as_dicom)
         self.mb.export_gt_volume.connect(self.arch_handler.export_gt_volume)
         self.mb.apply_delaunay.connect(self.arch_handler.compute_gt_volume_delaunay)
-
-    def enable_view_menu(self):
-        self.mb.enable_(self.mb.view)
-
-    def enable_annotation_menu(self):
-        self.mb.enable_(self.mb.annotation)
-
-    def enable_options_menu(self):
-        self.mb.enable_(self.mb.options)
-
-    def disable_annotation_menu(self):
-        self.mb.disable_(self.mb.annotation)
-
-    def enable_save_load(self, enabled):
-        self.mb.enable_save_load(enabled)
 
     ###############
     # SAVE | LOAD #
@@ -126,113 +118,11 @@ class Container(QtGui.QWidget):
         dialog = Dialog3DPlot(self, title)
         dialog.show(volume)
 
-    def add_SliceSelectionScreen(self):
-        self.enable_save_load(False)
-        self.slice_sel = SliceSelectionScreen(self)
-        self.slice_sel.slice_selected.connect(self.show_ArchSplineScreen)
-        self.slice_sel.initialize()
-        self.slice_sel.show_()
-        self.layout.addWidget(self.slice_sel, 0, 0)
-
-    def remove_SliceSelectionScreen(self):
-        if self.slice_sel is not None:
-            self.layout.removeWidget(self.slice_sel)
-            self.slice_sel.deleteLater()
-            self.slice_sel = None
-
-    def add_ArchSplineScreen(self):
-        self.enable_save_load(True)
-        self.arch_spline = ArchSplineScreen(self)
-        self.arch_spline.spline_selected.connect(self.show_PanorexSplineScreen)
-        self.arch_spline.initialize()
-        self.arch_spline.show_()
-        self.layout.addWidget(self.arch_spline, 0, 0)
-
-    def remove_ArchSplineScreen(self):
-        if self.arch_spline is not None:
-            self.layout.removeWidget(self.arch_spline)
-            self.arch_spline.deleteLater()
-            self.arch_spline = None
-
-    def add_PanorexSplineScreen(self):
-        self.enable_save_load(True)
-        self.arch_handler.offset_arch(pano_offset=0)
-        self.pano_spline = PanorexSplineScreen(self)
-        self.pano_spline.panorex_spline_selected.connect(self.show_AnnotationScreen)
-        self.pano_spline.initialize()
-        self.pano_spline.show_()
-        self.layout.addWidget(self.pano_spline, 0, 0)
-
-    def remove_PanorexSplineScreen(self):
-        if self.pano_spline is not None:
-            self.layout.removeWidget(self.pano_spline)
-            self.pano_spline.deleteLater()
-            self.pano_spline = None
-
-    def add_AnnotationScreen(self):
-        def yes(self):
-            self.arch_handler.history.add(TiltedPlanesAnnotationAction())
-            self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE, tilted=True)
-            self.annotation = AnnotationScreen(self)
-
-        def no(self):
-            self.arch_handler.history.add(DefaultPlanesAnnotationAction())
-            self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE, tilted=False)
-            self.annotation = AnnotationScreen(self)
-
-        self.enable_save_load(True)
-        self.enable_annotation_menu()
-        self.arch_handler.offset_arch(pano_offset=0)
-        title = "Tilted planes"
-        if not self.arch_handler.L_canal_spline.is_empty() or not self.arch_handler.R_canal_spline.is_empty():
-            message = "Would you like to use planes orthogonal to the IAN canal as base for the annotations?"
-            self.messenger.question(title=title, message=message, yes=lambda: yes(self),
-                                    no=lambda: no(self), default="no")
-        else:
-            message = "You will annotate on vertical slices because there are no canal splines."
-            self.messenger.message(kind="information", title=title, message=message)
-            no(self)
-
-        self.annotation.initialize()
-        self.annotation.show_()
-        self.layout.addWidget(self.annotation, 0, 0)
-
-    def remove_AnnotationScreen(self):
-        if self.annotation is not None:
-            self.layout.removeWidget(self.annotation)
-            self.annotation.deleteLater()
-            self.annotation = None
-
-    def add_PanorexSplineScreen_w_extraction(self):
-        self.enable_save_load(True)
-        self.arch_handler.compute_initial_state(96, want_side_volume=False)
-        self.arch_handler.extract_data_from_gt()
-        self.add_PanorexSplineScreen()
-
-    ########################
-    # SHOW SCREEN HANDLERS #
-    ########################
-
-    def show_ArchSplineScreen(self, slice):
-        self.clear()
-        self.arch_handler.compute_initial_state(slice)
-        self.add_ArchSplineScreen()
-
-    def show_PanorexSplineScreen(self):
-        self.clear()
-        self.add_PanorexSplineScreen()
-
-    def show_AnnotationScreen(self):
-        self.clear()
-        self.add_AnnotationScreen()
-
     def clear(self):
-        self.enable_save_load(False)
-        self.disable_annotation_menu()
-        self.remove_SliceSelectionScreen()
-        self.remove_ArchSplineScreen()
-        self.remove_PanorexSplineScreen()
-        self.remove_AnnotationScreen()
+        self.mb.enable_save_load(False)
+        self.mb.disable_(self.mb.annotation)
+        if self.screen is not None:
+            self.screen.remove()
 
     ###############
     # MAIN METHOD #
@@ -243,10 +133,10 @@ class Container(QtGui.QWidget):
         def ask_load(self):
             def yes(self):
                 self.arch_handler.load_state()
-                self.add_ArchSplineScreen()
+                self.transition_to(ArchSplineScreen)
 
             def no(self):
-                self.add_SliceSelectionScreen()
+                self.transition_to(SliceSelectionScreen)
 
             if self.arch_handler.is_there_data_to_load():
                 self.messenger.question(title="Load data?", message="A save file was found. Do you want to load it?",
@@ -261,14 +151,14 @@ class Container(QtGui.QWidget):
             self.connect_to_menubar()
 
         self.clear()
-        self.enable_view_menu()
-        self.enable_options_menu()
+        self.mb.enable_(self.mb.view)
+        self.mb.enable_(self.mb.options)
 
         if self.arch_handler.get_simpler_gt_volume().any():
             title = "Ground truth available"
             message = "This DICOM has already annotations available. Would you like to use those as an initialization for the annotation?"
             self.messenger.question(title=title, message=message,
-                                    yes=self.add_PanorexSplineScreen_w_extraction,
+                                    yes=lambda: self.transition_to(PanorexSplineScreen, w_extraction=True),
                                     no=lambda: ask_load(self),
                                     parent=self)
         else:

@@ -1,4 +1,6 @@
 from PyQt5 import QtCore, QtWidgets
+
+from annotation.screens.PanorexSplineScreen import PanorexSplineScreen
 from annotation.screens.Screen import Screen
 from annotation.controlpanels.ArchSplineControlPanel import ArchSplineControlPanel
 from annotation.visualization.archview import SplineArchView
@@ -42,6 +44,7 @@ class ArchSplineScreen(Screen):
         self.layout.addWidget(self.confirm_button, 1, 2)
 
     def initialize(self):
+        self.mb.enable_save_load(True)
         self.archview.set_img()
 
     def spline_changed(self):
@@ -67,3 +70,9 @@ class ArchSplineScreen(Screen):
         self.archview.show_(pos=self.current_pos)
         self.panorex.show_(pos=self.current_pos)
         self.sidevolume.show_(pos=self.current_pos)
+
+    def connect_signals(self):
+        self.spline_selected.connect(self.next_screen)
+        
+    def next_screen(self):
+        self.container.transition_to(PanorexSplineScreen)

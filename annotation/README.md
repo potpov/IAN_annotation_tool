@@ -50,7 +50,7 @@ so navigate to that folder, copy `DLLs` directory and paste it into `venv`.
 
 ## Precalculate titlted planes and images
 To precalc the tilted planes and images of side volume given a set of DICOMs pre-annotated by technicians, you need to use `tsv_precalc.py`.
-```bash
+```
 usage: tsv_precalc.py [-h] -d DIR [-f] [-c] [-w WORKERS]
 
 optional arguments:
@@ -63,7 +63,7 @@ optional arguments:
 
 ## Export `gt_volume.npy`, `masks.npy` and `imgs.npy`
 To export `gt_volume.npy`, `masks.npy` and `imgs.npy` given  a set of DICOMs, you need to use `annotation_export.py`.
-```bash
+```
 usage: annotation_export.py [-h] -d DIR [-f] [-w WORKERS]
 
 optional arguments:

@@ -1,4 +1,6 @@
 from PyQt5 import QtWidgets, QtCore
+
+from annotation.screens.ArchSplineScreen import ArchSplineScreen
 from annotation.screens.Screen import Screen
 from annotation.utils.math import clip_range
 from annotation.visualization.archview import ArchView
@@ -6,7 +8,7 @@ from annotation.controlpanels.ControlPanel import ControlPanel
 
 
 class SliceSelectionScreen(Screen):
-    slice_selected = QtCore.pyqtSignal(int)
+    slice_selected = QtCore.pyqtSignal()
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -29,10 +31,11 @@ class SliceSelectionScreen(Screen):
         # confirm slice button
         self.confirm_button = QtWidgets.QPushButton(self, text="Confirm (C)")
         self.confirm_button.setShortcut("C")
-        self.confirm_button.clicked.connect(lambda x: self.slice_selected.emit(self.slider.value()))
+        self.confirm_button.clicked.connect(self.slice_selected.emit)
         self.layout.addWidget(self.confirm_button, 1, 1)
 
     def initialize(self):
+        self.mb.enable_save_load(False)
         self.archview.set_img()
         if self.slider.maximum() == 0:
             max = self.arch_handler.Z - 1
@@ -41,3 +44,10 @@ class SliceSelectionScreen(Screen):
 
     def show_(self):
         self.archview.show_(slice_idx=self.slider.value(), show_arch=self.arch_line.isChecked())
+
+    def connect_signals(self):
+        self.slice_selected.connect(self.next_screen)
+        
+    def next_screen(self):
+        self.arch_handler.compute_initial_state(self.slider.value())
+        self.container.transition_to(ArchSplineScreen)

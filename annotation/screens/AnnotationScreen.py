@@ -1,6 +1,7 @@
 from PyQt5 import QtCore
 
-from annotation.actions.Action import SideVolumeSplineResetAction
+from annotation.actions.Action import SideVolumeSplineResetAction, TiltedPlanesAnnotationAction, \
+    DefaultPlanesAnnotationAction
 from annotation.screens.Screen import Screen
 from annotation.controlpanels.AnnotationControlPanel import AnnotationControlPanel
 from annotation.visualization.panorex import CanvasPanorex
@@ -33,6 +34,27 @@ class AnnotationScreen(Screen):
         self.layout.addWidget(self.panel, 1, 0)
 
     def initialize(self):
+        def yes(self):
+            self.arch_handler.history.add(TiltedPlanesAnnotationAction())
+            self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE, tilted=True)
+
+        def no(self):
+            self.arch_handler.history.add(DefaultPlanesAnnotationAction())
+            self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE, tilted=False)
+
+        self.mb.enable_save_load(True)
+        self.mb.enable_(self.mb.annotation)
+        self.arch_handler.offset_arch(pano_offset=0)
+        title = "Tilted planes"
+        if not self.arch_handler.L_canal_spline.is_empty() or not self.arch_handler.R_canal_spline.is_empty():
+            message = "Would you like to use planes orthogonal to the IAN canal as base for the annotations?"
+            self.messenger.question(title=title, message=message, yes=lambda: yes(self),
+                                    no=lambda: no(self), default="no")
+        else:
+            message = "You will annotate on vertical slices because there are no canal splines."
+            self.messenger.message(kind="information", title=title, message=message)
+            no(self)
+
         self.panorex.set_img()
         self.panorex.set_can_edit_spline(not self.arch_handler.tilted())
         self.sidevolume.set_img()
@@ -66,3 +88,9 @@ class AnnotationScreen(Screen):
                               show_mask_spline=self.panel.show_mask_spline.isChecked(),
                               show_cp_boxes=self.panel.show_cp_boxes.isChecked(),
                               )
+
+    def connect_signals(self):
+        pass
+
+    def next_screen(self):
+        pass

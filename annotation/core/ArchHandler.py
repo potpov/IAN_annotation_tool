@@ -254,9 +254,9 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
                         gt_volume[:, ceil(y_), floor(x_)] = self.canal[z_id, :, w_id]
                         gt_volume[:, ceil(y_), ceil(x_)] = self.canal[z_id, :, w_id]
                         for h_id in np.argwhere(z_column == l.INSIDE):
-                            assign_to_gt_volume(self, 6, x, y, h_id)
+                            assign_to_gt_volume(self, l.INSIDE, x, y, h_id)
                         for h_id in np.argwhere(z_column == l.CONTOUR):
-                            assign_to_gt_volume(self, 10, x, y, h_id)
+                            assign_to_gt_volume(self, l.CONTOUR, x, y, h_id)
 
         else:
             for i, (img, plane) in enumerate(zip(self.canal, self.side_volume.planes)):
@@ -280,10 +280,10 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
 
     def _compute_gt_volume_delaunay(self):
         """Applies Delaunay algorithm in order to have a smoother gt_volume."""
-        if self.gt_volume is None or self.gt_volume.any() == False:
-            return
         gt_volume = self.get_simpler_gt_volume()
         # gt_volume = get_mask_by_label(self.gt_volume, l.CONTOUR)
+        if gt_volume is None or gt_volume.any() == False:
+            return
         gt_volume = viewer.delaunay(gt_volume)
         self.gt_delaunay = gt_volume
 
@@ -291,6 +291,9 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         """Extracts annotations, builds gt_volume and computes smoothed gt_volume"""
         self.extract_3D_annotations()
         self.messenger.loading_message(message="Applying Delaunay", func=self._compute_gt_volume_delaunay)
+        if self.gt_delaunay is None or self.gt_delaunay.any() == False:
+            self.messenger.message(kind="information", title="Delaunay",
+                                   message="Cannot apply Delaunay without annotations")
 
     ###############
     # SAVE | LOAD #

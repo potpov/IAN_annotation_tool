@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets, QtCore
 from annotation.controlpanels.SkipControlPanel import SkipControlPanel
+from annotation.screens.AnnotationScreen import AnnotationScreen
 from annotation.screens.Screen import Screen
 from annotation.visualization.archview import ArchView
 from annotation.visualization.panorex import CanvasPanorex
@@ -33,6 +34,8 @@ class PanorexSplineScreen(Screen):
         self.layout.addWidget(self.confirm_button, 1, 2)
 
     def initialize(self):
+        self.mb.enable_save_load(True)
+        self.arch_handler.offset_arch(pano_offset=0)
         self.panorex.set_img()
         max_ = len(self.arch_handler.arch.get_arch()) - 1
         self.panel.setSkipMaximum(max_)
@@ -44,3 +47,9 @@ class PanorexSplineScreen(Screen):
     def show_(self):
         self.panorex.show_()
         self.archview.show_(self.arch_handler.selected_slice, True)
+
+    def connect_signals(self):
+        self.panorex_spline_selected.connect(self.next_screen)
+
+    def next_screen(self):
+        self.container.transition_to(AnnotationScreen)
