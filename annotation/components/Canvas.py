@@ -148,12 +148,19 @@ class SplineCanvas(Canvas, metaclass=AbstractQObjectMeta):
                 painter.drawRect(rect_x, rect_y, self.l, self.l)
                 show_cp_idx and painter.drawText(rect_x, rect_y, str(idx))
 
-    def draw_tilted_plane_line(self, painter, spline, spline_color):
+    def draw_spline_poly_approx(self, painter, spline, spline_color):
         if spline is None:
             return
 
         p, start, end = spline.get_poly_spline()
         self.draw_poly_approx(painter, p, start, end, spline_color)
+        return p, start, end
+
+    def draw_tilted_plane_line(self, painter, spline, spline_color):
+        if spline is None:
+            return
+
+        p, start, end = self.draw_spline_poly_approx(painter, spline, spline_color)
         x = self.current_pos
 
         if start is not None and end is not None and x in range(int(start), int(end)):

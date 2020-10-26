@@ -123,7 +123,7 @@ class Jaw:
         if len(self.dicom_files) != self.gt_volume.shape[0]:
             raise Exception("ground truth volume has invalid shape with respect to the DICOM files!")
 
-        volume = self.get_simpler_gt_volume()
+        volume = self.get_gt_volume(labels=[l.CONTOUR, l.INSIDE])
         contour = get_mask_by_label(self.gt_volume, l.CONTOUR)
         inside = get_mask_by_label(self.gt_volume, l.INSIDE)
         bg = get_mask_by_label(self.gt_volume, l.BG)
@@ -311,17 +311,20 @@ class Jaw:
     def get_gt_slice(self, slice_num):
         return self.dicom_files[slice_num].overlay_array(OVERLAY_ADDR)
 
-    def get_volume(self):
-        return self.volume
+    def get_volume(self, normalized=True):
+        if normalized:
+            return self.volume
+        else:
+            return np.array(self.volume * self.max_value, dtype=np.uint16)
 
-    def get_gt_volume(self):
-        return self.gt_volume
-
-    def get_simpler_gt_volume(self):
-        if self.gt_volume.max() in [0, 1]:
+    def get_gt_volume(self, labels: list = None):
+        if not labels:
             return self.gt_volume
-        gt = get_mask_by_label(self.gt_volume, l.CONTOUR) + \
-             get_mask_by_label(self.gt_volume, l.INSIDE)
+        if np.max(self.gt_volume) in [0, 1]:
+            return self.gt_volume
+        gt = np.zeros_like(self.gt_volume)
+        for label in labels:
+            gt += get_mask_by_label(self.gt_volume, label)
         return gt
 
     def get_HU_volume(self):

@@ -27,6 +27,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
     DUMP_FILENAME = 'dump.json'
     ANNOTATED_DICOM_DIRECTORY = 'annotated_dicom'
     EXPORT_GT_VOLUME_FILENAME = 'gt_volume.npy'
+    EXPORT_VOLUME_FILENAME = 'volume.npy'
 
     SIDE_VOLUME_SCALE = 4  # desired scale of side_volume
 
@@ -55,6 +56,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
             annotation_masks (AnnotationMasks): object that manages the annotations onto side_volume images
             canal (numpy.ndarray): same as side_volume, but has just the canal (obtained from masks) and it is scaled to original volume dimensions
             gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with Delaunay algorithm
+            gt_extracted (bool): flags the user has extracted the views from previous annotations
         """
         sup = super()
         self.messenger = Messenger(QtMessageStrategy())
@@ -76,6 +78,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         self.annotation_masks: AnnotationMasks = None
         self.canal = None
         self.gt_delaunay = np.zeros_like(self.gt_volume)
+        self.gt_extracted = False
 
     ####################
     # ATTRIBUTE UPDATE #
@@ -280,7 +283,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
 
     def _compute_gt_volume_delaunay(self):
         """Applies Delaunay algorithm in order to have a smoother gt_volume."""
-        gt_volume = self.get_simpler_gt_volume()
+        gt_volume = self.get_gt_volume(labels=[l.CONTOUR, l.INSIDE])
         # gt_volume = get_mask_by_label(self.gt_volume, l.CONTOUR)
         if gt_volume is None or gt_volume.any() == False:
             return
@@ -354,6 +357,11 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
             "Saving ground truth volume",
             func=lambda: np.save(os.path.join(os.path.dirname(self.dicomdir_path), self.EXPORT_GT_VOLUME_FILENAME),
                                  self.gt_volume))
+        self.messenger.loading_message(
+            "Saving volume",
+            func=lambda: np.save(os.path.join(os.path.dirname(self.dicomdir_path), self.EXPORT_VOLUME_FILENAME),
+                                 self.get_volume(normalized=False))
+        )
 
     def import_gt_volume(self):
         """Imports gt_volume npy file and stores it in gt_volume attribute"""
@@ -421,10 +429,10 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
 
         self.L_canal_spline = self.extract_canal_spline(labels, 1)
         self.R_canal_spline = self.extract_canal_spline(labels, 2)
-        shape = (len(self.side_coords), self.Z, max([len(points) for points in self.side_coords]))
-        self.side_volume = TiltedSideVolume(self, self.side_volume_scale)
+        self.gt_extracted = True
 
         if load_annotations:
+            shape = (len(self.side_coords), self.Z, max([len(points) for points in self.side_coords]))
             self.annotation_masks = AnnotationMasks(shape, self)
             self.annotation_masks.load_mask_splines(check_shape=False)
 
@@ -452,7 +460,7 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         return (l_arch.get_panorex(), h_arch.get_panorex())
 
     def get_jaw_with_gt(self):
-        gt = self.get_simpler_gt_volume()
+        gt = self.get_gt_volume(labels=[l.CONTOUR, l.INSIDE])
         return self.volume + gt if gt.any() else None
 
     def get_jaw_with_delaunay(self):

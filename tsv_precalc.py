@@ -12,7 +12,7 @@ if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
 TOOL_DIRS = ['side_volume', 'annotated_dicom', 'masks']
-TOOL_FILES = ['dump.json']
+TOOL_FILES = ['dump.json', 'history.json', 'gt_volume.npy', 'volume.npy']
 
 
 def parse_args():

@@ -5,6 +5,11 @@ from multiprocessing import cpu_count
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm
 from annotation.core.ArchHandler import ArchHandler
+import sys
+import warnings
+
+if not sys.warnoptions:
+    warnings.simplefilter("ignore")
 
 
 def parse_args():
@@ -51,9 +56,11 @@ if __name__ == '__main__':
             continue
         if "DICOMDIR" in files:
             gt_volume_npy = os.path.join(root, "gt_volume.npy")
+            volume_npy = os.path.join(root, "volume.npy")
             if args.forced:
                 delete_file(gt_volume_npy)
-            if os.path.isfile(gt_volume_npy) and not args.forced:
+                delete_file(volume_npy)
+            if os.path.isfile(gt_volume_npy) and os.path.isfile(volume_npy) and not args.forced:
                 continue
             dicomdirs.append(os.path.join(root, "DICOMDIR"))
 

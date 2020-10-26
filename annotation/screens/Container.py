@@ -1,6 +1,6 @@
 from PyQt5 import QtCore
 from pyface.qt import QtGui
-
+from conf import labels as l
 from annotation.components.Menu import Menu
 from annotation.components.message.Messenger import Messenger
 from annotation.screens import Screen
@@ -39,8 +39,8 @@ class Container(QtGui.QWidget):
 
     def transition_to(self, ScreenClass: Screen, w_extraction=False):
         self.clear()
-        self.screen = ScreenClass(self)
         w_extraction and self.setup_extraction()
+        self.screen = ScreenClass(self)
         self.screen.start_()
         self.layout.addWidget(self.screen, 0, 0)
 
@@ -60,7 +60,8 @@ class Container(QtGui.QWidget):
 
         self.mb.view_gt_volume.connect(
             # lambda: self.show_Dialog3DPlot(self.arch_handler.gt_volume, "Ground truth"))
-            lambda: self.show_Dialog3DPlot(self.arch_handler.get_simpler_gt_volume(), "Ground truth"))
+            lambda: self.show_Dialog3DPlot(self.arch_handler.get_gt_volume(labels=[l.CONTOUR, l.INSIDE]),
+                                           "Ground truth"))
 
         self.mb.view_gt_volume_delaunay.connect(
             lambda: self.show_Dialog3DPlot(self.arch_handler.gt_delaunay, "Ground truth with Delaunay smoothing"))
@@ -154,7 +155,7 @@ class Container(QtGui.QWidget):
         self.mb.enable_(self.mb.view)
         self.mb.enable_(self.mb.options)
 
-        if self.arch_handler.get_simpler_gt_volume().any():
+        if self.arch_handler.get_gt_volume(labels=[l.CONTOUR, l.INSIDE]).any():
             title = "Ground truth available"
             message = "This DICOM has already annotations available. Would you like to use those as an initialization for the annotation?"
             self.messenger.question(title=title, message=message,

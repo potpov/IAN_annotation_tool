@@ -51,12 +51,16 @@ class CanvasPanorex(SplineCanvas):
             painter.drawLine(WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN,
                              WIDGET_MARGIN + self.current_pos, WIDGET_MARGIN + self.img.shape[0] - 1)
 
-        if not self.arch_handler.tilted():
-            self.draw_spline(painter, self.arch_handler.L_canal_spline, col.L_CANAL_SPLINE)
-            self.draw_spline(painter, self.arch_handler.R_canal_spline, col.R_CANAL_SPLINE)
-        else:
+        if self.arch_handler.tilted():
             self.draw_tilted_plane_line(painter, self.arch_handler.L_canal_spline, col.L_CANAL_SPLINE)
             self.draw_tilted_plane_line(painter, self.arch_handler.R_canal_spline, col.R_CANAL_SPLINE)
+        else:
+            if self._can_edit_spline:
+                self.draw_spline(painter, self.arch_handler.L_canal_spline, col.L_CANAL_SPLINE)
+                self.draw_spline(painter, self.arch_handler.R_canal_spline, col.R_CANAL_SPLINE)
+            else:
+                self.draw_spline_poly_approx(painter, self.arch_handler.L_canal_spline, col.L_CANAL_SPLINE)
+                self.draw_spline_poly_approx(painter, self.arch_handler.R_canal_spline, col.R_CANAL_SPLINE)
 
     def check_cp_movement(self, spline, LR, mouse_x, mouse_y):
         for cp_index, (point_x, point_y) in enumerate(spline.cp):
