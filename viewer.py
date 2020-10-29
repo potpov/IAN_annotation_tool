@@ -1,6 +1,7 @@
 import os
 from matplotlib import pyplot as plt
 from matplotlib.tri import Triangulation, TriAnalyzer, UniformTriRefiner
+
 if "REMOTE" not in os.environ:
     from mayavi import mlab
 
@@ -26,7 +27,6 @@ def plot_3D(volume, vmin=0, vmax=255, name='yet another scene'):
 
 
 def delaunay(volume):
-
     coords = np.argwhere(volume == 1)
 
     min_z, min_y, min_x = coords[:, 0].min(), coords[:, 1].min(), coords[:, 2].min()
@@ -95,7 +95,8 @@ def delaunay(volume):
     return smooth_vol
 
 
-def plot_2D(dicom_slice, cmap="gray"):
+def plot_2D(dicom_slice, cmap="gray", title=""):
+    plt.title(title)
     plt.imshow(np.squeeze(dicom_slice), cmap=cmap)
     plt.show()
 

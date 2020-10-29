@@ -66,7 +66,10 @@ class Canvas(QtGui.QWidget, metaclass=AbstractQObjectMeta):
         for x, y in points:
             x += offsetXY
             y += offsetXY
-            painter.drawPoint(int(x), int(y))
+            try:
+                painter.drawPoint(int(x), int(y))
+            except:
+                pass
 
     def draw_arch(self, painter, arch, color, offsetXY=WIDGET_MARGIN):
         """

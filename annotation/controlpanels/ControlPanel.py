@@ -12,12 +12,13 @@ class ControlPanel(QtGui.QWidget, metaclass=AbstractQObjectMeta):
 
     @staticmethod
     def create_slider(name=None, step=1, min=0, max=0, val=0, default=0, orientation=QtCore.Qt.Horizontal,
-                      tick_interval=10, max_h_w=50, valueChanged=lambda: None):
+                      tick_interval=10, max_h_w=50, valueChanged=lambda: None, inverted=False):
         slider = Slider(orientation, name, step)
         slider.setMinimum(min)
         slider.setMaximum(max)
         slider.setValue(val)
         slider.setDefaultValue(default)
+        slider.setInverted(inverted)
         slider.setTickInterval(tick_interval)
         if orientation == QtCore.Qt.Horizontal:
             slider.setTickPosition(QtWidgets.QSlider.TicksAbove)

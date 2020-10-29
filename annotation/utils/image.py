@@ -66,7 +66,7 @@ def sharpen(im):
     return im
 
 
-def plot(img, title="plot"):
+def plot(img, title=""):
     """
     Plots an image.
 

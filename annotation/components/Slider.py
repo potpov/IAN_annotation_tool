@@ -116,6 +116,10 @@ class Slider(QtGui.QWidget):
     def setTickInterval(self, interval):
         self.slider.setTickInterval(interval)
 
+    def setInverted(self, inverted):
+        self.slider.setInvertedAppearance(inverted)
+        self.slider.setInvertedControls(inverted)
+
     def setText(self, text):
         self.label.setText(text)
 

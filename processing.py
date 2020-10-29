@@ -66,24 +66,43 @@ def arch_detection(slice, debug=False):
         (float) ending value for the X axis
     """
 
+    def score_func(arch, th):
+        tmp = cv2.threshold(arch, th, 1, cv2.THRESH_BINARY)[1].astype(np.uint8)
+        score = tmp[tmp == 1].size / tmp.size
+        return score
+
     if debug:
         viewer.plot_2D(slice)
     # initial closing
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     arch = cv2.morphologyEx(slice, cv2.MORPH_CLOSE, kernel)
 
-    # varying threashold until we white area is about 12%
     th = 0.50
-    while True:
-        tmp = cv2.threshold(arch, th, 1, cv2.THRESH_BINARY)[1].astype(np.uint8)
-        score = tmp[tmp==1].size / tmp.size
-        if debug:
-            print("score for th {} is {}".format(th, score))
-            viewer.plot_2D(tmp)
-        if score > 0.11:
-            arch = tmp
+
+    max_it = 20
+    step_l = 0.01
+
+    # varying threshold until we white area is about 12%
+    h_th = 0.17
+    l_th = 0.11
+
+    poly_x = [th / 20 for th in range(0, 20, 1)]
+    poly_y = [score_func(arch, th) for th in poly_x]
+    th2score = np.poly1d(np.polyfit(poly_x, poly_y, 12))
+
+    for _ in range(max_it):
+        score = th2score(th)
+        if h_th > score > l_th:
+            arch = cv2.threshold(arch, th, 1, cv2.THRESH_BINARY)[1].astype(np.uint8)
             break
-        th -= .04
+        d = -np.polyder(th2score)(th)
+        if score > h_th:
+            th = th + step_l * d  # higher threshold, lower score
+        elif score < l_th:
+            th = th - step_l * d  # lower threshold, higher score
+
+        debug and viewer.plot_2D(cv2.threshold(arch, th, 1, cv2.THRESH_BINARY)[1].astype(np.uint8),
+                                 title="th: {} - score: {}".format(th, score))
 
     # hole filling
     # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
@@ -177,8 +196,8 @@ def arch_lines(func, start, end, offset=50):
     # so that f(X) is equally distant for each point in X
     while x < end:
         coords.append((x, func(x)))
-        alfa = (func(x+delta/2) - func(x-delta/2)) / delta
-        x = x + d * np.sqrt(1/(alfa**2 + 1))
+        alfa = (func(x + delta / 2) - func(x - delta / 2)) / delta
+        x = x + d * np.sqrt(1 / (alfa ** 2 + 1))
 
     # creating lines parallel to the spline
     high_offset = []
@@ -187,7 +206,7 @@ def arch_lines(func, start, end, offset=50):
     for x, y in coords:
         alfa = (func(x + delta / 2) - func(x - delta / 2)) / delta  # first derivative
         alfa = -1 / alfa  # perpendicular coeff
-        cos = np.sqrt(1/(alfa**2 + 1))
+        cos = np.sqrt(1 / (alfa ** 2 + 1))
         sin = np.sqrt(alfa ** 2 / (alfa ** 2 + 1))
         if alfa > 0:
             low_offset.append((x + offset * cos, y + offset * sin))

@@ -15,7 +15,7 @@ class SliceSelectionScreen(Screen):
 
         # slider
         self.slider = ControlPanel.create_slider("Slice", orientation=QtCore.Qt.Vertical,
-                                                 max_h_w=100, valueChanged=self.show_)
+                                                 max_h_w=100, valueChanged=self.show_, inverted=True)
         self.layout.addWidget(self.slider, 0, 1)
 
         # arch view
@@ -31,7 +31,7 @@ class SliceSelectionScreen(Screen):
         # confirm slice button
         self.confirm_button = QtWidgets.QPushButton(self, text="Confirm (C)")
         self.confirm_button.setShortcut("C")
-        self.confirm_button.clicked.connect(self.slice_selected.emit)
+        self.confirm_button.clicked.connect(self.confirm_check)
         self.layout.addWidget(self.confirm_button, 1, 1)
 
     def initialize(self):
@@ -47,7 +47,14 @@ class SliceSelectionScreen(Screen):
 
     def connect_signals(self):
         self.slice_selected.connect(self.next_screen)
-        
+
     def next_screen(self):
         self.arch_handler.compute_initial_state(self.slider.value())
         self.container.transition_to(ArchSplineScreen)
+
+    def confirm_check(self):
+        if self.arch_handler.arch_detections.get(self.slider.value())[0] is None:
+            self.messenger.message("information", title="No arch detection",
+                                   message="It was not possibile to extract and arch from this slice. Please, select another one.")
+        else:
+            self.slice_selected.emit()

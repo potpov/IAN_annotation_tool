@@ -89,7 +89,7 @@ executable = Executable(
 )
 
 setup(name=APP_NAME,
-      version="1.0",
+      version="1.1",
       description=APP_NAME,
       author="AImageLab",
       options={"build_exe": build_exe_options},
