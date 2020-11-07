@@ -93,7 +93,6 @@ class SplineArchView(SplineCanvas):
             self.arch_handler.history.add(ArchCpAddedAction((mouse_x, mouse_y), added_cp_idx))
 
     def mousePressEvent(self, QMouseEvent):
-        """ Internal mouse-press handler """
         self.drag_point = None
         self.action = None
         mouse_pos = QMouseEvent.pos()
@@ -112,7 +111,6 @@ class SplineArchView(SplineCanvas):
             self.handle_right_click(mouse_x, mouse_y)
 
     def mouseReleaseEvent(self, QMouseEvent):
-        """ Internal mouse-release handler """
         self.drag_point = None
         if self.action is not None:
             self.arch_handler.history.add(self.action)
@@ -120,7 +118,6 @@ class SplineArchView(SplineCanvas):
         self.spline_changed.emit()
 
     def mouseMoveEvent(self, QMouseEvent):
-        """ Internal mouse-move handler """
         if self.drag_point is not None:
             cp_index, (offset_x, offset_y) = self.drag_point
             new_x = QMouseEvent.pos().x() - WIDGET_MARGIN + offset_x

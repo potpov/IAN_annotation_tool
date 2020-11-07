@@ -21,11 +21,13 @@ class Visualization(HasTraits):
 
     @on_trait_change('scene.activated')
     def update_plot(self):
-        # This function is called when the view is opened. We don't
-        # populate the scene when the view is not yet open, as some
-        # VTK features require a GLContext.
+        """
+        This function is called when the view is opened. We don't
+        populate the scene when the view is not yet open, as some
+        VTK features require a GLContext.
 
-        # We can do normal mlab calls on the embedded scene.
+        We can do normal mlab calls on the embedded scene.
+        """
         # self.scene.mlab.test_points3d()
         pass  # show empty plot
 
@@ -40,9 +42,10 @@ class Visualization(HasTraits):
 
 
 ################################################################################
-# The QWidget containing the visualization, this is pure PyQt4 code.
 class MayaviViewer(QtGui.QWidget):
+
     def __init__(self, parent=None):
+        """The QWidget containing the visualization"""
         QtGui.QWidget.__init__(self, parent)
         self.container = parent
         layout = QtGui.QVBoxLayout(self)

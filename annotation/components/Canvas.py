@@ -11,6 +11,12 @@ class Canvas(QtGui.QWidget, metaclass=AbstractQObjectMeta):
     MARGIN = 50
 
     def __init__(self, parent):
+        """
+        Canvas widget that shows an image. On top of the image it can draw points and lines.
+
+        Args:
+            parent (QtGui.QWidget): parent widget
+        """
         super(Canvas, self).__init__()
         self.layout = QtGui.QHBoxLayout(self)
         self.container = parent
@@ -18,6 +24,7 @@ class Canvas(QtGui.QWidget, metaclass=AbstractQObjectMeta):
         self.pixmap = None
 
     def adjust_size(self):
+        """Applies a fix to thw widget shape to show the image properly"""
         if self.img is None:
             return
         self.setFixedSize(self.img.shape[1] + self.MARGIN,
@@ -30,10 +37,26 @@ class Canvas(QtGui.QWidget, metaclass=AbstractQObjectMeta):
         qp.end()
 
     def draw_background(self, painter, offsetXY=WIDGET_MARGIN):
+        """
+        Draws the image
+
+        Args:
+            painter (QtGui.QPainter): painter to use
+        """
         if self.pixmap is not None:
             painter.drawPixmap(QtCore.QRect(offsetXY, offsetXY, self.pixmap.width(), self.pixmap.height()), self.pixmap)
 
     def draw_poly_approx(self, painter, p, start, end, color, offsetXY=WIDGET_MARGIN):
+        """
+        Draws a polynomial approximation
+
+        Args:
+            painter (QtGui.QPainter): painter to use
+            p (numpy.Poly1D): polynomial approximation
+            start (float): starting x
+            end (float). ending x
+            color (QtGui.QColor): selected color
+        """
         if p is None or start is None or end is None:
             return
         x_set = list(range(int(start), int(end)))
@@ -42,6 +65,16 @@ class Canvas(QtGui.QWidget, metaclass=AbstractQObjectMeta):
         self.draw_points(painter, points, color, offsetXY)
 
     def draw_line_between_points(self, painter, p1, p2, color, offsetXY=WIDGET_MARGIN):
+        """
+        Draws a polynomial approximation
+
+        Args:
+            painter (QtGui.QPainter): painter to use
+            p1 ((float, float)): first point
+            p2 ((float, float)): second point
+            color (QtGui.QColor): selected color
+        """
+
         def get_equidist_points(p1, p2, parts):
             return zip(np.linspace(p1[0], p2[0], parts + 1),
                        np.linspace(p1[1], p2[1], parts + 1))
@@ -60,7 +93,6 @@ class Canvas(QtGui.QWidget, metaclass=AbstractQObjectMeta):
             painter (QtGui.QPainter): where to draw the points
             points (list of (float, float)): list of points to draw
             color (QtGui.QColor): color of the points
-            offsetXY (int): offset to apply to each (x, y)
         """
         painter.setPen(color)
         for x, y in points:
@@ -77,7 +109,7 @@ class Canvas(QtGui.QWidget, metaclass=AbstractQObjectMeta):
 
         Args:
             painter (QtGui.QPainter): where to draw the points
-            arch (annotation.core.Arch): Arch object to draw
+            arch (annotation.core.Arch.Arch): Arch object to draw
             color (QtGui.QColor): color of the points
             offsetXY (int): offset to apply to each (x, y)
         """
@@ -98,12 +130,22 @@ class Canvas(QtGui.QWidget, metaclass=AbstractQObjectMeta):
 
 class SplineCanvas(Canvas, metaclass=AbstractQObjectMeta):
     def __init__(self, parent):
+        """
+        Extension of Canvas that support spline drawings
+        :param parent:
+        """
         super().__init__(parent)
         self.l = 8  # size of the side of the square for the control points
         self.drag_point = None
         self._can_edit_spline = True
 
     def set_can_edit_spline(self, can_edit_spline=None):
+        """
+        Enables spline editing
+
+        Args:
+            can_edit_spline (bool): enables/disables the spline editing
+        """
         if can_edit_spline is None:
             self._can_edit_spline = not self._can_edit_spline  # changing current state to the opposite
         else:
@@ -152,6 +194,15 @@ class SplineCanvas(Canvas, metaclass=AbstractQObjectMeta):
                 show_cp_idx and painter.drawText(rect_x, rect_y, str(idx))
 
     def draw_spline_poly_approx(self, painter, spline, spline_color):
+        """
+        Extracts a polynomial approximation from a Spline and draws it
+
+        Args:
+            painter (QtGui.QPainter): painter to use
+            spline (annotation.spline.Spline.Spline): spline
+            spline_color (QtGui.QColor): selected color
+        """
+
         if spline is None:
             return
 
@@ -160,6 +211,14 @@ class SplineCanvas(Canvas, metaclass=AbstractQObjectMeta):
         return p, start, end
 
     def draw_tilted_plane_line(self, painter, spline, spline_color):
+        """
+        Draws an oblique line, perpendicular to the spline at a given position
+
+        Args:
+            painter (QtGui.QPainter): painter to use
+            spline (annotation.spline.Spline.Spline): spline
+            spline_color (QtGui.QColor): selected color
+        """
         if spline is None:
             return
 

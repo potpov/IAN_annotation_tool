@@ -22,7 +22,8 @@ class Screen(QtGui.QWidget, metaclass=AbstractQObjectMeta):
         self.messenger = Messenger()
 
     def start_(self):
-        """Sets up the screen.
+        """
+        Sets up the screen.
 
         This is a template method for a fixed flow of operations.
         """

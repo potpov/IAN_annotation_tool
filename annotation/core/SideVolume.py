@@ -29,6 +29,7 @@ class SideVolume():
         self.update()
 
     def is_there_data_to_load(self):
+        """Checks for data to load"""
         base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
         sv = os.path.join(dir, self.SIDE_VOLUME_FILENAME)
@@ -37,6 +38,7 @@ class SideVolume():
         return os.path.isfile(sv) and os.path.isfile(sc) and os.path.isfile(co)
 
     def save_(self):
+        """Saves important data"""
         base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
         if not os.path.exists(dir):
@@ -46,6 +48,7 @@ class SideVolume():
         np.save(os.path.join(dir, self.COORDS_FILENAME), np.asarray(self.arch_handler.coords))
 
     def load_(self):
+        """Loads data and checks for consistency"""
         base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
         sv = os.path.join(dir, self.SIDE_VOLUME_FILENAME)
@@ -70,6 +73,11 @@ class SideVolume():
         self._postprocess_data()
 
     def _postprocess_data(self):
+        """
+        Post-process operations on side volume:
+            - rescaling
+            - normalization
+        """
         # rescaling the projection volume properly
         self.original = self.data
         width = int(self.data.shape[2] * self.scale)
@@ -96,6 +104,7 @@ class SideVolume():
         # self.save_()
 
     def update(self):
+        """Computes and updates the side volume."""
         self.messenger.progress_message(message="Computing side volume", func=self.__update, func_args={})
 
     def get_slice(self, pos):
@@ -127,6 +136,7 @@ class TiltedSideVolume(SideVolume):
     CANAL_SPLINES_FILENAME = "canals.json"
 
     def __init__(self, arch_handler, scale):
+        """Class that manages a tilted planes side volume"""
         self.messenger = Messenger()
         self.arch_handler = arch_handler
         self.scale = scale
@@ -139,6 +149,7 @@ class TiltedSideVolume(SideVolume):
             super().__init__(arch_handler, scale)
 
     def try_load(self):
+        """Tries to load data and checks for consistency errors"""
         try:
             self.load_()
         except Exception as e:
@@ -216,6 +227,7 @@ class TiltedSideVolume(SideVolume):
             raise ValueError(msg)
 
     def _compute_on_spline(self, spline, step_fn=None, debug=False):
+        """Computes the tilted images on a give spline (left or right)"""
         if spline is None:
             return
         p, start, end = spline.get_poly_spline()

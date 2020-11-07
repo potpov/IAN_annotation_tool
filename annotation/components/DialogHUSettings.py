@@ -10,6 +10,12 @@ from annotation.controlpanels.ControlPanel import ControlPanel
 
 class DialogHUSettings(QtWidgets.QDialog):
     def __init__(self, parent=None):
+        """
+        Enables contrast stretching in a settings window
+
+        Args:
+            parent (QtGui.QWidget): parent widget
+        """
         super(DialogHUSettings, self).__init__(parent)
 
         self.setWindowTitle("Hounsfield Units thresholds")
@@ -41,19 +47,23 @@ class DialogHUSettings(QtWidgets.QDialog):
         self.layout.addWidget(self.close_button)
 
     def update_test_image(self):
+        """Updates the test image"""
         self.test_image_label.setPixmap(numpy2pixmap(self.test_image))
 
     def min_slider_changed_handler(self):
+        """Handles min slider changes"""
         if self.min_slider.value() > self.max_slider.value():
             self.min_slider.setValue(self.max_slider.value())
         self.cs.set_min(self.min_slider.value())
         self.update_test_image()
 
     def max_slider_changed_handler(self):
+        """Handles max slider changes"""
         if self.max_slider.value() < self.min_slider.value():
             self.max_slider.setValue(self.min_slider.value())
         self.cs.set_max(self.max_slider.value())
         self.update_test_image()
 
     def create_test_image(self):
+        """Creates a grey-scale test image"""
         return np.tile(np.arange(0, 255).repeat(2), (100, 1)).astype(np.float32) / 255

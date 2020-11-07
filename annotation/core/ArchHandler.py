@@ -35,28 +35,28 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         """
         Class that handles the arch and panorex computing on top of the Jaw class.
 
+        Attr:
+            - dicomdir_path (str): path of the DICOMDIR file
+            - history (History): History object that memorizes user changes
+            - selected_slice (int): index of the selected slice of the volume
+            - arch_detections (ArchDetections): object that stores arches of each slice of the volume
+            - coords ((list of (float, float), list of (float, float), list of (float, float), list of float)): (l_offset, coords, h_offset, derivative) tuple of the arch for the selected slice of the volume
+            - spline (Spline): object that models the arch as a Catmull-Rom spline
+            - arch (Arch): object that stores the coordinates of the arch offsetted while using the application
+            - LH_pano_arches ((Arch, Arch)): objects that store the coordinates of two arches slightly distant from the arch
+            - side_coords (list): coordinates of the points that define "side_volume" perimeter
+            - old_side_coords (list): side_coords of the current SideVolume, used in order not to recompute SideVolume if there are no changes
+            - side_volume (list): volume of the side views of the jaw volume through the two coords arches
+            - side_volume_scale (int): multiplier for side_volume images dimensions
+            - L_canal_spline (Spline): object that models the left canal in the panorex with a Catmull-Rom spline
+            - R_canal_spline (Spline): object that models the right canal in the panorex with a Catmull-Rom spline
+            - annotation_masks (AnnotationMasks): object that manages the annotations onto side_volume images
+            - canal (numpy.ndarray): same as side_volume, but has just the canal (obtained from masks) and it is scaled to original volume dimensions
+            - gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with Delaunay algorithm
+            - gt_extracted (bool): flags the user has extracted the views from previous annotations
+
         Args:
             dicomdir_path (str): path of the DICOMDIR file
-
-        Attributes:
-            dicomdir_path (str): path of the DICOMDIR file
-            history (History): History object that memorizes user changes
-            selected_slice (int): index of the selected slice of the volume
-            arch_detections (ArchDetections): object that stores arches of each slice of the volume
-            coords ((list of (float, float), list of (float, float), list of (float, float), list of float)): (l_offset, coords, h_offset, derivative) tuple of the arch for the selected slice of the volume
-            spline (Spline): object that models the arch as a Catmull-Rom spline
-            arch (Arch): object that stores the coordinates of the arch offsetted while using the application
-            LH_pano_arches ((Arch, Arch)): objects that store the coordinates of two arches slightly distant from the arch
-            side_coords (list): coordinates of the points that define "side_volume" perimeter
-            old_side_coords (list): side_coords of the current SideVolume, used in order not to recompute SideVolume if there are no changes
-            side_volume (list): volume of the side views of the jaw volume through the two coords arches
-            side_volume_scale (int): multiplier for side_volume images dimensions
-            L_canal_spline (Spline): object that models the left canal in the panorex with a Catmull-Rom spline
-            R_canal_spline (Spline): object that models the right canal in the panorex with a Catmull-Rom spline
-            annotation_masks (AnnotationMasks): object that manages the annotations onto side_volume images
-            canal (numpy.ndarray): same as side_volume, but has just the canal (obtained from masks) and it is scaled to original volume dimensions
-            gt_delaunay (numpy.ndarray): same as gt_volume, the canal has been smoothed with Delaunay algorithm
-            gt_extracted (bool): flags the user has extracted the views from previous annotations
         """
         sup = super()
         self.messenger = Messenger(QtMessageStrategy())
@@ -234,7 +234,8 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
                 step_fn is not None and step_fn(z_id, len(self.side_coords))
                 for w_id, (x, y) in enumerate(points):
                     if 0 <= int(x) < self.W and 0 <= int(y) < self.H:
-                        # # less precise method
+
+                        ### less precise method
                         # gt_volume[:, int(y), int(x)] = self.canal[z_id, :, w_id]
 
                         # # floor and ceil only CONTOUR and INSIDE labels
@@ -373,6 +374,8 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
     ################
 
     def extract_canal_mask_labels_Z(self):
+        """Flattens GT and extracts the canal coordinates"""
+
         def correct_labels(img):
             h, w = img.shape
             half = img[:, :w // 2]  # get left half
@@ -393,6 +396,13 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         return correct_labels(labels)
 
     def extract_canal_spline(self, img, label):
+        """
+        Extracts a canal (left or right) from the panorex and the GT
+
+        Args:
+            img (numpy.ndarray): image with labels
+            label (int): label to look for
+        """
         mask = get_mask_by_label(img, label)
         gt_canal = filter_volume_Z_axis(self.gt_volume, mask)
         z, y, x = get_coords_by_label_3D(gt_canal, 1)
@@ -405,6 +415,15 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         return Spline(coords=coords, num_cp=10)
 
     def extract_data_from_gt(self, load_annotations=True, debug=False):
+        """
+        Function that uses the GT in the DICOM ovelay to extract the Arch and the Splines.
+
+        Adapts 3D data to ArchHandler data.
+
+        Args:
+            load_annotations (bool): load mask splines or not
+            debug (bool): debug flag
+        """
         if self.gt_volume is None:
             print("gt_volume is None")
             return

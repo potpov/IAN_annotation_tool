@@ -7,18 +7,51 @@ from annotation.components.message.Dialog import warning, information, LoadingDi
 class MessageStrategy(ABC):
     @abstractmethod
     def message(self, kind: str, title="", message="", parent=None):
+        """
+        Shows a warning or information message
+
+        Args:
+            kind (str): "warning" or "information"
+            title (str): title of the message
+            message (str): content of the message
+        """
         pass
 
     @abstractmethod
     def loading_message(self, message="", func=lambda: None, parent=None):
+        """
+        Shows a loading message
+
+        Args:
+            message (str): content of the loading message
+            func: function that is executed in background
+        """
         pass
 
     @abstractmethod
     def progress_message(self, func, func_args: dict, message="", parent=None):
+        """
+        Shows a progress loading message
+
+        Args:
+            message (str): content of the loading message
+            func: function that is executed in background
+            func_args (dict): dictionary of arguments for func
+        """
         pass
 
     @abstractmethod
     def question(self, title="", message="", yes=lambda: None, no=lambda: None, default='yes', parent=None):
+        """
+        Shows a question message
+
+        Args:
+            title (str): title of the question
+            message (str): question
+            yes: function that has to be executed on yes
+            no: function that has to be executed on no
+            defualt (str): default answer
+        """
         pass
 
 
@@ -79,13 +112,3 @@ class TerminalMessageStrategy(MessageStrategy):
             else:
                 sys.stdout.write("Please respond with 'yes' or 'no' "
                                  "(or 'y' or 'n').\n")
-
-
-class ProcessPoolExecutorStategy(TerminalMessageStrategy):
-
-    def progress_message(self, func, func_args: dict, message="", parent=None):
-        def print_bar(val, max):
-            print("{}: {}/{} - {}%".format(message, val, max, int(val / max * 100)), end="\r")
-        
-        func(step_fn=print_bar, **func_args)
-        print("{}: Done!".format(message))

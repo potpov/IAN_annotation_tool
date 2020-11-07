@@ -21,6 +21,7 @@ DEFAULT_PLANES_ANNOTATION = "DEFAULT_PLANES_ANNOTATION"
 
 
 def create_action(**args):
+    """Construct Action objects from its kind and other attributes"""
     kind = args['kind']
     if kind == NO_ACTION:
         return Action()
@@ -68,6 +69,8 @@ def create_action(**args):
 
 
 class Action:
+    """Basic class for actions"""
+
     def get_data(self):
         return self.__dict__
 
@@ -76,12 +79,15 @@ class Action:
 
 
 class NoAction(Action):
+    """Empty action"""
+
     def __init__(self):
         self.kind = NO_ACTION
 
 
 class CpChangedAction(Action):
     def __init__(self, curr, prev, index):
+        """Action that records the change in position of a control point"""
         if len(curr) != 2 or len(prev) != 2:
             raise ValueError("curr and prev arguments must be tuples with length 2")
         self.curr = tuple(map(float, curr))
@@ -91,24 +97,28 @@ class CpChangedAction(Action):
 
 class ArchCpChangedAction(CpChangedAction):
     def __init__(self, curr, prev, index):
+        """Action that records the change in position of a control point in the arch spline"""
         super().__init__(curr, prev, index)
         self.kind = ARCH_CP_CHANGED
 
 
 class LeftCanalCpChangedAction(CpChangedAction):
     def __init__(self, curr, prev, index):
+        """Action that records the change in position of a control point in the left canal in the panorex"""
         super().__init__(curr, prev, index)
         self.kind = LEFT_CANAL_CP_CHANGED
 
 
 class RightCanalCpChangedAction(CpChangedAction):
     def __init__(self, curr, prev, index):
+        """Action that records the change in position of a control point in the right canal in the panorex"""
         super().__init__(curr, prev, index)
         self.kind = RIGHT_CANAL_CP_CHANGED
 
 
 class CpAddedAction(Action):
     def __init__(self, cp, index):
+        """Action that records the addition of a control point"""
         if len(cp) != 2:
             raise ValueError("cp must have 2 coordinates (x, y)")
         self.cp = tuple(map(float, cp))
@@ -117,53 +127,62 @@ class CpAddedAction(Action):
 
 class ArchCpAddedAction(CpAddedAction):
     def __init__(self, cp, index):
+        """Action that records the addition of a control point in the arch spline"""
         super().__init__(cp, index)
         self.kind = ARCH_CP_ADDED
 
 
 class LeftCanalCpAddedAction(CpAddedAction):
     def __init__(self, cp, index):
+        """Action that records the addition of a control point in the left canal in the panorex"""
         super().__init__(cp, index)
         self.kind = LEFT_CANAL_CP_ADDED
 
 
 class RightCanalCpAddedAction(CpAddedAction):
     def __init__(self, cp, index):
+        """Action that records the addition of a control point in the right canal in the panorex"""
         super().__init__(cp, index)
         self.kind = RIGHT_CANAL_CP_ADDED
 
 
 class CpRemovedAction(Action):
     def __init__(self, index):
+        """Action that records the removal of a control point"""
         self.index = int(index)
 
 
 class ArchCpRemovedAction(CpRemovedAction):
     def __init__(self, index):
+        """Action that records the addition of a control point in the arch spline"""
         super().__init__(index)
         self.kind = ARCH_CP_REMOVED
 
 
 class LeftCanalCpRemovedAction(CpRemovedAction):
     def __init__(self, index):
+        """Action that records the addition of a control point in the left canal in the panorex"""
         super().__init__(index)
         self.kind = LEFT_CANAL_CP_REMOVED
 
 
 class RightCanalCpRemovedAction(CpRemovedAction):
     def __init__(self, index):
+        """Action that records the addition of a control point in the right canal in the panorex"""
         super().__init__(index)
         self.kind = RIGHT_CANAL_CP_REMOVED
 
 
 class SliceChangedAction(Action):
     def __init__(self, val):
+        """Action that records selection of an axial image as initialization"""
         self.kind = SLICE_CHANGED
         self.val = int(val)
 
 
 class SideVolumeCpAddedAction(CpAddedAction):
     def __init__(self, cp, index, pos):
+        """Action that records the addition of a control point in side volume"""
         super().__init__(cp, index)
         self.kind = SIDE_VOLUME_CP_ADDED
         self.pos = pos
@@ -171,6 +190,7 @@ class SideVolumeCpAddedAction(CpAddedAction):
 
 class SideVolumeCpRemovedAction(CpRemovedAction):
     def __init__(self, index, pos):
+        """Action that records the removal of a control point in side volume"""
         super().__init__(index)
         self.kind = SIDE_VOLUME_CP_REMOVED
         self.pos = pos
@@ -178,6 +198,7 @@ class SideVolumeCpRemovedAction(CpRemovedAction):
 
 class SideVolumeCpChangedAction(CpChangedAction):
     def __init__(self, curr, prev, index, pos):
+        """Action that records a change of a control point in side volume"""
         super().__init__(curr, prev, index)
         self.kind = SIDE_VOLUME_CP_CHANGED
         self.pos = pos
@@ -185,6 +206,7 @@ class SideVolumeCpChangedAction(CpChangedAction):
 
 class SideVolumeSplineExtractedAction(Action):
     def __init__(self, pos, from_pos):
+        """Action that records the automatic extraction of an annotation"""
         self.kind = SIDE_VOLUME_SPLINE_EXTRACTED
         self.pos = pos
         self.from_pos = from_pos
@@ -192,15 +214,18 @@ class SideVolumeSplineExtractedAction(Action):
 
 class SideVolumeSplineResetAction(Action):
     def __init__(self, pos):
+        """Action that records the reset of an annotation"""
         self.kind = SIDE_VOLUME_SPLINE_RESET
         self.pos = pos
 
 
 class TiltedPlanesAnnotationAction(Action):
     def __init__(self):
+        """Action that records the selection of tilted planes"""
         self.kind = TILTED_PLANES_ANNOTATION
 
 
 class DefaultPlanesAnnotationAction(Action):
     def __init__(self):
+        """Action that records the selection of default planes"""
         self.kind = DEFAULT_PLANES_ANNOTATION

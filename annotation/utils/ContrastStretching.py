@@ -1,7 +1,5 @@
 from annotation.core.ArchHandler import ArchHandler
-from annotation.utils.math import clip_range
 from annotation.utils.metaclasses import SingletonMeta
-import numpy as np
 
 
 class ContrastStretching(metaclass=SingletonMeta):

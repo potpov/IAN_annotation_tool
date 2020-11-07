@@ -59,6 +59,7 @@ class Slider(QtGui.QWidget):
         self.layout.addWidget(self.reset)
 
     def resetToDefault(self):
+        """Resets the slider and spinbox value to default"""
         if self.default is not None:
             self.box.setValue(self.default)
 
@@ -67,12 +68,14 @@ class Slider(QtGui.QWidget):
         return step_count * self.step
 
     def box_valueChanged_handler(self, value):
+        """Handler a change in the spinbox and changes the slider as well"""
         if self.step != 1:
             value = self._value_step_fix(value)
             self.box.setValue(value)
         self.slider.setValue(value)
 
     def slider_valueChanged_handler(self, value):
+        """Handler a change in the slider and changes the spinbox as well"""
         if self.step != 1:
             value = self._value_step_fix(value)
             self.slider.setValue(value)

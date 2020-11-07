@@ -6,6 +6,11 @@ class Messenger(metaclass=SingletonMeta):
     _strategy: MessageStrategy = None
 
     def __init__(self, strategy: MessageStrategy):
+        """
+
+        Args:
+            strategy (MessageStrategy): how to handle messages
+        """
         self._strategy = strategy
 
     def message(self, kind: str, title="", message="", parent=None):
