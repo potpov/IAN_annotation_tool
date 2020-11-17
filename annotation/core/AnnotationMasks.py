@@ -111,8 +111,14 @@ class AnnotationMasks():
                 self.mask_volume[i] = mask_img
 
     def compute_mask_volume(self):
-        """Stacks mask images (label images) in a volume"""
-        self.messenger.progress_message(message="Computing 3D canal", func=self._compute_mask_volume, func_args={})
+        """
+        Stacks mask images (label images) in a volume
+
+        Returns:
+            (bool): computation completed
+        """
+        return self.messenger.progress_message(message="Computing 3D canal", func=self._compute_mask_volume,
+                                               func_args={}, cancelable=False)
 
     def set_mask_spline(self, idx, spline, from_snake=False):
         """
@@ -168,7 +174,9 @@ class AnnotationMasks():
             - side volume images (PNG)
             - annotation mask images (PNG)
         """
-        self.compute_mask_volume()
+        completed = self.compute_mask_volume()
+        if not completed:
+            return
 
         now = datetime.now()
         date_str = "{:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(

@@ -26,6 +26,7 @@ class SideVolume():
         self.scale = scale
         self.original = None
         self.data = None
+        self.correct = True
         self.update()
 
     def is_there_data_to_load(self):
@@ -105,7 +106,10 @@ class SideVolume():
 
     def update(self):
         """Computes and updates the side volume."""
-        self.messenger.progress_message(message="Computing side volume", func=self.__update, func_args={})
+        self.correct = self.messenger.progress_message(message="Computing side volume",
+                                                       func=self.__update,
+                                                       func_args={},
+                                                       cancelable=False)
 
     def get_slice(self, pos):
         """
@@ -142,6 +146,7 @@ class TiltedSideVolume(SideVolume):
         self.scale = scale
         self.original = None
         self.data = None
+        self.correct = True
         self.planes = [None] * len(arch_handler.side_coords)
         if self.is_there_data_to_load():
             self.try_load()
@@ -250,11 +255,18 @@ class TiltedSideVolume(SideVolume):
         h = self.arch_handler.Z
         w = max([len(points) for points in self.arch_handler.side_coords])
         self.data = np.zeros((n, h, w))
-        self.messenger.progress_message(func=self._compute_on_spline,
-                                        func_args={'spline': self.arch_handler.L_canal_spline},
-                                        message="Computing tilted views (L)")
-        self.messenger.progress_message(func=self._compute_on_spline,
-                                        func_args={'spline': self.arch_handler.R_canal_spline},
-                                        message="Computing tilted views (R)")
+        completed = self.messenger.progress_message(func=self._compute_on_spline,
+                                                    func_args={'spline': self.arch_handler.L_canal_spline},
+                                                    message="Computing tilted views (L)",
+                                                    cancelable=True)
+        if completed:
+            completed = self.messenger.progress_message(func=self._compute_on_spline,
+                                                        func_args={'spline': self.arch_handler.R_canal_spline},
+                                                        message="Computing tilted views (R)",
+                                                        cancelable=True)
+        if not completed:
+            self.correct = False
+            return
         self._postprocess_data()
         self.save_()
+        self.correct = True

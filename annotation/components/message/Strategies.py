@@ -29,7 +29,7 @@ class MessageStrategy(ABC):
         pass
 
     @abstractmethod
-    def progress_message(self, func, func_args: dict, message="", parent=None):
+    def progress_message(self, func, func_args: dict, message="", parent=None, cancelable=False):
         """
         Shows a progress loading message
 
@@ -37,6 +37,10 @@ class MessageStrategy(ABC):
             message (str): content of the loading message
             func: function that is executed in background
             func_args (dict): dictionary of arguments for func
+            cancelable (bool): cancel button enabled
+
+        Returns:
+            (bool): completion of the task
         """
         pass
 
@@ -65,10 +69,11 @@ class QtMessageStrategy(MessageStrategy):
     def loading_message(self, message="", func=lambda: None, parent=None):
         LoadingDialog(func, message, parent)
 
-    def progress_message(self, func, func_args: dict, message="", parent=None):
-        pld = ProgressLoadingDialog(message)
+    def progress_message(self, func, func_args: dict, message="", parent=None, cancelable=False):
+        pld = ProgressLoadingDialog(message, cancelable=cancelable)
         pld.set_function(lambda: func(step_fn=pld.get_signal(), **func_args))
         pld.start()
+        return not pld.progress_canceled
 
     def question(self, title="", message="", yes=lambda: None, no=lambda: None, default='yes', parent=None):
         question(parent, title, message, yes, no, default)
@@ -83,12 +88,13 @@ class TerminalMessageStrategy(MessageStrategy):
         func()
         print("Done!")
 
-    def progress_message(self, func, func_args: dict, message="", parent=None):
+    def progress_message(self, func, func_args: dict, message="", parent=None, cancelable=False):
         def print_bar(val, max):
             print("{}: {}/{} - {}%".format(message, val, max, int(val / max * 100)), end="\r")
 
         func(step_fn=print_bar, **func_args)
         print("{}: Done!".format(message))
+        return True
 
     def question(self, title="", message="", yes=lambda: None, no=lambda: None, default='yes', parent=None):
         valid_yes = ['yes', 'y', 'ye']

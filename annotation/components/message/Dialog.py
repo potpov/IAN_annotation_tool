@@ -74,7 +74,7 @@ class ProgressIterator(QtWidgets.QWidget):
 class ProgressLoadingDialog(QtWidgets.QDialog):
     progress_s = QtCore.pyqtSignal(int, int)
 
-    def __init__(self, message="Loading", parent=None):
+    def __init__(self, message="Loading", parent=None, cancelable=False):
         """
         Dialog with progress bar
 
@@ -92,6 +92,12 @@ class ProgressLoadingDialog(QtWidgets.QDialog):
         self.iterator.progress_step.connect(self.set_value)
         self.progress = self.iterator.progress
         self.layout.addWidget(self.progress)
+        self._cancelable = cancelable
+        self.progress_canceled = False
+        if self._cancelable:
+            self.cancel = QtGui.QPushButton("Cancel")
+            self.cancel.clicked.connect(self.kill)
+            self.layout.addWidget(self.cancel)
         self.progress_s.connect(self.handle_progress_signal)
 
     def get_iterator(self, max):
@@ -123,6 +129,11 @@ class ProgressLoadingDialog(QtWidgets.QDialog):
         self.thread.finished.connect(self.close)
         self.thread.start()
         self.exec_()
+
+    def kill(self):
+        self.thread.terminate()
+        self.close()
+        self.progress_canceled = True
 
 
 def question(parent, title, message, yes=lambda: None, no=lambda: None, default="yes"):

@@ -180,9 +180,10 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         # check if needed to recompute side_volume
         if self.old_side_coords is not None \
                 and np.array_equal(self.side_coords, self.old_side_coords) \
-                and self.tilted() == tilted:
+                and self.tilted() == tilted \
+                and self.side_volume is not None \
+                and self.side_volume.correct:
             return
-        self.old_side_coords = self.side_coords
 
         self.side_volume_scale = self.SIDE_VOLUME_SCALE if scale is None else scale
 
@@ -192,6 +193,11 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
             self.side_volume = SideVolume(self, self.side_volume_scale)
 
         # configuring annotations_masks
+        if not self.side_volume.correct:
+            return
+
+        self.old_side_coords = self.side_coords
+
         shape = self.side_volume.get().shape
         if self.annotation_masks is None:
             self.annotation_masks = AnnotationMasks(shape, self)
@@ -204,13 +210,15 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
 
     def extract_3D_annotations(self):
         """Transforms 2D annotations on SideVolume into gt_volume"""
-        self.annotation_masks.compute_mask_volume()
+        if not self.annotation_masks.compute_mask_volume():
+            return
 
         self.canal = self.annotation_masks.mask_volume
         if self.canal is None or not self.canal.any():
             return
 
-        self.compute_gt_volume()
+        if not self.compute_gt_volume():
+            return
 
     def _compute_gt_volume(self, step_fn=None):
         """
@@ -277,10 +285,15 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         self.set_gt_volume(gt_volume)
 
     def compute_gt_volume(self):
-        """Shows a progress bar while computing gt_volume"""
-        self.messenger.progress_message(message="Computing ground truth volume",
-                                        func=self._compute_gt_volume,
-                                        func_args={})
+        """
+        Shows a progress bar while computing gt_volume
+
+        Returns:
+            (bool): completion of the task
+        """
+        return self.messenger.progress_message(message="Computing ground truth volume",
+                                               func=self._compute_gt_volume,
+                                               func_args={}, cancelable=True)
 
     def _compute_gt_volume_delaunay(self):
         """Applies Delaunay algorithm in order to have a smoother gt_volume."""

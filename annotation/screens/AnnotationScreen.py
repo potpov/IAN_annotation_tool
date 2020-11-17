@@ -35,12 +35,15 @@ class AnnotationScreen(Screen):
 
     def initialize(self):
         def yes(self):
-            self.arch_handler.history.add(TiltedPlanesAnnotationAction())
             self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE, tilted=True)
+            if not self.arch_handler.side_volume.correct:
+                no(self)
+            else:
+                self.arch_handler.history.add(TiltedPlanesAnnotationAction())
 
         def no(self):
-            self.arch_handler.history.add(DefaultPlanesAnnotationAction())
             self.arch_handler.compute_side_volume(self.arch_handler.SIDE_VOLUME_SCALE, tilted=False)
+            self.arch_handler.history.add(DefaultPlanesAnnotationAction())
 
         self.mb.enable_save_load(True)
         self.mb.enable_(self.mb.annotation)

@@ -19,8 +19,12 @@ class Messenger(metaclass=SingletonMeta):
     def loading_message(self, message="", func=lambda: None, parent=None):
         self._strategy.loading_message(message, func, parent)
 
-    def progress_message(self, func, func_args: dict, message="", parent=None):
-        self._strategy.progress_message(func, func_args, message, parent)
+    def progress_message(self, func, func_args: dict, message="", parent=None, cancelable=False):
+        """
+        Returns:
+             (bool): completion of the task
+        """
+        return self._strategy.progress_message(func, func_args, message, parent, cancelable)
 
     def question(self, title="", message="", yes=lambda: None,
                  no=lambda: None, default='yes', parent=None):
