@@ -57,7 +57,7 @@ def arch_detection(slice, debug=False):
     """
     compute a polynomial spline of the dental arch from a DICOM file
     Args:
-        slice (numpy array): source image
+        slice (numpy array): source image. Must be float with values in range [0,1]
         debug (Bool): if true the result is shown at each step
 
     Returns:
