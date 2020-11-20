@@ -229,11 +229,15 @@ class ArchHandler(Jaw, metaclass=SingletonMeta):
         def assign_to_gt_volume(self, val, x, y, z):
             x_ = clip_range(x, 0, self.W - 1)
             y_ = clip_range(y, 0, self.H - 1)
-            z_ = int(clip_range(z, 0, self.Z - 1))
-            gt_volume[z_, floor(y_), floor(x_)] = val
-            gt_volume[z_, floor(y_), ceil(x_)] = val
-            gt_volume[z_, ceil(y_), floor(x_)] = val
-            gt_volume[z_, ceil(y_), ceil(x_)] = val
+            z_ = clip_range(z, 0, self.Z - 1)
+            gt_volume[floor(z_), floor(y_), floor(x_)] = val
+            gt_volume[floor(z_), floor(y_), ceil(x_)] = val
+            gt_volume[floor(z_), ceil(y_), floor(x_)] = val
+            gt_volume[floor(z_), ceil(y_), ceil(x_)] = val
+            gt_volume[ceil(z_), floor(y_), floor(x_)] = val
+            gt_volume[ceil(z_), floor(y_), ceil(x_)] = val
+            gt_volume[ceil(z_), ceil(y_), floor(x_)] = val
+            gt_volume[ceil(z_), ceil(y_), ceil(x_)] = val
 
         from math import floor, ceil
         gt_volume = np.full_like(self.volume, l.UNLABELED, dtype=np.uint8)

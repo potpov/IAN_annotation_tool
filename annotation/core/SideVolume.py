@@ -11,6 +11,7 @@ class SideVolume():
     SIDE_VOLUME_FILENAME = "side_volume.npy"
     SIDE_COORDS_FILENAME = "side_coords.npy"
     COORDS_FILENAME = "coords.npy"
+    PLANES_FILENAME = "planes.npy"
     SAVE_DIRNAME = "side_volume"
 
     def __init__(self, arch_handler, scale):
@@ -27,6 +28,7 @@ class SideVolume():
         self.original = None
         self.data = None
         self.correct = True
+        self.planes = [None] * len(arch_handler.side_coords)
         self.update()
 
     def is_there_data_to_load(self):
@@ -38,6 +40,38 @@ class SideVolume():
         co = os.path.join(dir, self.COORDS_FILENAME)
         return os.path.isfile(sv) and os.path.isfile(sc) and os.path.isfile(co)
 
+    def _save_planes(self):
+        base = os.path.dirname(self.arch_handler.dicomdir_path)
+        dir = os.path.join(base, self.SAVE_DIRNAME)
+        p = os.path.join(dir, self.PLANES_FILENAME)
+        n, h, w = self.original.shape
+        empty = np.zeros((3, h, w), dtype=np.float64)
+        planes = np.repeat(empty[np.newaxis, :, :, :], n, axis=0)
+        for i, plane in enumerate(self.planes):
+            if plane is None:
+                continue
+            planes[i] = plane.plane
+        np.save(p, planes)
+
+    def _load_planes(self):
+        base = os.path.dirname(self.arch_handler.dicomdir_path)
+        dir = os.path.join(base, self.SAVE_DIRNAME)
+        p = os.path.join(dir, self.PLANES_FILENAME)
+        if not os.path.isfile(p):
+            msg = "Could not load tilted side volume: {} is missing".format(self.PLANES_FILENAME)
+            print(msg)
+            raise FileNotFoundError(msg)
+        planes = np.load(p)
+        n, _, h, w = planes.shape
+        self.planes = []
+        for plane in planes:
+            if not plane.any():
+                self.planes.append(None)
+                continue
+            plane_obj = Plane(h, w)
+            plane_obj.plane = plane
+            self.planes.append(plane_obj)
+
     def save_(self):
         """Saves important data"""
         base = os.path.dirname(self.arch_handler.dicomdir_path)
@@ -47,6 +81,7 @@ class SideVolume():
         np.save(os.path.join(dir, self.SIDE_VOLUME_FILENAME), self.original)
         np.save(os.path.join(dir, self.SIDE_COORDS_FILENAME), self.arch_handler.side_coords)
         np.save(os.path.join(dir, self.COORDS_FILENAME), np.asarray(self.arch_handler.coords))
+        self._save_planes()
 
     def load_(self):
         """Loads data and checks for consistency"""
@@ -60,6 +95,7 @@ class SideVolume():
                 self.SIDE_VOLUME_FILENAME, self.SIDE_COORDS_FILENAME, self.COORDS_FILENAME)
             print(msg)
             raise FileNotFoundError(msg)
+        self._load_planes()
         sv_ = np.load(sv)
         sc_ = np.load(sc)
         co_ = np.load(co, allow_pickle=True)
@@ -101,8 +137,11 @@ class SideVolume():
             scale (float): scale of side volume w.r.t. volume dimensions
         """
         self.data = self.arch_handler.line_slice(self.arch_handler.side_coords, step_fn=step_fn)
+        self.planes = [None] * len(self.arch_handler.side_coords)
+        for i, side_coord in enumerate(self.arch_handler.side_coords):
+            self.planes[i] = Plane(self.arch_handler.Z, len(side_coord))
+            self.planes[i].from_line(side_coord)
         self._postprocess_data()
-        # self.save_()
 
     def update(self):
         """Computes and updates the side volume."""
@@ -110,6 +149,7 @@ class SideVolume():
                                                        func=self.__update,
                                                        func_args={},
                                                        cancelable=False)
+        self.messenger.loading_message("Saving views", self.save_)
 
     def get_slice(self, pos):
         """
@@ -136,7 +176,6 @@ class SideVolume():
 
 
 class TiltedSideVolume(SideVolume):
-    PLANES_FILENAME = "planes.npy"
     CANAL_SPLINES_FILENAME = "canals.json"
 
     def __init__(self, arch_handler, scale):
@@ -168,23 +207,9 @@ class TiltedSideVolume(SideVolume):
         cs = os.path.join(dir, self.CANAL_SPLINES_FILENAME)
         return os.path.isfile(p) and os.path.isfile(cs) and super().is_there_data_to_load()
 
-    def save_(self):
-        super().save_()
+    def _save_canal_splines(self):
         base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
-
-        # planes
-        p = os.path.join(dir, self.PLANES_FILENAME)
-        n, h, w = self.original.shape
-        empty = np.zeros((3, h, w), dtype=np.float64)
-        planes = np.repeat(empty[np.newaxis, :, :, :], n, axis=0)
-        for i, plane in enumerate(self.planes):
-            if plane is None:
-                continue
-            planes[i] = plane.plane
-        np.save(p, planes)
-
-        # canal splines
         cs = os.path.join(dir, self.CANAL_SPLINES_FILENAME)
         splines = {
             "l_canal": self.arch_handler.L_canal_spline.get_json(),
@@ -193,29 +218,9 @@ class TiltedSideVolume(SideVolume):
         with open(cs, "w") as outfile:
             json.dump(splines, outfile)
 
-    def load_(self):
-        super().load_()
+    def _load_canal_splines(self):
         base = os.path.dirname(self.arch_handler.dicomdir_path)
         dir = os.path.join(base, self.SAVE_DIRNAME)
-
-        # planes
-        p = os.path.join(dir, self.PLANES_FILENAME)
-        if not os.path.isfile(p):
-            msg = "Could not load tilted side volume: {} is missing".format(self.PLANES_FILENAME)
-            print(msg)
-            raise FileNotFoundError(msg)
-        planes = np.load(p)
-        n, _, h, w = planes.shape
-        self.planes = []
-        for plane in planes:
-            if not plane.any():
-                self.planes.append(None)
-                continue
-            plane_obj = Plane(h, w)
-            plane_obj.plane = plane
-            self.planes.append(plane_obj)
-
-        # splines
         cs = os.path.join(dir, self.CANAL_SPLINES_FILENAME)
         if not os.path.isfile(cs):
             msg = "Could not load canal splines: {} is missing".format(self.CANAL_SPLINES_FILENAME)
@@ -230,6 +235,14 @@ class TiltedSideVolume(SideVolume):
             msg = "Loaded side volume corresponding canal splines do not match with current canals"
             print(msg)
             raise ValueError(msg)
+
+    def save_(self):
+        super().save_()
+        self._save_canal_splines()
+
+    def load_(self):
+        super().load_()
+        self._load_canal_splines()
 
     def _compute_on_spline(self, spline, step_fn=None, debug=False):
         """Computes the tilted images on a give spline (left or right)"""
@@ -268,5 +281,5 @@ class TiltedSideVolume(SideVolume):
             self.correct = False
             return
         self._postprocess_data()
-        self.save_()
         self.correct = True
+        self.messenger.loading_message("Saving views", self.save_)
