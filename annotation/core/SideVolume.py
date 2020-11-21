@@ -12,7 +12,7 @@ class SideVolume():
     SIDE_COORDS_FILENAME = "side_coords.npy"
     COORDS_FILENAME = "coords.npy"
     PLANES_FILENAME = "planes.npy"
-    SAVE_DIRNAME = "side_volume"
+    SAVE_DIRNAME = "d_side_volume"
 
     def __init__(self, arch_handler, scale):
         """
@@ -177,6 +177,7 @@ class SideVolume():
 
 class TiltedSideVolume(SideVolume):
     CANAL_SPLINES_FILENAME = "canals.json"
+    SAVE_DIRNAME = "side_volume"
 
     def __init__(self, arch_handler, scale):
         """Class that manages a tilted planes side volume"""
