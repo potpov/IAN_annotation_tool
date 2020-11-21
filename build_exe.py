@@ -14,10 +14,11 @@ APP_NAME = 'IAN Annotation Tool'
 SCRIPT_PATH = os.path.join(PROJECT_DIR, "annotation_tool.py")
 ICON_PATH = os.path.join(PROJECT_DIR, "annotation", "images", "icon.ico")
 
-
 ## installs in Program Files --> the installer fails because it has not enough privileges
 # if 'bdist_msi' in sys.argv:
 #     sys.argv += ['--initial-target-dir', r'C:\Program Files\{}'.format(APP_NAME)]
+
+version = "1.2"
 
 
 def collect_dist_info(packages):
@@ -89,7 +90,7 @@ executable = Executable(
 )
 
 setup(name=APP_NAME,
-      version="1.1",
+      version=version,
       description=APP_NAME,
       author="AImageLab",
       options={"build_exe": build_exe_options},
