@@ -5,11 +5,11 @@ from annotation.components.message.Dialog import question
 from annotation.components.Menu import Menu
 from annotation.screens.Container import Container
 from annotation.components.message.Messenger import Messenger
-from annotation.components.message.Strategies import TerminalMessageStrategy, QtMessageStrategy
+from annotation.components.message.Strategies import QtMessageStrategy
 
 
 class Window(QtGui.QMainWindow):
-    WINDOW_TITLE = "IAN Anjanotation Tool"
+    WINDOW_TITLE = "IAN Annotation Tool"
     ICON = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "images", "icon.ico")
 
     def __init__(self):

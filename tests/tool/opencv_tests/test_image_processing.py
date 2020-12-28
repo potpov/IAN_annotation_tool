@@ -1,6 +1,6 @@
 import cv2
 
-from annotation.tests.canal_processing import extimate_canal
+from annotation.tests.opencv_tests.canal_processing import extimate_canal
 from annotation.utils.image import plot
 
 
