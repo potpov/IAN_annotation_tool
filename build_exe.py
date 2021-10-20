@@ -5,7 +5,11 @@ import skimage
 import opcode
 import sys
 
-VENV_DIR = os.path.dirname(os.path.dirname(os.__file__))
+if os.environ['VIRTUAL_ENV']:
+    VENV_DIR = os.environ['VIRTUAL_ENV']
+else:
+    VENV_DIR = os.path.dirname(os.path.dirname(os.__file__))
+
 LIB_DIR = os.path.join(VENV_DIR, "Lib")
 SITE_PACKAGES_DIR = os.path.join(LIB_DIR, "site-packages")
 PROJECT_DIR = os.path.abspath(os.path.curdir)
