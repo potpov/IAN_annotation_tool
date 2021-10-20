@@ -16,7 +16,7 @@ MAX_QUANTILE = 0.98
 
 class Jaw:
 
-    def __init__(self, dicomdir_path, flip=True):
+    def __init__(self, dicomdir_path):
         """
         initialize a jaw object from a dicomdir path
         Args:
@@ -32,8 +32,24 @@ class Jaw:
         self.Z, self.H, self.W = self.volume.shape
         self.HU_intercept, self.HU_slope = self.__get_HU_rescale_params()
 
-        if flip:  # Z-axis has to be flipped
+        # ADJUST WINDOW
+        w = self.dicom_files[0].WindowWidth
+        c = self.dicom_files[0].WindowCenter
+        ymax = c + (w / 2)
+        ymin = c - (w / 2)
+
+        tmp = self.volume * self.HU_slope + self.HU_intercept
+        # windowing - no matter how you change data in tool, final_HU is the best input range and will be used when dumping volumes.npy
+        self.final_HU = tmp.copy()
+        self.final_HU = ((self.final_HU - (c - .5)) / (w - 1) + .5) * (ymax - ymin) + ymin
+        self.final_HU[tmp < (c - .5 - (w - 1) / 2)] = ymin
+        self.final_HU[tmp > (c - .5 + (w - 1) / 2)] = ymax
+        print(self.final_HU.min(), print(self.final_HU.max()))
+        # END ADJUST WINDOW
+
+        if self.dicom_files[1].ImagePositionPatient[-1] - self.dicom_files[0].ImagePositionPatient[-1] > 0:  # Z-axis has to be flipped
             self.volume = np.flip(self.volume, 0)
+            self.final_HU = np.flip(self.final_HU, 0)
             self.dicom_files.reverse()
             self.filenames.reverse()
 
@@ -315,7 +331,8 @@ class Jaw:
         if normalized:
             return self.volume
         else:
-            return np.array(self.volume * self.max_value, dtype=np.uint16)
+            return self.final_HU
+            # return np.array(self.volume * self.max_value, dtype=np.uint16)
 
     def get_gt_volume(self, labels: list = None):
         if not labels:

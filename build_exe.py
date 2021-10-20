@@ -22,7 +22,7 @@ ICON_PATH = os.path.join(PROJECT_DIR, "annotation", "images", "icon.ico")
 # if 'bdist_msi' in sys.argv:
 #     sys.argv += ['--initial-target-dir', r'C:\Program Files\{}'.format(APP_NAME)]
 
-version = "1.2"
+version = "1.3"
 
 
 def collect_dist_info(packages):
